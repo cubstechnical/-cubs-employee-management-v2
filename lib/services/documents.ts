@@ -1,4 +1,4 @@
-import { supabase } from '@/lib/supabase/client';
+import { supabase } from '../supabase/client';
 
 export interface Document {
   id: string;
@@ -47,6 +47,7 @@ export class DocumentService {
   // Cache for document folders to improve performance
   private static foldersCache: { folders: DocumentFolder[]; timestamp: number } | null = null;
   private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
   // Get all documents with optional filters
   static async getDocuments(filters?: {
     employee_id?: string;
@@ -98,184 +99,93 @@ export class DocumentService {
 
       // Use a more efficient query with SQL aggregation for better performance
       const { data: companyStats, error: statsError } = await supabase
-        .rpc('get_company_document_stats', {})
-        .limit(50); // Limit to top 50 companies for faster loading
+        .from('employee_documents')
+        .select('file_path, uploaded_at')
+        .limit(1000); // Reasonable limit for performance
 
       if (statsError) {
-        // Fallback to the old method if RPC fails
-        console.log('⚠️ RPC failed, using fallback method');
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('employee_documents')
-          .select('file_path, uploaded_at')
-          .not('file_path', 'is', null)
-          .limit(500); // Reduced limit for better performance
-
-        if (fallbackError) {
-          return { folders: [], error: fallbackError.message };
-        }
-
-        // Process fallback data
-        const companyData = new Map<string, { count: number; lastModified: string }>();
-        
-        if (fallbackData) {
-          for (const doc of fallbackData) {
-            const filePath = doc.file_path as string;
-            const uploadedAt = doc.uploaded_at as string;
-            
-            if (filePath) {
-              const pathParts = filePath.split('/');
-              if (pathParts.length >= 1) {
-                const companyName = pathParts[0];
-                const existing = companyData.get(companyName);
-                
-                if (existing) {
-                  existing.count++;
-                  if (uploadedAt > existing.lastModified) {
-                    existing.lastModified = uploadedAt;
-                  }
-                } else {
-                  companyData.set(companyName, { count: 1, lastModified: uploadedAt });
-                }
-              }
-            }
-          }
-        }
-
-        return this.processCompanyData(companyData);
+        return { folders: [], error: statsError.message };
       }
 
-      // Process RPC data
+      // Process company data efficiently
       const companyData = new Map<string, { count: number; lastModified: string }>();
-      
-      if (companyStats) {
-        companyStats.forEach((stat: any) => {
-          companyData.set(stat.company_name, {
-            count: stat.document_count,
-            lastModified: stat.last_modified
-          });
+
+      companyStats?.forEach(doc => {
+        if (doc.file_path && typeof doc.file_path === 'string') {
+          const pathParts = doc.file_path.split('/');
+          const companyName = pathParts[0];
+          
+          if (companyName && companyName !== 'EMP_COMPANY_DOCS') {
+            const existing = companyData.get(companyName);
+            const timestamp = new Date(doc.uploaded_at as string).getTime();
+            
+            companyData.set(companyName, {
+              count: (existing?.count || 0) + 1,
+              lastModified: existing ? Math.max(parseInt(existing.lastModified), timestamp).toString() : timestamp.toString()
+            });
+          }
+        }
+      });
+
+      // Get AL HANA TOURS & TRAVELS data separately for better performance
+      const { data: alHanaStats, error: alHanaError } = await supabase
+        .from('employee_documents')
+        .select('file_path, uploaded_at')
+        .or('file_path.ilike.EMP_ALHT0001/%,file_path.ilike.EMP_ALHT0002/%,file_path.ilike.EMP_ALHT0003/%,file_path.ilike.EMP_ALHT0004/%,file_path.ilike.EMP_ALHT0005/%')
+        .limit(500);
+
+      if (!alHanaError && alHanaStats) {
+        let alHanaDocCount = 0;
+        let alHanaLastModified = 0;
+
+        alHanaStats.forEach(doc => {
+          alHanaDocCount++;
+          const timestamp = new Date(doc.uploaded_at as string).getTime();
+          alHanaLastModified = Math.max(alHanaLastModified, timestamp);
+        });
+
+        companyData.set('AL_HANA_TOURS_TRAVELS', {
+          count: alHanaDocCount,
+          lastModified: alHanaLastModified.toString()
         });
       }
 
+      // Convert to folders array
       const result = this.processCompanyData(companyData);
-      
-      // Cache the result for better performance
-      if (result.folders.length > 0) {
-        this.foldersCache = {
-          folders: result.folders,
-          timestamp: Date.now()
-        };
-      }
-      
-      return result;
+
+      // Update cache
+      this.foldersCache = {
+        folders: result.folders,
+        timestamp: Date.now()
+      };
+
+      console.log(`📁 Processed ${result.folders.length} document folders`);
+      return { folders: result.folders, error: null };
     } catch (error) {
+      console.error('❌ Error in getDocumentFolders:', error);
       return { folders: [], error: 'Failed to fetch document folders' };
     }
   }
 
-  // Helper method to process company data
   private static processCompanyData(companyData: Map<string, { count: number; lastModified: string }>): { folders: DocumentFolder[]; error: string | null } {
-
-      // Create folders from actual data
+    try {
       const folders: DocumentFolder[] = [];
 
-      // Add Company Documents folder first
-      const companyDocsCount = companyData.get('EMP_COMPANY_DOCS')?.count || 0;
-      folders.push({
-        id: 'company-documents',
-        name: 'Company Documents',
-        type: 'company',
-        documentCount: companyDocsCount,
-        lastModified: companyData.get('EMP_COMPANY_DOCS')?.lastModified || new Date().toISOString(),
-        path: '/company-documents'
-      });
-
-      // Add company folders with proper display names - HANDLE AL HANA TOURS SEPARATELY
-      Array.from(companyData.entries()).forEach(([companyName, data]) => {
-        // Skip EMP_COMPANY_DOCS as it's handled separately
-        if (companyName === 'EMP_COMPANY_DOCS') {
-          return;
-        }
-        
-        // Handle AL HANA TOURS & TRAVELS employee folders - group them together
-        if (companyName.startsWith('EMP_ALHT')) {
-          // This is an AL HANA TOURS employee folder - skip individual folders
-          return;
-        }
-        
-                // Include all company folders (RUKIN_AL_ASHBAL, AL MACEN, CUBS, etc.)
-        // The filtering logic was incorrect - we want to show all companies
-        // Only skip EMP_COMPANY_DOCS (handled separately) and EMP_ALHT (handled specially)
-        
-        // Map file path company names to display names
-        let displayName = companyName;
-        switch (companyName) {
-          case 'RUKIN_AL_ASHBAL':
-            displayName = 'RUKIN AL ASHBAL';
-            break;
-          case 'AL_ASHBAL_AJMAN':
-            displayName = 'AL ASHBAL AJMAN';
-            break;
-          case 'ASHBAL_AL_KHALEEJ':
-            displayName = 'ASHBAL AL KHALEEJ';
-            break;
-          case 'FLUID_ENGINEERING':
-            displayName = 'FLUID ENGINEERING';
-            break;
-          case 'GOLDEN_CUBS':
-            displayName = 'GOLDEN CUBS';
-            break;
-          case 'CUBS_TECH':
-            displayName = 'CUBS TECH';
-            break;
-          case 'AL MACEN':
-            displayName = 'AL MACEN';
-            break;
-          case 'CUBS':
-            displayName = 'CUBS CONTRACTING';
-            break;
-          default:
-            displayName = companyName.replace(/_/g, ' ');
-        }
-
+      companyData.forEach((data, companyName) => {
         folders.push({
-          id: `company-${companyName}`,
-          name: displayName,
+          id: companyName,
+          name: companyName.replace(/_/g, ' '),
           type: 'company' as const,
           companyName,
           documentCount: data.count,
-          lastModified: data.lastModified,
+          lastModified: parseInt(data.lastModified) > 0 ? new Date(parseInt(data.lastModified)).toISOString() : new Date().toISOString(),
           path: `/company/${companyName}`
         });
       });
 
-      // Add AL HANA TOURS & TRAVELS with actual document count
-      const alHanaDocCount = (companyData.get('EMP_ALHT0001')?.count || 0) +
-                            (companyData.get('EMP_ALHT0002')?.count || 0) +
-                            (companyData.get('EMP_ALHT0003')?.count || 0) +
-                            (companyData.get('EMP_ALHT0004')?.count || 0) +
-                            (companyData.get('EMP_ALHT0005')?.count || 0);
-
-      const alHanaLastModified = Math.max(
-        new Date(companyData.get('EMP_ALHT0001')?.lastModified || 0).getTime(),
-        new Date(companyData.get('EMP_ALHT0002')?.lastModified || 0).getTime(),
-        new Date(companyData.get('EMP_ALHT0003')?.lastModified || 0).getTime(),
-        new Date(companyData.get('EMP_ALHT0004')?.lastModified || 0).getTime(),
-        new Date(companyData.get('EMP_ALHT0005')?.lastModified || 0).getTime()
-      );
-
-      if (alHanaDocCount > 0) {
-        folders.push({
-          id: 'company-al-hana-tours',
-          name: 'AL HANA TOURS & TRAVELS',
-          type: 'company' as const,
-          companyName: 'AL_HANA_TOURS_TRAVELS',
-          documentCount: alHanaDocCount,
-          lastModified: alHanaLastModified > 0 ? new Date(alHanaLastModified).toISOString() : new Date().toISOString(),
-          path: '/company/AL_HANA_TOURS_TRAVELS'
-        });
-      }
-
       return { folders, error: null };
+    } catch (error) {
+      return { folders: [], error: 'Failed to process company data' };
     }
   }
 
@@ -376,66 +286,56 @@ export class DocumentService {
         return { folders: [], error: employeeError.message };
       }
 
-      // Create a map of employee_id to employee name
-      const employeeNameMap = new Map<string, string>();
-      employees?.forEach(emp => {
-        employeeNameMap.set(emp.employee_id as string, emp.name as string);
-      });
+      // Create a map for quick employee name lookup
+      const employeeMap = new Map(employees?.map(emp => [emp.employee_id, emp.name]) || []);
 
-      // Group documents by employee_id - PERFORMANCE OPTIMIZED
-      const employeeMap = new Map<string, { count: number; lastModified: string; employeeId: string }>();
-      
-      if (companyDocs) {
-        for (const doc of companyDocs) {
-          const uploadedAt = doc.uploaded_at as string;
-          const employeeId = doc.employee_id as string;
+      // Group documents by employee and calculate stats
+      const employeeStats = new Map<string, { count: number; lastModified: string }>();
+
+      companyDocs?.forEach(doc => {
+        const employeeId = doc.employee_id as string;
+        if (employeeId) {
+          const existing = employeeStats.get(employeeId);
+          const timestamp = new Date(doc.uploaded_at as string).getTime();
           
-          if (uploadedAt && employeeId) {
-            const existing = employeeMap.get(employeeId);
-            
-            if (existing) {
-              existing.count++;
-              if (uploadedAt > existing.lastModified) {
-                existing.lastModified = uploadedAt;
-              }
-            } else {
-              employeeMap.set(employeeId, { 
-                count: 1, 
-                lastModified: uploadedAt, 
-                employeeId: employeeId
-              });
-            }
-          }
+          employeeStats.set(employeeId, {
+            count: (existing?.count || 0) + 1,
+            lastModified: existing ? Math.max(parseInt(existing.lastModified), timestamp).toString() : timestamp.toString()
+          });
         }
-      }
-
-      // Create folders using employee names from database
-      const folders: DocumentFolder[] = Array.from(employeeMap.entries()).map(([employeeId, data]) => {
-        const employeeName = employeeNameMap.get(employeeId) || employeeId; // Fallback to employee_id if name not found
-        
-        return {
-          id: `emp-${employeeId}`,
-          name: employeeName, // Use real employee name from database
-          type: 'employee' as const,
-          employeeId: employeeId,
-          employeeName: employeeName,
-          companyName: companyName,
-          documentCount: data.count,
-          lastModified: data.lastModified,
-          path: `/company/${companyName}/employee/${employeeId}` // Use employee_id in path
-        };
       });
 
-      // Sort folders by employee name for better UX
+      // Convert to folders array
+      const folders: DocumentFolder[] = [];
+
+      employeeStats.forEach((stats, employeeId) => {
+        const employeeName = employeeMap.get(employeeId) || employeeId;
+        
+        folders.push({
+          id: employeeId,
+          name: employeeName as string,
+          type: 'employee' as const,
+          companyName,
+          employeeId,
+          employeeName: employeeName as string,
+          documentCount: stats.count,
+          lastModified: parseInt(stats.lastModified) > 0 ? new Date(parseInt(stats.lastModified)).toISOString() : new Date().toISOString(),
+          path: `/company/${companyName}/employee/${employeeId}`
+        });
+      });
+
+      // Sort by employee name
       folders.sort((a, b) => a.name.localeCompare(b.name));
 
+      console.log(`📁 Found ${folders.length} employee folders for ${companyName}`);
       return { folders, error: null };
     } catch (error) {
+      console.error('❌ Error in getEmployeeFolders:', error);
       return { folders: [], error: 'Failed to fetch employee folders' };
     }
   }
 
-  // Upload document to Backblaze and save metadata to Supabase
+  // Upload a new document
   static async uploadDocument(
     file: File,
     uploadData: UploadDocumentData
@@ -443,8 +343,8 @@ export class DocumentService {
     try {
       // Import BackblazeService dynamically to avoid SSR issues
       const { default: BackblazeService } = await import('./backblaze');
-      
-      // Extract company and employee from file path
+
+      // Extract company and employee names from file path for better organization
       const pathParts = uploadData.file_path.split('/');
       const companyName = pathParts[0] || 'Unknown';
       const employeeName = pathParts[1] || 'Unknown';
@@ -456,56 +356,50 @@ export class DocumentService {
         mimeType: file.type,
         companyName,
         employeeName,
-        documentType: uploadData.document_type,
+        documentType: uploadData.document_type
       });
 
       if (!uploadResult.success) {
-        return { document: null, error: uploadResult.error || 'Upload failed' };
+        return { document: null, error: uploadResult.error || 'Failed to upload file' };
       }
 
-      // Create document record
-      const document: Document = {
-        id: `doc-${Date.now()}`,
-        employee_id: uploadData.employee_id,
-        document_type: uploadData.document_type,
-        file_name: uploadData.file_name,
-        file_url: uploadResult.fileUrl!,
-        file_size: uploadData.file_size,
-        file_path: uploadData.file_path,
-        file_type: uploadData.file_type,
-        uploaded_at: new Date().toISOString(),
-        uploaded_by: undefined,
-        is_active: true,
-        notes: uploadData.notes,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        mime_type: file.type,
-        document_number: undefined,
-        issuing_authority: undefined,
-        expiry_date: undefined
-      };
-
-      // Save metadata to Supabase
-      const { data, error } = await supabase
+      // Save document metadata to Supabase
+      const { data: document, error: dbError } = await supabase
         .from('employee_documents')
-        .insert([document as any])
+        .insert({
+          employee_id: uploadData.employee_id,
+          document_type: uploadData.document_type,
+          file_name: uploadData.file_name,
+          file_url: uploadResult.fileUrl || '',
+          file_size: uploadData.file_size,
+          file_path: uploadData.file_path,
+          file_type: uploadData.file_type,
+          mime_type: file.type,
+          notes: uploadData.notes,
+          is_active: true
+        })
         .select()
         .single();
 
-      if (error) {
-        // If Supabase insert fails, delete the uploaded file
-        await BackblazeService.deleteFile(uploadResult.fileKey!);
-        return { document: null, error: error.message };
+      if (dbError) {
+        // If database insert fails, try to delete the uploaded file
+        try {
+          await BackblazeService.deleteFile(uploadData.file_path);
+        } catch (deleteError) {
+          console.error('Failed to delete file after database error:', deleteError);
+        }
+        return { document: null, error: dbError.message };
       }
 
-      return { document: data as unknown as Document, error: null };
+      console.log(`✅ Document uploaded successfully: ${uploadData.file_name}`);
+      return { document: document as unknown as Document, error: null };
     } catch (error) {
-      console.error('Upload document error:', error);
+      console.error('❌ Error in uploadDocument:', error);
       return { document: null, error: 'Failed to upload document' };
     }
   }
 
-  // Delete document from Backblaze and Supabase
+  // Delete a document
   static async deleteDocument(documentId: string): Promise<{ error: string | null }> {
     try {
       // Get document info first

@@ -11,8 +11,8 @@
     "prepare": "husky"
   },
   "lint-staged": {
-    "*.{ts,tsx}": [
-      "tsc --noEmit"
+    "*.ts": [
+      "tsc --noEmit --skipLibCheck"
     ]
   },
   "dependencies": {

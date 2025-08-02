@@ -460,10 +460,10 @@ function DocumentsContent() {
               <div className="flex items-center space-x-4 flex-1">
                 <div className="relative flex-1 max-w-md">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <Input
-                    placeholder="Search documents..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+              <Input
+                placeholder="Search documents..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
                     className="pl-10"
                   />
                   {isSearching && (
@@ -502,30 +502,30 @@ function DocumentsContent() {
             </div>
           </div>
 
-          {/* Breadcrumbs */}
+        {/* Breadcrumbs */}
           <div className="px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <div className="flex items-center space-x-2 text-sm">
+        <div className="flex items-center space-x-2 text-sm">
               <Home className="w-4 h-4 text-gray-400" />
-              {breadcrumbs.map((breadcrumb, index) => (
+          {breadcrumbs.map((breadcrumb, index) => (
                 <div key={`breadcrumb-${index}-${breadcrumb.path}`} className="flex items-center">
                   {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400 mx-1" />}
-                  <button
-                    onClick={() => handleBreadcrumbClick(breadcrumb)}
+              <button
+                onClick={() => handleBreadcrumbClick(breadcrumb)}
                     className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
-                  >
-                    {breadcrumb.name}
-                  </button>
-                </div>
-              ))}
+              >
+                {breadcrumb.name}
+              </button>
             </div>
-          </div>
+          ))}
+            </div>
+        </div>
 
           {/* Windows Explorer Style Grid View */}
           <div className="overflow-auto">
                   {loading ? (
         <div className="p-6">
           <DocumentGridSkeleton count={8} />
-        </div>
+                  </div>
       ) : (
               <div className="min-h-[500px] p-6">
                 {items.length === 0 ? (
@@ -569,8 +569,8 @@ function DocumentsContent() {
                             }}
                             className="rounded border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
                           />
-                        </div>
-
+                </div>
+                
                         {/* Modern Folder/File Icon */}
                         <div className="mb-4 flex justify-center">
                           {item.type === 'folder' ? (
@@ -585,15 +585,15 @@ function DocumentsContent() {
                                 </div>
                                 {/* Shine effect */}
                                 <div className="absolute top-1 left-1 w-3 h-3 bg-white bg-opacity-20 rounded-full"></div>
-                              </div>
-                            </div>
+                </div>
+              </div>
                           ) : (
                             <div className="w-20 h-20 flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-xl shadow-lg transform transition-all duration-300 group-hover:scale-110 group-hover:shadow-xl">
                               <div className="w-12 h-12 flex items-center justify-center">
                                 {item.icon}
-                              </div>
-                            </div>
-                          )}
+          </div>
+            </div>
+          )}
                         </div>
 
                         {/* Item Name */}
@@ -616,8 +616,8 @@ function DocumentsContent() {
                               title="Download"
                             >
                               <Download className="w-3 h-3" />
-                            </button>
-                            <button
+            </button>
+            <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteDocument(item);
@@ -626,7 +626,7 @@ function DocumentsContent() {
                               title="Delete"
                             >
                               <Trash2 className="w-3 h-3" />
-                            </button>
+            </button>
                           </div>
                         )}
 
@@ -647,12 +647,12 @@ function DocumentsContent() {
               <div className="flex items-center space-x-4">
                 <span>{selectedItems.length} of {items.length} items selected</span>
                 {selectedItems.length > 0 && (
-                  <button
+            <button
                     onClick={() => setSelectedItems([])}
                     className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                  >
+            >
                     Clear selection
-                  </button>
+            </button>
                 )}
               </div>
               <span>{items.length} items</span>
@@ -673,4 +673,4 @@ function DocumentsContent() {
       />
     </Layout>
   );
-}
+} 

@@ -1,4 +1,4 @@
-import AWS from 'aws-sdk';
+import * as AWS from 'aws-sdk';
 
 // Configure AWS SDK for Backblaze B2
 const s3 = new AWS.S3({
