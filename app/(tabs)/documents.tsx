@@ -186,7 +186,7 @@ function DocumentsContent() {
           id: folder.id,
           name: folder.name,
           type: 'folder' as const,
-          size: '', // Remove document count display
+          size: '', // No document count display
           modified: folder.lastModified,
           path: folder.path,
           icon: getFolderIcon(folder.name, true),
@@ -577,9 +577,7 @@ function DocumentsContent() {
             <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
               {folder.name}
             </h3>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-              {(folder.documentCount || 0) > 0 ? `${folder.documentCount} documents` : 'No documents'}
-            </p>
+            {/* Document count removed as requested */}
             {folder.employeeName && (
               <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
                 Employee: {folder.employeeName}

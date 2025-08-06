@@ -203,12 +203,13 @@ export class DocumentService {
         
         return { documents, error: null };
       } else {
-        console.log('🔍 Fetching EMP_COMPANY_DOCS documents...');
+        console.log('🔍 Fetching Company Documents...');
         
+        // Look for both old and new company document paths
         const { data, error } = await supabase
           .from('employee_documents')
           .select('*')
-          .ilike('file_path', 'EMP_COMPANY_DOCS/%')
+          .or('file_path.ilike.EMP_COMPANY_DOCS/%,file_path.ilike.Company Documents/%')
           .order('uploaded_at', { ascending: false });
 
         if (error) {
@@ -217,7 +218,7 @@ export class DocumentService {
         }
 
         const documents = data ? (data as unknown as Document[]) : [];
-        console.log(`✅ Found ${documents.length} EMP_COMPANY_DOCS documents`);
+        console.log(`✅ Found ${documents.length} Company Documents`);
         
         return { documents, error: null };
       }
@@ -376,10 +377,28 @@ export class DocumentService {
         'Company Documents': 'Company Documents'
       };
       
-      // Add company folders based on actual file paths
+      // Create a reverse mapping to consolidate duplicate folders
+      const reverseMapping: { [key: string]: string } = {};
+      Object.entries(displayNameMapping).forEach(([key, value]) => {
+        if (!reverseMapping[value]) {
+          reverseMapping[value] = key;
+        }
+      });
+      
+      // Add company folders based on actual file paths - consolidate duplicates
+      const consolidatedFolders = new Map<string, { 
+        displayName: string; 
+        prefixes: string[]; 
+        documents: any[]; 
+        lastModified: number;
+      }>();
+      
       for (const prefix of Array.from(companyPrefixes).sort()) {
         // Skip test folders
         if (prefix === 'FINAL_TEST') continue;
+        
+        // Get display name from mapping, or use prefix as fallback
+        const displayName = displayNameMapping[prefix] || prefix.replace(/_/g, ' ');
         
         // Count documents for this company prefix
         const companyDocs = allDocuments?.filter(doc => 
@@ -390,17 +409,34 @@ export class DocumentService {
           ? Math.max(...companyDocs.map(doc => new Date(doc.uploaded_at as string).getTime()))
           : Date.now();
 
-        // Get display name from mapping, or use prefix as fallback
-        const displayName = displayNameMapping[prefix] || prefix.replace(/_/g, ' ');
-
+        // Consolidate folders with the same display name
+        if (consolidatedFolders.has(displayName)) {
+          const existing = consolidatedFolders.get(displayName)!;
+          existing.prefixes.push(prefix);
+          existing.documents.push(...companyDocs);
+          existing.lastModified = Math.max(existing.lastModified, lastModified);
+        } else {
+          consolidatedFolders.set(displayName, {
+            displayName,
+            prefixes: [prefix],
+            documents: companyDocs,
+            lastModified
+          });
+        }
+      }
+      
+      // Create final company folders from consolidated data
+      for (const [displayName, data] of Array.from(consolidatedFolders.entries())) {
+        const primaryPrefix = data.prefixes[0]; // Use first prefix as primary
+        
         companyFolders.push({
-          id: `company-${prefix}`,
+          id: `company-${primaryPrefix}`,
           name: displayName,
           type: 'company',
-          companyName: prefix, // Use actual file path prefix for internal operations
-          documentCount: companyDocs.length,
-          lastModified: new Date(lastModified).toISOString(),
-          path: `/${prefix}`
+          companyName: primaryPrefix, // Use primary prefix for internal operations
+          documentCount: data.documents.length,
+          lastModified: new Date(data.lastModified).toISOString(),
+          path: `/${primaryPrefix}`
         });
       }
 
