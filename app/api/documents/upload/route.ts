@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminAuth, handleApiError } from '@/lib/api/middleware';
-import { BackblazeService } from '@/lib/services/backblaze';
-import { supabase } from '@/lib/supabase/client';
+import { withAdminAuth, handleApiError } from '../../../../lib/api/middleware';
+import { BackblazeService } from '../../../../lib/services/backblaze';
+import { supabase } from '../../../../lib/supabase/client';
 
 // POST /api/documents/upload - Upload document
 export async function POST(request: NextRequest) {

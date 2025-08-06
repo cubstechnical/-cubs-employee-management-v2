@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminAuth, handleApiError } from '@/lib/api/middleware';
-import { BackblazeService } from '@/lib/services/backblaze';
+import { withAdminAuth, handleApiError } from '../../../../lib/api/middleware';
+import { BackblazeService } from '../../../../lib/services/backblaze';
 
 // POST /api/documents/preview - Get document preview URL
 export async function POST(request: NextRequest) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { withAdminAuth, handleApiError } from '@/lib/api/middleware';
-import { FileUploadService } from '@/lib/services/fileUpload';
+import { withAdminAuth, handleApiError } from '../../../../../../lib/api/middleware';
+import { supabase } from '../../../../../../lib/supabase/client';
+import { DocumentService } from '../../../../../../lib/services/documents';
 
 // GET /api/documents/[id] - Get document by ID
 export async function GET(
@@ -9,7 +10,7 @@ export async function GET(
 ) {
   return withAdminAuth(request, async (req) => {
     try {
-      const document = await FileUploadService.getDocumentById(params.id);
+      const document = await DocumentService.getDocumentById(params.id);
 
       if (!document) {
         return NextResponse.json(
@@ -19,7 +20,7 @@ export async function GET(
       }
 
       // Generate signed download URL
-      const downloadUrl = await FileUploadService.getSignedDownloadUrl(document.file_url);
+      const downloadUrl = await DocumentService.getSignedDownloadUrl(document.file_url);
 
       return NextResponse.json({
         success: true,
@@ -48,7 +49,7 @@ export async function PUT(
         type: body.type,
       };
 
-      const document = await FileUploadService.updateDocumentMetadata(params.id, updates);
+      const document = await DocumentService.updateDocumentMetadata(params.id, updates);
 
       if (!document) {
         return NextResponse.json(
@@ -75,7 +76,7 @@ export async function DELETE(
 ) {
   return withAdminAuth(request, async (req) => {
     try {
-      const success = await FileUploadService.deleteDocument(params.id);
+      const success = await DocumentService.deleteDocument(params.id);
 
       if (!success) {
         return NextResponse.json(
