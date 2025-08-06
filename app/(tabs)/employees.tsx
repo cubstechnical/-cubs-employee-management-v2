@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -9,6 +10,8 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { EmployeeService, PaginationParams, EmployeeFilters, FilterOptions } from '@/lib/services/employees';
 import { Employee } from '@/lib/supabase/client';
 import { formatDate } from '@/utils/date';
+import { useDebounce } from '@/hooks/usePerformance';
+import { usePerformanceMonitoring } from '@/lib/monitoring/performance';
 import { 
   Users, 
   Search, 
@@ -19,9 +22,52 @@ import {
   Edit,
   Trash2,
   Plus,
-  Download
+  Download,
+  Loader2,
+  RefreshCw,
+  SortAsc,
+  SortDesc,
+  Calendar,
+  Building,
+  User,
+  Phone,
+  Mail,
+  MapPin,
+  CreditCard,
+  FileText,
+  AlertCircle,
+  CheckCircle,
+  Clock,
+  XCircle,
+  Settings,
+  Columns,
+  X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+
+interface ColumnConfig {
+  key: string;
+  label: string;
+  visible: boolean;
+  sortable: boolean;
+  width?: string;
+}
+
+const DEFAULT_COLUMNS: ColumnConfig[] = [
+  { key: 'employee_id', label: 'Employee ID', visible: true, sortable: true, width: 'w-32' },
+  { key: 'name', label: 'Name', visible: true, sortable: true, width: 'w-48' },
+  { key: 'company_name', label: 'Company', visible: true, sortable: true, width: 'w-40' },
+  { key: 'trade', label: 'Trade', visible: true, sortable: true, width: 'w-32' },
+  { key: 'nationality', label: 'Nationality', visible: true, sortable: true, width: 'w-32' },
+  { key: 'status', label: 'Status', visible: true, sortable: true, width: 'w-24' },
+  { key: 'visa_status', label: 'Visa Status', visible: true, sortable: true, width: 'w-28' },
+  { key: 'visa_expiry', label: 'Visa Expiry', visible: true, sortable: true, width: 'w-32' },
+  { key: 'passport_expiry', label: 'Passport Expiry', visible: false, sortable: true, width: 'w-32' },
+  { key: 'phone', label: 'Phone', visible: false, sortable: false, width: 'w-32' },
+  { key: 'email', label: 'Email', visible: false, sortable: false, width: 'w-48' },
+  { key: 'salary', label: 'Salary', visible: false, sortable: true, width: 'w-24' },
+  { key: 'created_at', label: 'Created', visible: false, sortable: true, width: 'w-32' }
+];
 
 export default function Employees() {
   return (
@@ -32,11 +78,18 @@ export default function Employees() {
 }
 
 function EmployeesContent() {
+  usePerformanceMonitoring('EmployeesPage');
+  const router = useRouter();
+
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [totalEmployees, setTotalEmployees] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  
   const [filterOptions, setFilterOptions] = useState<FilterOptions>({
     companies: [],
     trades: [],
@@ -44,6 +97,7 @@ function EmployeesContent() {
     statuses: [],
     visaStatuses: []
   });
+  
   const [filters, setFilters] = useState<EmployeeFilters>({
     status: '',
     company_name: '',
@@ -53,301 +107,464 @@ function EmployeesContent() {
     is_temporary: false
   });
 
-  useEffect(() => {
-    fetchEmployees();
-  }, [currentPage, searchTerm, filters]);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showColumnConfig, setShowColumnConfig] = useState(false);
+  const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+
+  const visibleColumns = useMemo(() => columns.filter(col => col.visible), [columns]);
 
   useEffect(() => {
-    fetchFilterOptions();
+    const loadFilterOptions = async () => {
+      try {
+        const options = await EmployeeService.getFilterOptions();
+        setFilterOptions(options);
+      } catch (error) {
+        console.error('Error fetching filter options:', error);
+      }
+    };
+    loadFilterOptions();
   }, []);
 
-  const fetchEmployees = async () => {
+  const fetchEmployees = useCallback(async (page: number = currentPage, search: string = debouncedSearchTerm, filterOpts: EmployeeFilters = filters) => {
     try {
       setLoading(true);
       
       const params: PaginationParams = {
-        page: currentPage,
-        pageSize: 10
+        page,
+        pageSize: 25
       };
 
       const result = await EmployeeService.getEmployees(params, {
-        ...filters,
-        search: searchTerm
+        ...filterOpts,
+        search
       });
       
       setEmployees(result.employees);
       setTotalPages(result.totalPages);
+      setTotalEmployees(result.total);
       
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
-  };
+  }, [currentPage, debouncedSearchTerm, filters]);
 
-  const fetchFilterOptions = async () => {
-    try {
-      const options = await EmployeeService.getFilterOptions();
-      setFilterOptions(options);
-    } catch (error) {
-      console.error('Error fetching filter options:', error);
+  useEffect(() => {
+    if (!initialLoading) {
+      fetchEmployees(1, debouncedSearchTerm, filters);
     }
-  };
+  }, [debouncedSearchTerm, filters, fetchEmployees, initialLoading]);
 
-  const handlePageChange = (page: number) => {
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+    fetchEmployees(page);
+  }, [fetchEmployees]);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleFilterChange = (filterType: string, value: string | boolean) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value
-    }));
+  const handleFilterChange = useCallback((key: keyof EmployeeFilters, value: any) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleDeleteEmployee = async (employeeId: string) => {
-    if (confirm('Are you sure you want to delete this employee?')) {
-      try {
-        await EmployeeService.deleteEmployee(employeeId);
-        toast.success('Employee deleted successfully');
-        fetchEmployees();
-      } catch (error) {
-        console.error('Error deleting employee:', error);
-        toast.error('Failed to delete employee');
-      }
+  const handleColumnToggle = useCallback((columnKey: string) => {
+    setColumns(prev => prev.map(col => 
+      col.key === columnKey ? { ...col, visible: !col.visible } : col
+    ));
+  }, []);
+
+  const handleSort = useCallback((field: string) => {
+    if (field === sortField) {
+      setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  }, [sortField]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchEmployees();
+    setIsRefreshing(false);
+      toast.success('Employees refreshed');
+  }, [fetchEmployees]);
+
+  const resetFilters = useCallback(() => {
+    setFilters({
+      status: '',
+      company_name: '',
+      trade: '',
+      nationality: '',
+      visa_status: '',
+      is_temporary: false
+    });
+    setSearchTerm('');
+    setCurrentPage(1);
+  }, []);
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'active': return 'bg-green-100 text-green-800 border-green-200';
+      case 'inactive': return 'bg-red-100 text-red-800 border-red-200';
+      case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'suspended': return 'bg-orange-100 text-orange-800 border-orange-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getStatusBadge = (status: string | null) => {
-    if (!status) return <span className="text-gray-500">N/A</span>;
-    
-    const statusConfig = {
-      'Active': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-      'Inactive': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-      'Pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400',
-      'Suspended': 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400'
-    };
-
-    const className = statusConfig[status as keyof typeof statusConfig] || 'bg-gray-100 text-gray-800';
-    
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${className}`}>
-        {status}
-      </span>
-    );
+  const getVisaStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'valid': return 'bg-green-100 text-green-800 border-green-200';
+      case 'expired': return 'bg-red-100 text-red-800 border-red-200';
+      case 'expiring_soon': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'processing': return 'bg-blue-100 text-blue-800 border-blue-200';
+      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
-  const getVisaStatusBadge = (visaStatus: string | null) => {
-    if (!visaStatus) return null;
-    
-    const statusConfig = {
-      'Valid': 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-      'Expired': 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400',
-      'Expiring Soon': 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
-      'Pending': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-    };
-
-    const className = statusConfig[visaStatus as keyof typeof statusConfig] || 'bg-gray-100 text-gray-800';
-    
+  const renderCellContent = (employee: Employee, columnKey: string) => {
+    switch (columnKey) {
+      case 'employee_id':
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${className}`}>
-        {visaStatus}
-      </span>
-    );
-  };
-
-  const renderPagination = () => {
-    const pages = [];
-    const maxVisiblePages = 5;
-    
-    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
-    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-    
-    if (endPage - startPage + 1 < maxVisiblePages) {
-      startPage = Math.max(1, endPage - maxVisiblePages + 1);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-      pages.push(
-        <button
-          key={i}
-          onClick={() => handlePageChange(i)}
-          className={`px-3 py-2 text-sm font-medium rounded-md ${
-            i === currentPage
-              ? 'bg-primary-600 text-white'
-              : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-          }`}
-        >
-          {i}
-        </button>
-      );
-    }
-
+          <div className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
+            {employee.employee_id}
+          </div>
+        );
+      case 'name':
+        return (
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+              {employee.name?.charAt(0)?.toUpperCase() || 'N'}
+            </div>
+            <div>
+              <div className="font-medium text-gray-900 dark:text-white">{employee.name}</div>
+              {employee.mobile_number && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">{employee.mobile_number}</div>
+              )}
+            </div>
+          </div>
+        );
+      case 'company_name':
     return (
-      <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <button
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={currentPage === 1}
-            className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-          {pages}
-          <button
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={currentPage === totalPages}
-            className="px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </button>
+            <Building className="w-4 h-4 text-gray-400" />
+            <span className="font-medium text-gray-900 dark:text-white">{employee.company_name}</span>
+          </div>
+        );
+      case 'status':
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(employee.status)}`}>
+            {employee.status === 'active' && <CheckCircle className="w-3 h-3 mr-1" />}
+            {employee.status === 'inactive' && <XCircle className="w-3 h-3 mr-1" />}
+            {employee.status === 'pending' && <Clock className="w-3 h-3 mr-1" />}
+            {employee.status?.charAt(0)?.toUpperCase()}{employee.status?.slice(1)}
+          </span>
+        );
+      case 'visa_status':
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getVisaStatusColor(employee.visa_status)}`}>
+            {employee.visa_status === 'valid' && <CheckCircle className="w-3 h-3 mr-1" />}
+            {employee.visa_status === 'expired' && <XCircle className="w-3 h-3 mr-1" />}
+            {employee.visa_status === 'expiring_soon' && <AlertCircle className="w-3 h-3 mr-1" />}
+            {employee.visa_status?.replace('_', ' ').charAt(0)?.toUpperCase()}{employee.visa_status?.replace('_', ' ').slice(1)}
+          </span>
+        );
+      case 'visa_expiry':
+      case 'passport_expiry':
+      case 'created_at':
+        const date = employee[columnKey as keyof Employee] as string;
+        return date ? (
+          <div className="text-sm text-gray-900 dark:text-white">
+            {formatDate(new Date(date))}
         </div>
-        <div className="text-sm text-gray-700 dark:text-gray-300">
-          Page {currentPage} of {totalPages}
+        ) : (
+          <span className="text-gray-400 text-sm">-</span>
+        );
+      case 'salary':
+        return employee.basic_salary ? (
+          <div className="text-sm font-medium text-gray-900 dark:text-white">
+            AED {parseInt(employee.basic_salary).toLocaleString()}
         </div>
+        ) : (
+          <span className="text-gray-400 text-sm">-</span>
+        );
+      default:
+        const value = employee[columnKey as keyof Employee];
+        return (
+          <div className="text-sm text-gray-900 dark:text-white">
+            {value || '-'}
       </div>
     );
+    }
   };
+
+  if (initialLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="flex items-center space-x-3">
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <span className="text-lg font-medium text-gray-700 dark:text-gray-300">Loading employees...</span>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
     <Layout>
       <div className="space-y-6">
-        {/* Header */}
+        {/* Header Section */}
+        <div className="bg-gradient-to-r from-blue-600 to-purple-700 rounded-2xl p-6 text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Employees</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage your employee database
+              <h1 className="text-3xl font-bold flex items-center space-x-3">
+                <Users className="w-8 h-8" />
+                <span>Employee Management</span>
+              </h1>
+              <p className="text-blue-100 mt-2">
+                Manage and monitor your workforce with advanced filtering and insights
             </p>
           </div>
-          <div className="flex items-center space-x-3">
-            <Button variant="outline">
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </Button>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Employee
-            </Button>
+            <div className="text-right">
+              <div className="text-3xl font-bold">{totalEmployees}</div>
+              <div className="text-blue-100">Total Employees</div>
+            </div>
           </div>
         </div>
 
-        {/* Search and Filters */}
-        <Card>
-          <div className="space-y-4">
-            {/* Search Bar */}
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
+        {/* Controls Section */}
+        <Card className="p-6">
+          <div className="flex flex-col lg:flex-row lg:items-center justify-between space-y-4 lg:space-y-0 lg:space-x-4">
+            {/* Search */}
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <Input
+                  type="text"
                   placeholder="Search employees..."
                   value={searchTerm}
                   onChange={(e) => handleSearch(e.target.value)}
-                  icon={<Search className="w-4 h-4" />}
+                  className="pl-10"
                 />
-              </div>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="checkbox"
-                  id="temporary"
-                  checked={filters.is_temporary}
-                  onChange={(e) => handleFilterChange('is_temporary', e.target.checked)}
-                  className="w-4 h-4 text-primary-600 bg-gray-100 border-gray-300 rounded focus:ring-primary-500 dark:focus:ring-primary-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
-                />
-                <label htmlFor="temporary" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                  Temporary Workers
-                </label>
               </div>
             </div>
 
-            {/* Filter Dropdowns */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            {/* Action Buttons */}
+            <div className="flex items-center space-x-3">
+              <Button
+                onClick={() => setShowColumnConfig(!showColumnConfig)}
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <Columns className="w-4 h-4" />
+                <span>Columns</span>
+              </Button>
+              
+              <Button
+                onClick={() => setShowFilters(!showFilters)}
+                variant="outline"
+                className="flex items-center space-x-2"
+              >
+                <Filter className="w-4 h-4" />
+                <span>Filters</span>
+                {Object.values(filters).some(v => v && v !== false) && (
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                )}
+              </Button>
+
+              <Button
+                onClick={handleRefresh}
+                variant="outline"
+                disabled={isRefreshing}
+                className="flex items-center space-x-2"
+              >
+                <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </Button>
+
+              <Button
+                onClick={() => router.push('/admin/employees/new')}
+                className="flex items-center space-x-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Employee</span>
+              </Button>
+            </div>
+          </div>
+
+          {/* Column Configuration Panel */}
+          {showColumnConfig && (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-medium text-gray-900 dark:text-white">Configure Columns</h3>
+                <Button
+                  onClick={() => setShowColumnConfig(false)}
+                  variant="ghost"
+                  size="sm"
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {columns.map((column) => (
+                  <label key={column.key} className="flex items-center space-x-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={column.visible}
+                      onChange={() => handleColumnToggle(column.key)}
+                      className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-sm text-gray-700 dark:text-gray-300">{column.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Filters Panel */}
+            {showFilters && (
+            <div className="mt-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-medium text-gray-900 dark:text-white">Filter Employees</h3>
+                <div className="flex space-x-2">
+                  <Button onClick={resetFilters} variant="ghost" size="sm">
+                    Reset
+                  </Button>
+                  <Button
+                    onClick={() => setShowFilters(false)}
+                    variant="ghost"
+                    size="sm"
+                  >
+                    <X className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Company
+                  </label>
               <select
                 value={filters.company_name}
                 onChange={(e) => handleFilterChange('company_name', e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All Companies</option>
-                {filterOptions.companies.map(company => (
+                    {filterOptions.companies.map((company) => (
                   <option key={company} value={company}>{company}</option>
                 ))}
               </select>
+                </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Status
+                  </label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                >
+                  <option value="">All Statuses</option>
+                    {filterOptions.statuses.map((status) => (
+                      <option key={status} value={status}>{status}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Visa Status
+                  </label>
+                  <select
+                    value={filters.visa_status}
+                    onChange={(e) => handleFilterChange('visa_status', e.target.value)}
+                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
+                  >
+                    <option value="">All Visa Statuses</option>
+                    {filterOptions.visaStatuses.map((status) => (
+                    <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Trade
+                  </label>
               <select
                 value={filters.trade}
                 onChange={(e) => handleFilterChange('trade', e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All Trades</option>
-                {filterOptions.trades.map(trade => (
+                    {filterOptions.trades.map((trade) => (
                   <option key={trade} value={trade}>{trade}</option>
                 ))}
               </select>
+                </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Nationality
+                  </label>
               <select
                 value={filters.nationality}
                 onChange={(e) => handleFilterChange('nationality', e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
+                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
               >
                 <option value="">All Nationalities</option>
-                {filterOptions.nationalities.map(nationality => (
+                    {filterOptions.nationalities.map((nationality) => (
                   <option key={nationality} value={nationality}>{nationality}</option>
                 ))}
               </select>
-
-              <select
-                value={filters.status}
-                onChange={(e) => handleFilterChange('status', e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-              >
-                <option value="">All Status</option>
-                {filterOptions.statuses.map(status => (
-                  <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-
-              <select
-                value={filters.visa_status}
-                onChange={(e) => handleFilterChange('visa_status', e.target.value)}
-                className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm"
-              >
-                <option value="">All Visa Status</option>
-                {filterOptions.visaStatuses.map(visaStatus => (
-                  <option key={visaStatus} value={visaStatus}>{visaStatus}</option>
-                ))}
-              </select>
-            </div>
           </div>
+              </div>
+            </div>
+          )}
         </Card>
 
-        {/* Employees Table */}
-        <Card>
+        {/* Table Section */}
+        <Card className="overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Employee
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Trade
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Company
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Visa Expiry
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  {visibleColumns.map((column) => (
+                    <th
+                      key={column.key}
+                      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${column.width || ''} ${
+                        column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''
+                      }`}
+                      onClick={() => column.sortable && handleSort(column.key)}
+                        >
+                          <div className="flex items-center space-x-1">
+                        <span>{column.label}</span>
+                        {column.sortable && (
+                          <div className="flex flex-col">
+                            <SortAsc className={`w-3 h-3 ${sortField === column.key && sortDirection === 'asc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                            <SortDesc className={`w-3 h-3 -mt-1 ${sortField === column.key && sortDirection === 'desc' ? 'text-blue-600' : 'text-gray-400'}`} />
+                          </div>
+                            )}
+                          </div>
+                        </th>
+                  ))}
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -355,82 +572,56 @@ function EmployeesContent() {
               <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
                 {loading ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center">
-                      <div className="text-gray-500 dark:text-gray-400">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-4"></div>
-                        <p>Loading employees...</p>
+                    <td colSpan={visibleColumns.length + 1} className="px-6 py-8 text-center">
+                      <div className="flex items-center justify-center space-x-2">
+                        <Loader2 className="w-5 h-5 animate-spin text-blue-600" />
+                        <span className="text-gray-500 dark:text-gray-400">Loading employees...</span>
                       </div>
                     </td>
                   </tr>
                 ) : employees.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-8 text-center">
+                    <td colSpan={visibleColumns.length + 1} className="px-6 py-8 text-center">
                       <div className="text-gray-500 dark:text-gray-400">
-                        <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                        <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
                         <p className="text-lg font-medium">No employees found</p>
                         <p className="text-sm">Try adjusting your search or filters</p>
                       </div>
                     </td>
                   </tr>
                 ) : (
-                  <>
-                    {employees.map((employee) => (
-                      <tr key={employee.employee_id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900 dark:text-white">
-                              {employee.name || 'N/A'}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {employee.employee_id}
-                            </div>
-                            <div className="text-sm text-gray-500 dark:text-gray-400">
-                              {employee.nationality || 'N/A'}
-                            </div>
-                          </div>
+                  employees.map((employee, index) => (
+                    <tr
+                      key={employee.employee_id}
+                      className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      {visibleColumns.map((column) => (
+                        <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                          {renderCellContent(employee, column.key)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {employee.trade || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {employee.company_name || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900 dark:text-white">
-                            {employee.visa_expiry_date ? formatDate(employee.visa_expiry_date) : 'N/A'}
-                          </div>
-                          {employee.visa_status && (
-                            <div className="mt-1">
-                              {getVisaStatusBadge(employee.visa_status)}
-                            </div>
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          {getStatusBadge(employee.status)}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                          <div className="flex items-center space-x-2">
-                            <button className="text-primary-600 hover:text-primary-900 dark:text-primary-400 dark:hover:text-primary-300">
+                      ))}
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center justify-end space-x-2">
+                              <Button
+                            onClick={() => router.push(`/employees/${employee.employee_id}`)}
+                                variant="ghost"
+                                size="sm"
+                            className="text-blue-600 hover:text-blue-800"
+                              >
                               <Eye className="w-4 h-4" />
-                            </button>
-                            <button className="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
+                              </Button>
+                              <Button
+                            onClick={() => router.push(`/employees/${employee.employee_id}/edit`)}
+                                variant="ghost"
+                                size="sm"
+                            className="text-gray-600 hover:text-gray-800"
+                              >
                               <Edit className="w-4 h-4" />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteEmployee(employee.employee_id)}
-                              className="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-300"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
+                              </Button>
                           </div>
                         </td>
                       </tr>
-                    ))}
-                  </>
+                  ))
                 )}
               </tbody>
             </table>
@@ -439,7 +630,50 @@ function EmployeesContent() {
           {/* Pagination */}
           {totalPages > 1 && (
             <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
-              {renderPagination()}
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-gray-700 dark:text-gray-300">
+                  Showing {((currentPage - 1) * 25) + 1} to {Math.min(currentPage * 25, totalEmployees)} of {totalEmployees} employees
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  
+                  <div className="flex space-x-1">
+                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                      const pageNumber = currentPage <= 3 ? i + 1 : currentPage - 2 + i;
+                      if (pageNumber > totalPages) return null;
+                      
+                      return (
+                        <Button
+                          key={pageNumber}
+                          onClick={() => handlePageChange(pageNumber)}
+                          variant={currentPage === pageNumber ? "primary" : "outline"}
+                          size="sm"
+                          className="w-8 h-8"
+                        >
+                          {pageNumber}
+                        </Button>
+                      );
+                    })}
+                  </div>
+                  
+                  <Button
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    variant="outline"
+                    size="sm"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
             </div>
           )}
         </Card>

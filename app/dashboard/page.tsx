@@ -1,7 +1,7 @@
-import Dashboard from '@/app/(tabs)/dashboard';
+import AdminDashboard from '@/app/admin/dashboard/page';
 
 export const dynamic = 'force-dynamic';
 
 export default function DashboardPage() {
-  return <Dashboard />;
+  return <AdminDashboard />;
 } 

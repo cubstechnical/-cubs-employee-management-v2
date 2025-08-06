@@ -53,7 +53,7 @@ export default function EmployeeDetail() {
         return;
       }
 
-      setEmployee(emp);
+      setEmployee(emp.employee);
     } catch (error) {
       toast.error('Failed to load employee details');
       router.push('/employees');

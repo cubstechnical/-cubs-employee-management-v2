@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -16,39 +16,23 @@ import {
   Settings
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
+import { EmployeeService } from '@/lib/services/employees';
+import toast from 'react-hot-toast';
 
-// Mock data
-const mockNotifications = [
-  {
-    id: 1,
-    title: 'Visa Expiry Alert',
-    message: 'John Smith\'s H-1B visa expires in 15 days. Please take action.',
-    type: 'warning',
-    category: 'visa',
-    priority: 'high',
-    read: false,
-    timestamp: '2024-01-15T10:30:00Z',
-  },
-  {
-    id: 2,
-    title: 'Document Upload Required',
-    message: 'New employee Sarah Johnson needs passport copy uploaded.',
-    type: 'info',
-    category: 'document',
-    priority: 'medium',
-    read: false,
-    timestamp: '2024-01-15T09:15:00Z',
-  },
-  {
-    id: 3,
-    title: 'Employee Approval Pending',
-    message: 'Manager approval required for new hire Michael Brown.',
-    type: 'info',
-    category: 'approval',
-    priority: 'medium',
-    read: true,
-    timestamp: '2024-01-14T16:45:00Z',
-  },
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: 'success' | 'warning' | 'error' | 'info';
+  category: string;
+  priority: 'high' | 'medium' | 'low';
+  read: boolean;
+  timestamp: string;
+  employee_id?: string;
+}
+
+// Keep some system notifications as mock data
+const systemNotifications: Notification[] = [
   {
     id: 4,
     title: 'System Maintenance',
@@ -58,16 +42,6 @@ const mockNotifications = [
     priority: 'low',
     read: true,
     timestamp: '2024-01-14T15:00:00Z',
-  },
-  {
-    id: 5,
-    title: 'Visa Renewal Completed',
-    message: 'Lisa Davis\'s L-1A visa renewal has been approved.',
-    type: 'success',
-    category: 'visa',
-    priority: 'medium',
-    read: false,
-    timestamp: '2024-01-14T14:30:00Z',
   },
   {
     id: 6,
@@ -175,10 +149,128 @@ function NotificationCard({ notification, onMarkRead, onDelete }: {
 }
 
 export default function Notifications() {
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedPriority, setSelectedPriority] = useState('All');
   const [showRead, setShowRead] = useState(true);
+
+  // Function to generate visa expiry notifications
+  const generateVisaNotifications = (employees: any[]): Notification[] => {
+    const visaNotifications: Notification[] = [];
+    let notificationId = 1000; // Start with high ID to avoid conflicts
+
+    employees.forEach(employee => {
+      if (employee.visa_expiry_date) {
+        const expiryDate = new Date(employee.visa_expiry_date);
+        const today = new Date();
+        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        // Only show notifications for visas expiring in the next 90 days
+        if (daysUntilExpiry <= 90 && daysUntilExpiry >= 0) {
+          let priority: 'high' | 'medium' | 'low' = 'low';
+          let type: 'warning' | 'error' | 'info' = 'info';
+          
+          if (daysUntilExpiry <= 15) {
+            priority = 'high';
+            type = 'error';
+          } else if (daysUntilExpiry <= 30) {
+            priority = 'high';
+            type = 'warning';
+          } else if (daysUntilExpiry <= 60) {
+            priority = 'medium';
+            type = 'warning';
+          }
+
+          visaNotifications.push({
+            id: notificationId++,
+            title: 'Visa Expiry Alert',
+            message: `${employee.name}'s visa expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} (${formatDate(employee.visa_expiry_date)}).`,
+            type,
+            category: 'visa',
+            priority,
+            read: false,
+            timestamp: new Date().toISOString(),
+            employee_id: employee.employee_id
+          });
+        }
+      }
+
+      // Check passport expiry
+      if (employee.passport_expiry) {
+        const expiryDate = new Date(employee.passport_expiry);
+        const today = new Date();
+        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+        if (daysUntilExpiry <= 180 && daysUntilExpiry >= 0) {
+          let priority: 'high' | 'medium' | 'low' = 'low';
+          let type: 'warning' | 'error' | 'info' = 'info';
+          
+          if (daysUntilExpiry <= 30) {
+            priority = 'high';
+            type = 'warning';
+          } else if (daysUntilExpiry <= 90) {
+            priority = 'medium';
+            type = 'warning';
+          }
+
+          visaNotifications.push({
+            id: notificationId++,
+            title: 'Passport Expiry Alert',
+            message: `${employee.name}'s passport expires in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} (${formatDate(employee.passport_expiry)}).`,
+            type,
+            category: 'document',
+            priority,
+            read: false,
+            timestamp: new Date().toISOString(),
+            employee_id: employee.employee_id
+          });
+        }
+      }
+    });
+
+    return visaNotifications;
+  };
+
+  // Fetch visa notifications on component mount
+  useEffect(() => {
+    const fetchNotifications = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch employees with expiry dates
+        const { employees, error } = await EmployeeService.getEmployees(
+          { page: 1, pageSize: 1000 }, // Get all employees
+          { is_temporary: false } // Only regular employees
+        );
+
+        if (error) {
+          console.error('Error fetching employees:', error);
+          toast.error('Failed to load visa notifications');
+          setNotifications(systemNotifications);
+          return;
+        }
+
+        // Generate visa notifications from employee data
+        const visaNotifications = generateVisaNotifications(employees);
+        
+        // Combine with system notifications
+        const allNotifications = [...visaNotifications, ...systemNotifications].sort((a, b) => 
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+        );
+
+        setNotifications(allNotifications);
+      } catch (error) {
+        console.error('Error in fetchNotifications:', error);
+        toast.error('Failed to load notifications');
+        setNotifications(systemNotifications);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchNotifications();
+  }, []);
 
   const filteredNotifications = notifications.filter(notification => {
     const matchesCategory = selectedCategory === 'All' || notification.category === selectedCategory;
@@ -315,7 +407,15 @@ export default function Notifications() {
 
         {/* Notifications List */}
         <div className="space-y-3">
-          {filteredNotifications.length > 0 ? (
+          {isLoading ? (
+            <Card className="p-12 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">Loading notifications...</h3>
+              <p className="text-gray-600 dark:text-gray-400">
+                Checking for visa expiry alerts and system notifications.
+              </p>
+            </Card>
+          ) : filteredNotifications.length > 0 ? (
             filteredNotifications.map(notification => (
               <NotificationCard
                 key={notification.id}

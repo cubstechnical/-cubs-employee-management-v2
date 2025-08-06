@@ -48,25 +48,34 @@ export interface Employee {
   visa_status: string;
   date_of_birth?: string;
   join_date?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  salary?: number;
   mobile_number?: string;
   home_phone_number?: string;
   email_id?: string;
   company_id?: string;
-  status: string;
-  is_active: boolean;
 }
 
 export interface Document {
   id: string;
   employee_id: string;
-  name: string;
-  type: 'passport' | 'visa' | 'contract' | 'id_card' | 'other';
+  name?: string;
+  file_name: string;
+  type?: 'passport' | 'visa' | 'contract' | 'id_card' | 'other';
+  document_type: string;
   file_url: string;
+  file_path: string;
   file_size: number;
-  mime_type: string;
-  uploaded_by: string;
+  file_type: string;
+  mime_type?: string;
+  uploaded_by?: string;
+  uploaded_at?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
+  notes?: string;
+  is_active?: boolean;
 }
 
 export interface Notification {

@@ -1,23 +1,37 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { Toaster } from 'react-hot-toast'
 import { ThemeProvider } from '@/lib/theme'
 import { AuthProvider } from '@/lib/contexts/AuthContext'
+import { Toaster } from 'react-hot-toast'
 
-const inter = Inter({ subsets: ['latin'] })
+const inter = Inter({ 
+  subsets: ['latin'],
+  display: 'swap',
+  fallback: ['system-ui', 'arial'],
+  preload: false,
+})
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
   title: 'CUBS Technical - Employee Management',
   description: 'Comprehensive employee database and document management system for CUBS Technical',
   keywords: 'employee management, visa tracking, document management, CUBS Technical',
   authors: [{ name: 'CUBS Technical' }],
-  viewport: 'width=device-width, initial-scale=1',
   robots: 'index, follow',
   icons: {
-    icon: '/assets/favicon.ico',
+    icon: [
+      { url: '/assets/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/assets/appicon.png', sizes: '192x192', type: 'image/png' },
+    ],
     shortcut: '/assets/favicon.ico',
-    apple: '/assets/appicon.png',
+    apple: [
+      { url: '/assets/appicon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    other: [
+      { rel: 'apple-touch-icon-precomposed', url: '/assets/appicon.png' },
+      { rel: 'mask-icon', url: '/assets/icon.svg', color: '#000000' },
+    ],
   },
   openGraph: {
     title: 'CUBS Technical - Employee Management',
@@ -41,7 +55,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en">
       <body className={inter.className}>
         <ThemeProvider>
           <AuthProvider>
@@ -62,4 +76,4 @@ export default function RootLayout({
       </body>
     </html>
   )
-} 
+}

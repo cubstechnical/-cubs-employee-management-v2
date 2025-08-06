@@ -1,6 +1,12 @@
 import { supabase } from '../supabase/client';
 import { Employee } from '../supabase/client';
 
+// Extended Employee interface for the optimized view
+export interface EmployeeWithDocuments extends Employee {
+  document_count?: number;
+  last_document_upload?: string;
+}
+
 export interface CreateEmployeeData {
   employee_id: string;
   name: string;
@@ -60,7 +66,216 @@ export interface FilterOptions {
   visaStatuses: string[];
 }
 
+export interface DashboardStats {
+  totalEmployees: number;
+  activeEmployees: number;
+  totalDocuments: number;
+  pendingApprovals: number;
+  visasExpiringSoon: number;
+  departments: number;
+}
+
+export interface DepartmentDistribution {
+  name: string;
+  employees: number;
+  percentage: number;
+  growth: string;
+}
+
+export interface GrowthTrendData {
+  month: string;
+  employees: number;
+  documents: number;
+  approvals: number;
+}
+
+export interface ExpiringVisa {
+  employee_id: string;
+  name: string;
+  visa_type: string;
+  visa_expiry_date: string;
+  daysLeft: number;
+  urgency: 'critical' | 'high' | 'medium' | 'low';
+}
+
+export interface DashboardFilters {
+  dateRange?: '7d' | '30d' | '90d' | '1y' | 'all';
+  department?: string;
+  company?: string;
+}
+
 export class EmployeeService {
+  // Helper function to calculate visa status based on expiry dates
+  static calculateVisaStatus(employee: any): string {
+    if (!employee.visa_expiry_date) return 'unknown';
+    
+    const today = new Date();
+    const expiryDate = new Date(employee.visa_expiry_date);
+    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilExpiry < 0) return 'expired';
+    if (daysUntilExpiry <= 30) return 'expiring_soon';
+    if (daysUntilExpiry <= 90) return 'expiring_soon';
+    return 'valid';
+  }
+
+  // Helper function to determine employee status
+  static calculateEmployeeStatus(employee: any): string {
+    // If employee has an explicit status, use that
+    if (employee.status && employee.status !== 'null' && employee.status !== '') {
+      return employee.status.toLowerCase();
+    }
+    
+    // Otherwise derive from is_active and other fields
+    if (employee.is_active === false) return 'inactive';
+    if (employee.is_active === true) return 'active';
+    
+    // Default to pending if no clear status
+    return 'pending';
+  }
+
+  // Helper function to enhance employees with calculated fields
+  static enhanceEmployeeData(employees: any[]): any[] {
+    return employees.map(employee => ({
+      ...employee,
+      visa_status: this.calculateVisaStatus(employee),
+      status: this.calculateEmployeeStatus(employee)
+    }));
+  }
+
+  // Generate unique employee ID based on company and employee name
+  static async generateEmployeeId(companyName: string, employeeName: string): Promise<string> {
+    try {
+      // Generate company prefix
+      const companyPrefix = this.generateCompanyPrefix(companyName);
+      
+      // Get existing employee count for this company
+      const { count, error } = await supabase
+        .from('employee_table')
+        .select('*', { count: 'exact', head: true })
+        .eq('company_name', companyName);
+
+      if (error) {
+        console.error('Error getting employee count:', error);
+        // Fallback to timestamp-based ID
+        return `${companyPrefix}${Date.now().toString().slice(-4)}`;
+      }
+
+      const nextNumber = (count || 0) + 1;
+      const paddedNumber = nextNumber.toString().padStart(3, '0');
+      
+      return `${companyPrefix}${paddedNumber}`;
+    } catch (error) {
+      console.error('Error generating employee ID:', error);
+      const companyPrefix = this.generateCompanyPrefix(companyName);
+      return `${companyPrefix}${Date.now().toString().slice(-4)}`;
+    }
+  }
+
+  // Generate company prefix from company name
+  static generateCompanyPrefix(companyName: string): string {
+    const prefixMap: { [key: string]: string } = {
+      'AL HANA TOURS & TRAVELS': 'ALHT',
+      'AL HANA TOURS': 'ALHT',
+      'ALHT': 'ALHT',
+      'EMP_ALHT': 'ALHT',
+      'COMPANY_DOCS': 'COMP'
+    };
+
+    // Check for exact match first
+    if (prefixMap[companyName]) {
+      return prefixMap[companyName];
+    }
+
+    // Generate prefix from company name
+    const words = companyName
+      .replace(/[&]/g, 'and')
+      .replace(/[^a-zA-Z0-9\s]/g, '')
+      .trim()
+      .toUpperCase()
+      .split(/\s+/)
+      .filter(word => word.length > 0);
+
+    if (words.length >= 2) {
+      // Take first 2 characters from first 2 words
+      return words.slice(0, 2).map(word => word.substring(0, 2)).join('');
+    } else if (words.length === 1) {
+      // Take first 4 characters from single word
+      return words[0].substring(0, 4);
+    }
+
+    // Fallback
+    return 'EMP';
+  }
+
+  // Create new employee
+  static async createEmployee(employeeData: CreateEmployeeData): Promise<{ success: boolean; error?: string; employee?: Employee }> {
+    try {
+      // Validate required fields
+      const requiredFields = ['employee_id', 'name', 'company_name', 'trade', 'nationality'];
+      for (const field of requiredFields) {
+        if (!employeeData[field as keyof CreateEmployeeData]) {
+          return { success: false, error: `${field} is required` };
+        }
+      }
+
+      // Check if employee ID already exists
+      const { data: existingEmployee } = await supabase
+        .from('employee_table')
+        .select('employee_id')
+        .eq('employee_id', employeeData.employee_id)
+        .single();
+
+      if (existingEmployee) {
+        // If ID exists, generate a new one
+        const newId = await this.generateEmployeeId(employeeData.company_name, employeeData.name);
+        employeeData.employee_id = newId;
+      }
+
+      // Insert employee data
+      const { data: employee, error } = await supabase
+        .from('employee_table')
+        .insert({
+          employee_id: employeeData.employee_id,
+          name: employeeData.name,
+          dob: employeeData.dob,
+          trade: employeeData.trade,
+          nationality: employeeData.nationality,
+          joining_date: employeeData.joining_date,
+          passport_no: employeeData.passport_no,
+          passport_expiry: employeeData.passport_expiry,
+          labourcard_no: employeeData.labourcard_no || null,
+          labourcard_expiry: employeeData.labourcard_expiry || null,
+          visastamping_date: employeeData.visastamping_date || null,
+          visa_expiry_date: employeeData.visa_expiry_date,
+          eid: employeeData.eid || null,
+          wcc: employeeData.wcc || null,
+          lulu_wps_card: employeeData.lulu_wps_card || null,
+          salary: employeeData.basic_salary ? parseInt(employeeData.basic_salary) : null,
+          company_name: employeeData.company_name,
+          status: employeeData.status || 'active',
+          is_active: employeeData.is_active !== false,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating employee:', error);
+        return { success: false, error: error.message };
+      }
+
+      // Enhance the created employee with calculated fields
+      const enhancedEmployee = this.enhanceEmployeeData([employee])[0];
+
+      return { success: true, employee: enhancedEmployee as Employee };
+    } catch (error) {
+      console.error('Error creating employee:', error);
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to create employee' };
+    }
+  }
+
   static async getEmployees(
     pagination: PaginationParams,
     filters?: EmployeeFilters
@@ -101,11 +316,14 @@ export class EmployeeService {
       const to = from + pagination.pageSize - 1;
       query = query.range(from, to);
 
-      const { data: employees, error } = await query;
+      const { data: rawEmployees, error } = await query;
 
       if (error) {
         throw new Error(error.message);
       }
+
+      // Enhance employees with calculated status fields
+      const employees = this.enhanceEmployeeData(rawEmployees || []);
 
       // Get total count with the same filters
       let countQuery = supabase
@@ -160,43 +378,75 @@ export class EmployeeService {
     }
   }
 
-  static async getEmployeeById(employeeId: string): Promise<Employee | null> {
+  static async getEmployeeById(employeeId: string): Promise<{ employee: Employee | null; error: string | null }> {
     try {
-      const { data: employee, error } = await supabase
+      const { data: rawEmployee, error } = await supabase
         .from('employee_table')
         .select('*')
         .eq('employee_id', employeeId)
         .single();
 
       if (error) {
-        throw new Error(error.message);
+        return { employee: null, error: error.message };
       }
 
-      return employee as unknown as Employee;
+      // Enhance employee with calculated status fields
+      const employee = rawEmployee ? this.enhanceEmployeeData([rawEmployee])[0] : null;
+
+      return { employee: employee as unknown as Employee, error: null };
     } catch (error) {
       console.error('Error fetching employee:', error);
-      return null;
+      return { employee: null, error: 'Failed to fetch employee' };
     }
   }
 
-  static async createEmployee(employeeData: CreateEmployeeData): Promise<Employee | null> {
+  // Get employee by ID using the optimized view
+  static async getEmployeeByIdOptimized(employeeId: string): Promise<{ employee: EmployeeWithDocuments | null; error: string | null }> {
     try {
-      const { data: employee, error } = await supabase
+      console.log(`🔍 Fetching employee with optimized query: ${employeeId}`);
+      
+      // First try to get employee from employee_table
+      const { data: employeeData, error: empError } = await supabase
         .from('employee_table')
-        .insert([employeeData as any])
-        .select()
+        .select('*')
+        .eq('employee_id', employeeId)
         .single();
 
-      if (error) {
-        throw new Error(error.message);
+      if (empError) {
+        console.error('❌ Error fetching employee:', empError);
+        return { employee: null, error: empError.message };
       }
 
-      return employee as unknown as Employee;
+      if (!employeeData) {
+        console.log('❌ Employee not found');
+        return { employee: null, error: 'Employee not found' };
+      }
+
+      // Get document count for this employee
+      const { count: documentCount, error: docError } = await supabase
+        .from('employee_documents')
+        .select('*', { count: 'exact', head: true })
+        .eq('employee_id', employeeId);
+
+      if (docError) {
+        console.error('❌ Error fetching document count:', docError);
+      }
+
+      const employee = {
+        ...employeeData,
+        document_count: documentCount || 0
+      } as unknown as EmployeeWithDocuments;
+
+      console.log(`✅ Found employee: ${employee.name} with ${employee.document_count || 0} documents`);
+      
+      return { employee, error: null };
     } catch (error) {
-      console.error('Error creating employee:', error);
-      return null;
+      console.error('❌ Exception in getEmployeeByIdOptimized:', error);
+      return { employee: null, error: 'Failed to fetch employee' };
     }
   }
+
+  // Get dashboard stats using the optimized view
 
   static async updateEmployee(employeeData: UpdateEmployeeData): Promise<Employee | null> {
     try {
@@ -272,8 +522,8 @@ export class EmployeeService {
         companies: Array.from(new Set(companies?.map(c => c.company_name as string) || [])).sort(),
         trades: Array.from(new Set(trades?.map(t => t.trade as string) || [])).sort(),
         nationalities: Array.from(new Set(nationalities?.map(n => n.nationality as string) || [])).sort(),
-        statuses: Array.from(new Set(statuses?.map(s => s.status as string) || [])).sort(),
-        visaStatuses: Array.from(new Set(visaStatuses?.map(v => v.visa_status as string) || [])).sort()
+        statuses: ['active', 'inactive', 'pending', 'suspended'], // Use standard status values
+        visaStatuses: ['valid', 'expiring_soon', 'expired', 'processing', 'unknown'] // Use standard visa status values
       };
     } catch (error) {
       console.error('Error getting filter options:', error);
@@ -299,5 +549,225 @@ export class EmployeeService {
       console.error('Error getting temporary workers count:', error);
       return 0;
     }
+  }
+
+  // Dashboard-specific methods
+  static async getAdminDashboardStats(filters?: DashboardFilters): Promise<DashboardStats> {
+    try {
+      const dateFilter = this.getDateFilter(filters?.dateRange);
+      
+      // Get total employees
+      const { count: totalEmployees, error: employeesError } = await supabase
+        .from('employee_table')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', dateFilter);
+
+      // Get active employees
+      const { count: activeEmployees, error: activeError } = await supabase
+        .from('employee_table')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+        .gte('created_at', dateFilter);
+
+      // Get total documents
+      const { count: totalDocuments, error: docsError } = await supabase
+        .from('employee_documents')
+        .select('*', { count: 'exact', head: true })
+        .gte('created_at', dateFilter);
+
+      // Get pending approvals (mock for now - replace with actual approvals table)
+      const pendingApprovals = 0; // TODO: Implement when approvals table exists
+
+      // Get visas expiring soon (within 90 days)
+      const { count: visasExpiringSoon, error: visaError } = await supabase
+        .from('employee_table')
+        .select('*', { count: 'exact', head: true })
+        .gte('visa_expiry_date', new Date().toISOString().split('T')[0])
+        .lte('visa_expiry_date', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]);
+
+      // Get unique departments
+      const { data: departments, error: deptError } = await supabase
+        .from('employee_table')
+        .select('trade')
+        .gte('created_at', dateFilter);
+
+      const uniqueDepartments = new Set(departments?.map(d => d.trade) || []).size;
+
+      if (employeesError || activeError || docsError || visaError || deptError) {
+        console.error('Error fetching dashboard stats:', { employeesError, activeError, docsError, visaError, deptError });
+        throw new Error('Failed to fetch dashboard statistics');
+      }
+
+      return {
+        totalEmployees: totalEmployees || 0,
+        activeEmployees: activeEmployees || 0,
+        totalDocuments: totalDocuments || 0,
+        pendingApprovals,
+        visasExpiringSoon: visasExpiringSoon || 0,
+        departments: uniqueDepartments
+      };
+    } catch (error) {
+      console.error('Error in getAdminDashboardStats:', error);
+      throw error;
+    }
+  }
+
+  static async getEmployeeDistributionByDepartment(filters?: DashboardFilters): Promise<DepartmentDistribution[]> {
+    try {
+      const dateFilter = this.getDateFilter(filters?.dateRange);
+      
+      const { data, error } = await supabase
+        .from('employee_table')
+        .select('trade, created_at')
+        .gte('created_at', dateFilter)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching department distribution:', error);
+        throw error;
+      }
+
+      // Group by department and calculate statistics
+      const departmentMap = new Map<string, { count: number; recentCount: number }>();
+      
+      data?.forEach(employee => {
+        const trade = (employee.trade as string) || 'Unknown';
+        const isRecent = new Date(employee.created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        
+        if (!departmentMap.has(trade)) {
+          departmentMap.set(trade, { count: 0, recentCount: 0 });
+        }
+        
+        const dept = departmentMap.get(trade)!;
+        dept.count++;
+        if (isRecent) dept.recentCount++;
+      });
+
+      const totalEmployees = Array.from(departmentMap.values()).reduce((sum, dept) => sum + dept.count, 0);
+      
+      return Array.from(departmentMap.entries()).map(([name, stats]) => ({
+        name,
+        employees: stats.count,
+        percentage: totalEmployees > 0 ? Math.round((stats.count / totalEmployees) * 100) : 0,
+        growth: stats.recentCount > 0 ? `+${stats.recentCount}` : '0'
+      }));
+    } catch (error) {
+      console.error('Error in getEmployeeDistributionByDepartment:', error);
+      throw error;
+    }
+  }
+
+  static async getGrowthTrendData(filters?: DashboardFilters): Promise<GrowthTrendData[]> {
+    try {
+      const dateFilter = this.getDateFilter(filters?.dateRange);
+      const months = this.getLast6Months();
+      
+      const trendData: GrowthTrendData[] = [];
+
+      for (const month of months) {
+        const { count: employees, error: empError } = await supabase
+          .from('employee_table')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', month.start)
+          .lte('created_at', month.end);
+
+        const { count: documents, error: docError } = await supabase
+          .from('employee_documents')
+          .select('*', { count: 'exact', head: true })
+          .gte('created_at', month.start)
+          .lte('created_at', month.end);
+
+        if (empError || docError) {
+          console.error('Error fetching growth trend data:', { empError, docError });
+          continue;
+        }
+
+        trendData.push({
+          month: month.label,
+          employees: employees || 0,
+          documents: documents || 0,
+          approvals: 0 // TODO: Implement when approvals table exists
+        });
+      }
+
+      return trendData;
+    } catch (error) {
+      console.error('Error in getGrowthTrendData:', error);
+      throw error;
+    }
+  }
+
+  static async getExpiringVisasSummary(limit: number = 5): Promise<ExpiringVisa[]> {
+    try {
+      const { data, error } = await supabase
+        .from('employee_table')
+        .select('employee_id, name, visa_status, visa_expiry_date')
+        .gte('visa_expiry_date', new Date().toISOString().split('T')[0])
+        .lte('visa_expiry_date', new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString().split('T')[0])
+        .eq('is_active', true)
+        .order('visa_expiry_date', { ascending: true })
+        .limit(limit);
+
+      if (error) {
+        console.error('Error fetching expiring visas:', error);
+        throw error;
+      }
+
+      return data?.map(employee => {
+        const daysLeft = Math.ceil((new Date(employee.visa_expiry_date as string).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        
+        let urgency: 'critical' | 'high' | 'medium' | 'low' = 'low';
+        if (daysLeft <= 7) urgency = 'critical';
+        else if (daysLeft <= 30) urgency = 'high';
+        else if (daysLeft <= 60) urgency = 'medium';
+
+        return {
+          employee_id: employee.employee_id as string,
+          name: (employee.name as string) || 'Unknown',
+          visa_type: (employee.visa_status as string) || 'Unknown',
+          visa_expiry_date: employee.visa_expiry_date as string,
+          daysLeft,
+          urgency
+        };
+      }) || [];
+    } catch (error) {
+      console.error('Error in getExpiringVisasSummary:', error);
+      throw error;
+    }
+  }
+
+  // Helper methods
+  private static getDateFilter(dateRange?: string): string {
+    const now = new Date();
+    switch (dateRange) {
+      case '7d':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      case '30d':
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+      case '90d':
+        return new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+      case '1y':
+        return new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000).toISOString();
+      default:
+        return new Date(0).toISOString(); // All time
+    }
+  }
+
+  private static getLast6Months(): Array<{ label: string; start: string; end: string }> {
+    const months = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+      
+      months.push({
+        label: date.toLocaleDateString('en-US', { month: 'short' }),
+        start: date.toISOString(),
+        end: endDate.toISOString()
+      });
+    }
+    
+    return months;
   }
 }

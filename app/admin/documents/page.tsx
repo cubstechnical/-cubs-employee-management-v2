@@ -1,10 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import { DocumentService, Document } from '@/lib/services/documents';
+import { EmployeeService } from '@/lib/services/employees';
+import { Employee } from '@/lib/supabase/client';
+import UploadModal from '@/components/documents/UploadModal';
+import DocumentPreview from '@/components/documents/DocumentPreview';
 import { 
   FileText, 
   Search, 
@@ -19,331 +26,425 @@ import {
   User,
   Building2,
   AlertTriangle,
-  CheckCircle
+  CheckCircle,
+  RefreshCw,
+  Loader2,
+  Plus,
+  Folder,
+  ChevronLeft,
+  ChevronRight,
+  FileImage,
+  FileVideo,
+  FileArchive
 } from 'lucide-react';
-import { Document, Employee } from '@/types';
 import { formatDate } from '@/utils/date';
 import { cn } from '@/utils/cn';
-
-// Mock data - replace with real API calls
-const mockDocuments: Document[] = [
-  {
-    id: '1',
-    employee_id: 'EMP001',
-    name: 'John Doe - Passport',
-    type: 'passport',
-    file_url: 'https://example.com/passport.pdf',
-    file_size: 2048576,
-    mime_type: 'application/pdf',
-    uploaded_by: 'john.doe@cubstechnical.com',
-    created_at: '2024-01-15T00:00:00Z',
-    updated_at: '2024-01-15T00:00:00Z',
-  },
-  {
-    id: '2',
-    employee_id: 'EMP001',
-    name: 'John Doe - H1B Visa',
-    type: 'visa',
-    file_url: 'https://example.com/visa.pdf',
-    file_size: 1536000,
-    mime_type: 'application/pdf',
-    uploaded_by: 'admin@cubstechnical.com',
-    created_at: '2024-01-10T00:00:00Z',
-    updated_at: '2024-01-10T00:00:00Z',
-  },
-  {
-    id: '3',
-    employee_id: 'EMP002',
-    name: 'Jane Smith - Employment Contract',
-    type: 'contract',
-    file_url: 'https://example.com/contract.pdf',
-    file_size: 512000,
-    mime_type: 'application/pdf',
-    uploaded_by: 'hr@cubstechnical.com',
-    created_at: '2024-01-05T00:00:00Z',
-    updated_at: '2024-01-05T00:00:00Z',
-  },
-];
-
-const mockEmployees: Employee[] = [
-  {
-    id: '1',
-    employee_id: 'EMP001',
-    name: 'John Doe',
-    trade: 'Electrician',
-    nationality: 'Indian',
-    joining_date: '2023-01-15',
-    passport_no: 'A12345678',
-    passport_expiry: '2025-01-15',
-    labourcard_no: 'LC123456',
-    labourcard_expiry: '2024-01-15',
-    visastamping_date: '2023-01-20',
-    visa_expiry_date: '2024-01-20',
-    eid: 'EID123456',
-    leave_date: undefined,
-    wcc: 'WCC123456',
-    lulu_wps_card: 'LULU123456',
-    basic_salary: '3500',
-    company_name: 'CUBS Technical',
-    created_at: '2023-01-15T00:00:00Z',
-    updated_at: '2023-01-15T00:00:00Z',
-    passport_number: 'A12345678',
-    visa_number: 'V123456',
-    visa_type: 'Employment Visa',
-    visa_status: 'active',
-    dob: '1990-05-15',
-    date_of_birth: '1990-05-15',
-    join_date: '2023-01-15',
-    mobile_number: '+971-50-123-4567',
-    home_phone_number: '+971-4-123-4567',
-    email_id: 'john.doe@cubstechnical.com',
-    company_id: 'COMP001',
-    status: 'Active',
-    is_active: true
-  },
-  {
-    id: '2',
-    employee_id: 'EMP002',
-    name: 'Jane Smith',
-    trade: 'Plumber',
-    nationality: 'Pakistani',
-    joining_date: '2023-02-01',
-    passport_no: 'B87654321',
-    passport_expiry: '2026-02-01',
-    labourcard_no: 'LC654321',
-    labourcard_expiry: '2024-02-01',
-    visastamping_date: '2023-02-05',
-    visa_expiry_date: '2024-02-05',
-    eid: 'EID654321',
-    leave_date: undefined,
-    wcc: 'WCC654321',
-    lulu_wps_card: 'LULU654321',
-    basic_salary: '4000',
-    company_name: 'GOLDEN CUBS',
-    created_at: '2023-02-01T00:00:00Z',
-    updated_at: '2023-02-01T00:00:00Z',
-    passport_number: 'B87654321',
-    visa_number: 'V654321',
-    visa_type: 'Employment Visa',
-    visa_status: 'active',
-    dob: '1988-08-20',
-    date_of_birth: '1988-08-20',
-    join_date: '2023-02-01',
-    mobile_number: '+971-50-987-6543',
-    home_phone_number: '+971-4-987-6543',
-    email_id: 'jane.smith@goldencubs.com',
-    company_id: 'COMP002',
-    status: 'Active',
-    is_active: true
-  },
-];
+import toast from 'react-hot-toast';
 
 export default function AdminDocuments() {
-  const [documents, setDocuments] = useState<Document[]>(mockDocuments);
-  const [employees, setEmployees] = useState<Employee[]>(mockEmployees);
+  return (
+    <ProtectedRoute>
+      <AdminDocumentsContent />
+    </ProtectedRoute>
+  );
+}
+
+function AdminDocumentsContent() {
+  const router = useRouter();
+  
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedDocument, setSelectedDocument] = useState<Document | null>(null);
+  const [selectedType, setSelectedType] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+  const [previewDocument, setPreviewDocument] = useState<Document | null>(null);
 
+  // Document type options
   const documentTypes = [
-    { value: '', label: 'All Types' },
-    { value: 'passport', label: 'Passport' },
-    { value: 'visa', label: 'Visa' },
-    { value: 'contract', label: 'Employment Contract' },
-    { value: 'id', label: 'ID Document' },
-    { value: 'certificate', label: 'Certificate' },
-    { value: 'other', label: 'Other' },
+    'passport', 'visa', 'emirates_id', 'labour_card', 
+    'medical_certificate', 'insurance', 'contract', 'other'
   ];
 
-  const employeeOptions = [
-    { value: '', label: 'All Employees' },
-    ...employees.map(emp => ({
-      value: emp.employee_id,
-      label: `${emp.name} (${emp.employee_id})`
-    }))
-  ];
-
-  const filteredDocuments = documents.filter(doc => {
-    const matchesSearch = doc.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         doc.employee_id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !selectedType || doc.type === selectedType;
-    const matchesEmployee = !selectedEmployee || doc.employee_id === selectedEmployee;
-    
-    return matchesSearch && matchesType && matchesEmployee;
-  });
-
-  const getDocumentTypeColor = (type: string) => {
-    const colors = {
-      passport: 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400',
-      visa: 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400',
-      contract: 'bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-400',
-      id: 'bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400',
-      certificate: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/20 dark:text-indigo-400',
-      other: 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400',
+  // Load employees for filter dropdown
+  useEffect(() => {
+    const loadEmployees = async () => {
+      try {
+        const result = await EmployeeService.getEmployees({ page: 1, pageSize: 1000 });
+        setEmployees(result.employees);
+      } catch (error) {
+        console.error('Error loading employees:', error);
+      }
     };
-    return colors[type as keyof typeof colors] || colors.other;
+    loadEmployees();
+  }, []);
+
+  // Fetch documents
+  const fetchDocuments = useCallback(async () => {
+    try {
+      setLoading(true);
+      
+      const filters: any = {};
+      if (selectedEmployee) filters.employee_id = selectedEmployee;
+      if (selectedType) filters.type = selectedType;
+      if (searchTerm) filters.search = searchTerm;
+
+      const result = await DocumentService.getDocuments(filters);
+      setDocuments(result.documents);
+      
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+      toast.error('Failed to load documents');
+    } finally {
+      setLoading(false);
+      setInitialLoading(false);
+    }
+  }, [selectedEmployee, selectedType, searchTerm]);
+
+  // Effects
+  useEffect(() => {
+    fetchDocuments();
+  }, [fetchDocuments]);
+
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    await fetchDocuments();
+    setIsRefreshing(false);
+    toast.success('Documents refreshed');
+  }, [fetchDocuments]);
+
+  const handleDeleteDocument = async (documentId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+    
+    try {
+      await DocumentService.deleteDocument(documentId);
+      toast.success('Document deleted successfully');
+      fetchDocuments();
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      toast.error('Failed to delete document');
+    }
   };
 
-  const getDocumentIcon = (type: string) => {
-    const icons = {
-      passport: <FileText className="w-4 h-4" />,
-      visa: <FileText className="w-4 h-4" />,
-      contract: <FileText className="w-4 h-4" />,
-      id: <FileText className="w-4 h-4" />,
-      certificate: <FileText className="w-4 h-4" />,
-      other: <File className="w-4 h-4" />,
-    };
-    return icons[type as keyof typeof icons] || icons.other;
+  const handleDownloadDocument = async (document: Document) => {
+    try {
+      const { downloadUrl, error } = await DocumentService.downloadDocument(document.id);
+      if (error) {
+        toast.error(`Failed to download document: ${error}`);
+        return;
+      }
+      if (downloadUrl) {
+        window.open(downloadUrl, '_blank');
+        toast.success('Download started');
+      } else {
+        toast.error('Failed to generate download URL');
+      }
+    } catch (error) {
+      console.error('Error downloading document:', error);
+      toast.error('Failed to download document');
+    }
+  };
+
+  const handlePreviewDocument = async (document: Document) => {
+    try {
+      const previewUrl = await DocumentService.getDocumentPreview(document.id);
+      if (previewUrl) {
+        setPreviewDocument({ ...document, file_url: previewUrl.previewUrl || '' });
+      } else {
+        toast.error('Preview not available for this document');
+      }
+    } catch (error) {
+      console.error('Error previewing document:', error);
+      toast.error('Failed to preview document');
+    }
+  };
+
+  const getFileIcon = (mimeType: string) => {
+    if (mimeType?.startsWith('image/')) return <FileImage className="w-5 h-5" />;
+    if (mimeType?.startsWith('video/')) return <FileVideo className="w-5 h-5" />;
+    if (mimeType?.includes('zip') || mimeType?.includes('rar')) return <FileArchive className="w-5 h-5" />;
+    return <FileText className="w-5 h-5" />;
   };
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const DocumentCard = ({ document }: { document: Document }) => {
-    const employee = employees.find(emp => emp.employee_id === document.employee_id);
-    
-    return (
-      <Card key={document.id} className="hover:shadow-lg transition-shadow">
-        <div className="flex items-start justify-between">
-          <div className="flex items-start space-x-4">
-            <div className="p-3 rounded-lg bg-gray-100 dark:bg-gray-800">
-              {getDocumentIcon(document.type)}
+  const getEmployeeName = (employeeId: string) => {
+    const employee = employees.find(emp => emp.id === employeeId || emp.employee_id === employeeId);
+    return employee ? employee.name : 'Unknown Employee';
+  };
+
+  const DocumentCard = ({ document }: { document: Document }) => (
+    <Card className="p-4 hover:shadow-lg transition-all duration-300 ease-in-out group">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-900/20 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all duration-300">
+            {getFileIcon(document.file_type)}
             </div>
             <div className="flex-1">
-              <div className="flex items-center space-x-2 mb-2">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {document.name}
+            <h3 className="font-semibold text-gray-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors line-clamp-1">
+              {document.file_name}
                 </h3>
-                <span className={cn(
-                  'px-2 py-1 text-xs font-medium rounded-full',
-                  getDocumentTypeColor(document.type)
-                )}>
-                  {document.type}
+            <div className="flex items-center space-x-4 mt-1">
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {getEmployeeName(document.employee_id)}
+              </span>
+              <span className="text-sm text-gray-500 dark:text-gray-400">
+                {formatFileSize(document.file_size || 0)}
                 </span>
-              </div>
-              <div className="space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                <div className="flex items-center space-x-2">
-                  <User className="w-4 h-4" />
-                  <span>{employee ? employee.name : document.employee_id}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Calendar className="w-4 h-4" />
-                  <span>Uploaded: {formatDate(document.created_at)}</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <File className="w-4 h-4" />
-                  <span>{formatFileSize(document.file_size)}</span>
-                </div>
-              </div>
+            </div>
             </div>
           </div>
           <div className="flex items-center space-x-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(document.file_url, '_blank')}
+            onClick={() => handlePreviewDocument(document)}
             >
-              <Eye className="w-4 h-4 mr-1" />
-              View
+            <Eye className="w-4 h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => window.open(document.file_url, '_blank')}
+            onClick={() => handleDownloadDocument(document)}
             >
-              <Download className="w-4 h-4 mr-1" />
-              Download
+            <Download className="w-4 h-4" />
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setSelectedDocument(document)}
+            onClick={() => handleDeleteDocument(document.id)}
+            className="text-red-600 hover:text-red-700"
             >
-              <MoreHorizontal className="w-4 h-4" />
+            <Trash2 className="w-4 h-4" />
             </Button>
           </div>
         </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+        <div className="flex items-center space-x-2">
+          <File className="w-4 h-4 text-gray-400" />
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Type</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+              {document.document_type?.replace('_', ' ') || 'Document'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <User className="w-4 h-4 text-gray-400" />
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Uploaded By</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {document.uploaded_by || 'System'}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <Calendar className="w-4 h-4 text-gray-400" />
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Uploaded</p>
+            <p className="text-sm font-medium text-gray-900 dark:text-white">
+              {formatDate(document.created_at)}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center space-x-2">
+          <CheckCircle className="w-4 h-4 text-green-500" />
+          <div>
+            <p className="text-xs text-gray-500 dark:text-gray-400">Status</p>
+            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+              Active
+            </span>
+          </div>
+        </div>
+      </div>
       </Card>
+  );
+
+  if (initialLoading) {
+    return (
+      <Layout>
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+            <p className="text-gray-600 dark:text-gray-400">Loading documents...</p>
+          </div>
+        </div>
+      </Layout>
     );
-  };
+  }
 
   return (
     <Layout>
-      <div className="space-y-4">
+      <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <FileText className="w-6 h-6 text-white" />
+            </div>
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Documents</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage and review employee documents
-            </p>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Document Management
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400">
+                Manage and view all employee documents
+              </p>
+            </div>
           </div>
-          <Button onClick={() => setIsUploadModalOpen(true)}>
+          <div className="flex space-x-3">
+            <Button 
+              variant="outline" 
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+            >
+              <RefreshCw className={cn("w-4 h-4 mr-2", isRefreshing && "animate-spin")} />
+              Refresh
+            </Button>
+            <Button onClick={() => setShowUploadModal(true)}>
             <Upload className="w-4 h-4 mr-2" />
             Upload Document
           </Button>
+          </div>
         </div>
 
-        {/* Filters */}
-        <Card>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Search and Filters */}
+        <Card className="p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-4 flex-1">
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
+                  type="text"
               placeholder="Search documents..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              icon={<Search className="w-4 h-4" />}
-            />
+                  className="pl-10"
+                />
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={() => setShowFilters(!showFilters)}
+                className={showFilters ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20' : ''}
+              >
+                <Filter className="w-4 h-4 mr-2" />
+                Filters
+              </Button>
+            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {documents.length} documents
+            </div>
+          </div>
+
+          {/* Filters */}
+          {showFilters && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Employee
+                </label>
+                <select
+                  value={selectedEmployee}
+                  onChange={(e) => setSelectedEmployee(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">All Employees</option>
+                  {employees.map(employee => (
+                    <option key={employee.id} value={employee.id}>
+                      {employee.name} ({employee.employee_id})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Document Type
+                </label>
             <select
               value={selectedType}
               onChange={(e) => setSelectedType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
+                  <option value="">All Types</option>
               {documentTypes.map(type => (
-                <option key={type.value} value={type.value}>{type.label}</option>
+                    <option key={type} value={type}>
+                      {type.replace('_', ' ').toUpperCase()}
+                    </option>
               ))}
             </select>
-            <select
-              value={selectedEmployee}
-              onChange={(e) => setSelectedEmployee(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
-            >
-              {employeeOptions.map(option => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-            <Button variant="outline">
-              <Filter className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
+              </div>
           </div>
+          )}
         </Card>
 
-        {/* Documents List */}
-        <div className="space-y-3">
-          {filteredDocuments.map((document) => (
-            <DocumentCard key={document.id} document={document} />
-          ))}
+        {/* Documents Grid */}
+        <div className="space-y-4">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Loading documents...</span>
         </div>
-
-        {filteredDocuments.length === 0 && (
-          <Card>
-            <div className="text-center py-6">
+          ) : documents.length === 0 ? (
+            <Card className="p-12 text-center">
               <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
                 No documents found
               </h3>
-              <p className="text-gray-600 dark:text-gray-400">
-                No documents match your current filters.
+              <p className="text-gray-600 dark:text-gray-400 mb-4">
+                {searchTerm || selectedEmployee || selectedType 
+                  ? 'Try adjusting your search or filters' 
+                  : 'Get started by uploading your first document'}
               </p>
+              {!searchTerm && !selectedEmployee && !selectedType && (
+                <Button onClick={() => setShowUploadModal(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Upload First Document
+                </Button>
+              )}
+            </Card>
+          ) : (
+            <>
+              {documents.map((document) => (
+                <DocumentCard key={document.id} document={document} />
+              ))}
+            </>
+          )}
             </div>
-          </Card>
+
+        {/* Upload Modal */}
+        {showUploadModal && (
+          <UploadModal
+            isOpen={showUploadModal}
+            onClose={() => setShowUploadModal(false)}
+            onUploadComplete={() => {
+              setShowUploadModal(false);
+              fetchDocuments();
+            }}
+            currentPath="/admin/documents"
+          />
+        )}
+
+        {/* Preview Modal */}
+        {previewDocument && (
+          <DocumentPreview
+            document={previewDocument}
+            isOpen={!!previewDocument}
+            onClose={() => setPreviewDocument(null)}
+          />
         )}
       </div>
     </Layout>

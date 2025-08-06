@@ -1,12 +1,31 @@
-import * as AWS from 'aws-sdk';
+import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import * as https from 'https';
 
 // Configure AWS SDK for Backblaze B2
-const s3 = new AWS.S3({
-  endpoint: process.env.BACKBLAZE_ENDPOINT,
-  accessKeyId: process.env.BACKBLAZE_ACCESS_KEY_ID,
-  secretAccessKey: process.env.BACKBLAZE_SECRET_ACCESS_KEY,
-  region: 'us-west-002', // Backblaze B2 region
-  s3ForcePathStyle: true,
+const getBackblazeEndpoint = () => {
+  const endpoint = process.env.B2_ENDPOINT || 's3.us-east-005.backblazeb2.com';
+  // Ensure the endpoint starts with https://
+  if (endpoint.startsWith('http://') || endpoint.startsWith('https://')) {
+    return endpoint;
+  }
+  return `https://${endpoint}`;
+};
+
+const s3Client = new S3Client({
+  endpoint: getBackblazeEndpoint(),
+  credentials: {
+    accessKeyId: process.env.B2_APPLICATION_KEY_ID || '',
+    secretAccessKey: process.env.B2_APPLICATION_KEY || '',
+  },
+  region: 'us-east-005', // Backblaze B2 region
+  forcePathStyle: true,
+  // Add SSL certificate handling for development
+  ...(process.env.NODE_ENV === 'development' && {
+    requestHandler: {
+      httpsAgent: new https.Agent({ rejectUnauthorized: false })
+    }
+  })
 });
 
 export interface UploadResult {
@@ -26,7 +45,53 @@ export interface FileMetadata {
 }
 
 export class BackblazeService {
-  private static bucketName = process.env.BACKBLAZE_BUCKET_NAME || 'cubs-documents';
+  private static bucketName = process.env.B2_BUCKET_NAME || 'cubsdocs';
+  
+  // Debug method to check configuration
+  static getConfig() {
+    const config = {
+      bucketName: this.bucketName,
+      endpoint: process.env.B2_ENDPOINT,
+      actualEndpoint: getBackblazeEndpoint(),
+      hasKeyId: !!process.env.B2_APPLICATION_KEY_ID,
+      hasKey: !!process.env.B2_APPLICATION_KEY,
+      keyIdLength: process.env.B2_APPLICATION_KEY_ID?.length || 0,
+      keyLength: process.env.B2_APPLICATION_KEY?.length || 0
+    };
+    
+    console.log('🔧 Backblaze Configuration:', config);
+    return config;
+  }
+  
+  // Try different bucket names if the default fails
+  private static async tryBucketNames(fileKey: string, expiresIn: number = 3600): Promise<string> {
+    const bucketNames = ['cubsdocs', 'cubs', 'cubs-docs', 'cubs_docs', 'documents'];
+    
+    // Decode URL-encoded characters in the file key
+    const decodedFileKey = decodeURIComponent(fileKey);
+    console.log('🔄 Trying alternative buckets with decoded fileKey:', decodedFileKey);
+    
+    for (const bucketName of bucketNames) {
+      try {
+        console.log(`🔄 Trying bucket: ${bucketName}`);
+        const command = new GetObjectCommand({
+          Bucket: bucketName,
+          Key: decodedFileKey,
+        });
+        
+        const url = await getSignedUrl(s3Client, command, { expiresIn });
+        console.log(`✅ Successfully generated signed URL with bucket: ${bucketName}`);
+        return url;
+      } catch (error) {
+        console.log(`❌ Failed with bucket ${bucketName}:`, (error as Error).message);
+        console.log(`❌ Full error for ${bucketName}:`, error);
+        continue;
+      }
+    }
+    
+    console.error('❌ All bucket attempts failed');
+    throw new Error('Failed to generate signed URL with any bucket name');
+  }
 
   // Upload file to Backblaze B2
   static async uploadFile(
@@ -34,17 +99,17 @@ export class BackblazeService {
     metadata: FileMetadata
   ): Promise<UploadResult> {
     try {
-      // Generate unique file key
-      const timestamp = Date.now();
-      const fileExtension = file.name.split('.').pop();
-      const fileKey = `${metadata.companyName}/${metadata.employeeName}/${metadata.documentType}/${timestamp}.${fileExtension}`;
+      // Generate user-friendly file key with original filename
+      const fileKey = metadata.employeeName 
+        ? `${metadata.companyName}/${metadata.employeeName}/${file.name}`
+        : `${metadata.companyName}/${file.name}`;
 
       // Convert File to Buffer
       const arrayBuffer = await file.arrayBuffer();
       const buffer = Buffer.from(arrayBuffer);
 
       // Upload to Backblaze B2
-      const uploadParams = {
+      const uploadCommand = new PutObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,
         Body: buffer,
@@ -56,14 +121,14 @@ export class BackblazeService {
           documentType: metadata.documentType,
           uploadedAt: new Date().toISOString(),
         },
-      };
+      });
 
-      const result = await s3.upload(uploadParams).promise();
+      const result = await s3Client.send(uploadCommand);
 
       return {
         success: true,
-        fileUrl: result.Location,
-        fileKey: result.Key,
+        fileUrl: `https://f005.backblazeb2.com/file/${this.bucketName}/${fileKey}`,
+        fileKey: fileKey,
       };
     } catch (error) {
       console.error('Backblaze upload error:', error);
@@ -77,12 +142,12 @@ export class BackblazeService {
   // Delete file from Backblaze B2
   static async deleteFile(fileKey: string): Promise<UploadResult> {
     try {
-      const deleteParams = {
+      const deleteCommand = new DeleteObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,
-      };
+      });
 
-      await s3.deleteObject(deleteParams).promise();
+      await s3Client.send(deleteCommand);
 
       return {
         success: true,
@@ -98,34 +163,54 @@ export class BackblazeService {
 
   // Get file URL (for viewing/downloading)
   static getFileUrl(fileKey: string): string {
-    return `https://${this.bucketName}.s3.us-west-002.backblazeb2.com/${fileKey}`;
+    return `https://f005.backblazeb2.com/file/${this.bucketName}/${fileKey}`;
   }
 
   // Generate presigned URL for secure file access
   static async getPresignedUrl(fileKey: string, expiresIn: number = 3600): Promise<string> {
     try {
-      const params = {
+      console.log('🔍 Generating presigned URL for fileKey:', fileKey);
+      console.log('🔍 Using bucket:', this.bucketName);
+      
+      // Decode URL-encoded characters in the file key
+      const decodedFileKey = decodeURIComponent(fileKey);
+      console.log('🔍 Decoded fileKey:', decodedFileKey);
+      
+      const command = new GetObjectCommand({
         Bucket: this.bucketName,
-        Key: fileKey,
-        Expires: expiresIn,
-      };
+        Key: decodedFileKey,
+      });
 
-      return await s3.getSignedUrlPromise('getObject', params);
+      console.log('🔍 Command created, generating signed URL...');
+      const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
+      console.log('✅ Presigned URL generated successfully');
+      return signedUrl;
     } catch (error) {
-      console.error('Error generating presigned URL:', error);
-      throw error;
+      console.error('❌ Error generating presigned URL with default bucket:', error);
+      console.error('❌ Error details:', {
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
+      // Try alternative bucket names
+      return await this.tryBucketNames(fileKey, expiresIn);
     }
   }
 
+  // Get direct file URL (fallback when presigned URLs fail)
+  static getDirectFileUrl(fileKey: string): string {
+    // Use the public URL format for Backblaze B2
+    return `https://f005.backblazeb2.com/file/${this.bucketName}/${fileKey}`;
+  }
+
   // List files in a specific folder
-  static async listFiles(prefix: string): Promise<AWS.S3.Object[]> {
+  static async listFiles(prefix: string): Promise<any[]> {
     try {
-      const params = {
+      const command = new ListObjectsV2Command({
         Bucket: this.bucketName,
         Prefix: prefix,
-      };
+      });
 
-      const result = await s3.listObjectsV2(params).promise();
+      const result = await s3Client.send(command);
       return result.Contents || [];
     } catch (error) {
       console.error('Error listing files:', error);
@@ -136,12 +221,12 @@ export class BackblazeService {
   // Check if file exists
   static async fileExists(fileKey: string): Promise<boolean> {
     try {
-      const params = {
+      const command = new HeadObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,
-      };
+      });
 
-      await s3.headObject(params).promise();
+      await s3Client.send(command);
       return true;
     } catch (error) {
       return false;
@@ -149,19 +234,17 @@ export class BackblazeService {
   }
 
   // Get file metadata
-  static async getFileMetadata(fileKey: string): Promise<AWS.S3.HeadObjectOutput | null> {
+  static async getFileMetadata(fileKey: string): Promise<any | null> {
     try {
-      const params = {
+      const command = new HeadObjectCommand({
         Bucket: this.bucketName,
         Key: fileKey,
-      };
+      });
 
-      return await s3.headObject(params).promise();
+      return await s3Client.send(command);
     } catch (error) {
       console.error('Error getting file metadata:', error);
       return null;
     }
   }
 }
-
-export default BackblazeService; 

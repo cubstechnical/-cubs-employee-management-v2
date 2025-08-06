@@ -95,77 +95,18 @@ function VisaAlertCard({ alert }: { alert: any }) {
 }
 
 export default function HomeDashboard() {
+  // Redirect to admin dashboard since this app is only for admins
+  if (typeof window !== 'undefined') {
+    window.location.href = '/admin/dashboard';
+  }
+
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Welcome back! Here's what's happening with your team.
-            </p>
-          </div>
-          <Button icon={<Plus className="w-4 h-4" />}>
-            Add Employee
-          </Button>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Redirecting to admin dashboard...</p>
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
-        </div>
-
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Recent Employees */}
-          <Card>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Recent Employees</h2>
-              <Button variant="outline" size="sm" icon={<Eye className="w-4 h-4" />}>
-                View All
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {recentEmployees.map((employee) => (
-                <EmployeeCard key={employee.id} employee={employee} />
-              ))}
-            </div>
-          </Card>
-
-          {/* Visa Alerts */}
-          <Card>
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Visa Expiry Alerts</h2>
-              <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
-                Export
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {visaAlerts.map((alert) => (
-                <VisaAlertCard key={alert.id} alert={alert} />
-              ))}
-            </div>
-          </Card>
-        </div>
-
-        {/* Quick Actions */}
-        <Card>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Button variant="outline" icon={<Users className="w-4 h-4" />} className="justify-start">
-              Manage Employees
-            </Button>
-            <Button variant="outline" icon={<FileText className="w-4 h-4" />} className="justify-start">
-              Upload Documents
-            </Button>
-            <Button variant="outline" icon={<Calendar className="w-4 h-4" />} className="justify-start">
-              Schedule Meeting
-            </Button>
-          </div>
-        </Card>
       </div>
     </Layout>
   );
