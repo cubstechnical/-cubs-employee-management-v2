@@ -437,7 +437,7 @@ export default function EnhancedDashboard() {
     dateRange: '30d'
   });
 
-  // Real-time updates
+  // Real-time updates (throttled inside hook)
   const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
     onDataChange: fetchDashboardData,
     enabled: isAutoRefresh

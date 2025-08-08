@@ -1,10 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
-import { User, Session, AuthError } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-
-const supabase = createClient(supabaseUrl, supabaseAnonKey);
+import { Session } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 
 export interface AuthUser {
   id: string;
@@ -298,11 +293,12 @@ export class AuthService {
 
       // Define permission matrix
       const permissions = {
-        'user': ['view_employees', 'view_documents'],
-        'admin': ['*'] // All permissions
-      };
+        user: ['view_employees', 'view_documents'],
+        admin: ['*']
+      } as const;
 
-      const userPermissions = permissions[user.role as keyof typeof permissions] || [];
+      const rolePermissions = permissions[user.role as keyof typeof permissions] as ReadonlyArray<string> | undefined;
+      const userPermissions: ReadonlyArray<string> = rolePermissions ?? [];
       return userPermissions.includes('*') || userPermissions.includes(permission);
     } catch (error) {
       console.error('Error checking permission:', error);

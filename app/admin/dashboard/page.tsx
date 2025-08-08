@@ -116,9 +116,9 @@ function AnimatedStatCard({ label, value, change, changeType, icon: Icon, gradie
             </div>
             <div>
               <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</p>
-              <p className="text-2xl font-bold text-gray-900 dark:text-white">
+              <div className="text-2xl font-bold text-gray-900 dark:text-white">
                 {typeof value === 'number' ? value.toLocaleString() : value}
-              </p>
+              </div>
             </div>
           </div>
           {change && (
@@ -431,7 +431,7 @@ export default function AdminDashboard() {
     dateRange: '30d'
   });
 
-  // Real-time updates
+  // Real-time updates (throttled inside hook); enable only when page is visible
   const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
     onDataChange: fetchDashboardData,
     enabled: isAutoRefresh
@@ -555,7 +555,7 @@ export default function AdminDashboard() {
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                 Admin Dashboard
               </h1>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Welcome back! Here's your organization overview.
                 {isConnected && (
                   <span className="ml-2 inline-flex items-center text-xs text-green-600 dark:text-green-400">
@@ -563,7 +563,7 @@ export default function AdminDashboard() {
                     Live
                   </span>
                 )}
-              </p>
+              </div>
             </div>
             <div className="flex space-x-3">
               <button 

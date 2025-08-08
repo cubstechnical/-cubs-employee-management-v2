@@ -1,8 +1,8 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
 import { cn } from '@/utils/cn';
 import {
   Home,
@@ -12,8 +12,9 @@ import {
   Settings,
   ChevronLeft,
   ChevronRight,
-  UserCheck,
   BarChart3,
+  Calendar,
+  Mail,
   Palette,
   ClipboardList,
   Shield,
@@ -117,63 +118,35 @@ export default function Sidebar({ onClose }: SidebarProps) {
         </button>
       </div>
 
+      {/* Navigation */}
       <nav className="flex-1 p-4 space-y-2">
-        {adminItems.map((item, index) => (
-          <div
+        {adminItems.map((item) => (
+          <SidebarItem
             key={item.href}
-            className="animate-fade-in"
-            style={{ animationDelay: `${index * 50}ms` }}
+            href={item.href}
+            icon={item.icon}
+            isActive={pathname === item.href}
+            onClose={onClose}
           >
-            <SidebarItem
-              href={item.href}
-              icon={item.icon}
-              isActive={pathname === item.href}
-              onClose={onClose}
-            >
-              {!isCollapsed && item.label}
-            </SidebarItem>
-          </div>
+            {item.label}
+          </SidebarItem>
         ))}
       </nav>
 
-      <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-        <ThemeToggle size="sm" />
-        
-        {/* User Info */}
-        {user && !isCollapsed && (
-          <div className="text-center p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-            <div className="text-sm font-medium text-gray-900 dark:text-white">
-              {user.name || user.email}
-            </div>
-            <div className="text-xs text-gray-500 dark:text-gray-400 capitalize">
-              {user.role}
-            </div>
-          </div>
-        )}
-        
-        {/* Logout Button */}
+      {/* Footer */}
+      <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-2">
+        <ThemeToggle size="sm" variant="minimal" />
         <button
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm transform hover:translate-x-1 text-red-600 dark:text-red-400"
+          className={cn(
+            'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
+            'hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm',
+            'text-red-600 dark:text-red-400'
+          )}
         >
-          <div className="transition-all duration-300 ease-in-out text-red-600 dark:text-red-400 group-hover:scale-110">
-            <LogOut className="w-5 h-5" />
-          </div>
-          {!isCollapsed && <span className="font-medium transition-all duration-300">Sign Out</span>}
+          <LogOut className="w-5 h-5" />
+          <span className="font-medium">Sign Out</span>
         </button>
-        
-        {!isCollapsed && (
-          <div className="text-center">
-            <a
-              href="https://chocosoftdev.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
-            >
-              © 2024 ChocoSoft Dev
-            </a>
-          </div>
-        )}
       </div>
     </div>
   );

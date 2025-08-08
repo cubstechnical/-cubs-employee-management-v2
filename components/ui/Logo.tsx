@@ -63,17 +63,31 @@ export default function Logo({
   if (!showText) {
     return (
       <div className={cn('flex items-center', animationClasses, className)}>
-        <CustomIcon name="cubs" size={size} />
+        <Image
+          src={getLogoPath()}
+          alt="CUBS Technical Logo"
+          width={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
+          height={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
+          className={cn('object-contain', sizeClasses[size])}
+          priority
+        />
       </div>
     );
   }
 
   return (
     <div className={cn('flex items-center space-x-2', animationClasses, className)}>
-      <CustomIcon name="cubs" size={size} />
+      <Image
+        src={getLogoPath()}
+        alt="CUBS Technical Logo"
+        width={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
+        height={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
+        className={cn('object-contain', sizeClasses[size])}
+        priority
+      />
       <div className={cn('font-bold text-gray-900 dark:text-white transition-colors duration-300', textSizeClasses[size])}>
         CUBS Technical
       </div>
     </div>
   );
-} 
+}

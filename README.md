@@ -1,3 +1,16 @@
+## Documents performance: Materialized Views
+
+For fastest loads on Documents, enable materialized views and set `NEXT_PUBLIC_USE_DOCS_MV=1`.
+
+1. Run the SQL in `docs/sql/materialized_views.sql` on your Supabase project.
+2. Create a scheduled refresh (e.g., every 5–15 minutes) or call the API:
+
+```bash
+curl -X POST https://<your-domain>/api/docs/refresh-views
+```
+
+3. Ensure the service role key is available in the environment for the API route.
+
 # CUBS Employee Management System
 
 A modern, secure, and performant employee management system built with Next.js, Supabase, and Backblaze B2.

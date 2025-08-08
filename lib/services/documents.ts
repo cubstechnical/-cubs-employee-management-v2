@@ -46,8 +46,21 @@ export interface UploadDocumentData {
 export class DocumentService {
   // Cache for document folders to improve performance
   private static foldersCache: { folders: DocumentFolder[]; timestamp: number } | null = null;
-  private static readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
-  private static readonly SUPABASE_PAGE_SIZE = 1000; // Supabase default limit
+  private static companyDocumentsCache: { documents: Document[]; timestamp: number } | null = null;
+  // Optional server-side aggregates (materialized views) – used if available
+  private static readonly COMPANY_FOLDERS_VIEW = 'company_document_folders_mv';
+  private static readonly EMPLOYEE_COUNTS_VIEW = 'employee_counts_by_company_mv';
+  // Per-company folders cache and in-flight dedupe
+  private static employeeFoldersCache: Map<string, { folders: DocumentFolder[]; timestamp: number }> = new Map();
+  private static employeeFoldersInflight: Map<string, Promise<{ folders: DocumentFolder[]; error: string | null }>> = new Map();
+  // Per-company documents (raw) cache for getEmployeeFolders to reuse heavy pagination results
+  private static companyDocsRawCache: Map<string, { docs: any[]; timestamp: number }> = new Map();
+  private static companyDocsInflight: Map<string, Promise<{ documents: any[]; error: string | null }>> = new Map();
+  // Per-employee documents cache and in-flight dedupe
+  private static employeeDocsCache: Map<string, { documents: Document[]; timestamp: number }> = new Map();
+  private static employeeDocsInflight: Map<string, Promise<{ documents: Document[]; error: string | null }>> = new Map();
+  private static readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minutes (increased to reduce API calls)
+  private static readonly SUPABASE_PAGE_SIZE = 1000; // Supabase hard page limit
   
   // Prevent multiple concurrent fetches
   private static isCurrentlyFetching = false;
@@ -56,61 +69,58 @@ export class DocumentService {
   // Clear cache method for immediate updates
   static clearCache(): void {
     this.foldersCache = null;
+    this.companyDocumentsCache = null;
+    this.employeeFoldersCache.clear();
+    this.employeeFoldersInflight.clear();
+    this.companyDocsRawCache.clear();
+    this.companyDocsInflight.clear();
+    this.employeeDocsCache.clear();
+    this.employeeDocsInflight.clear();
     this.isCurrentlyFetching = false;
     this.fetchPromise = null;
-    console.log('🗑️ Document folders cache cleared');
+    console.log('🗑️ Document folders and company documents cache cleared');
   }
 
-
+  // Force refresh method to clear cache and rebuild folders
+  static async forceRefresh(): Promise<{ folders: DocumentFolder[]; error: string | null }> {
+    console.log('🔄 Force refreshing document folders...');
+    this.clearCache();
+    return await this.getDocumentFolders();
+  }
 
   // Fetch ALL documents using pagination to bypass Supabase 1000 record limit
   private static async fetchAllDocuments(): Promise<{ documents: any[]; error: string | null }> {
     try {
-      console.log('📄 Fetching ALL documents using pagination...');
-      
-      let allDocuments: any[] = [];
-      let hasMore = true;
-      let page = 0;
-      let totalFetched = 0;
+      if (process.env.NODE_ENV !== 'production') console.log('📄 Fetching documents (paginated)...');
 
-      while (hasMore) {
-        const from = page * this.SUPABASE_PAGE_SIZE;
-        const to = from + this.SUPABASE_PAGE_SIZE - 1;
-        
-        console.log(`📄 Fetching page ${page + 1} (records ${from + 1}-${to + 1})...`);
-        
-        const { data: documents, error } = await supabase
+      const pageSize = this.SUPABASE_PAGE_SIZE;
+      let from = 0;
+      let to = pageSize - 1;
+      const allDocuments: any[] = [];
+
+      while (true) {
+        const { data, error } = await supabase
           .from('employee_documents')
-          .select('file_path, uploaded_at, employee_id')
-          .range(from, to)
-          .order('uploaded_at', { ascending: false });
+          .select('file_path, uploaded_at')
+          .order('uploaded_at', { ascending: false })
+          .range(from, to);
 
         if (error) {
-          console.error(`❌ Error fetching page ${page + 1}:`, error);
+          console.error('❌ Error fetching documents:', error);
           return { documents: [], error: error.message };
         }
 
-        if (!documents || documents.length === 0) {
-          hasMore = false;
-          console.log(`📄 No more documents found at page ${page + 1}`);
-        } else {
-          allDocuments = allDocuments.concat(documents);
-          totalFetched += documents.length;
-          console.log(`✅ Page ${page + 1}: Fetched ${documents.length} documents (Total: ${totalFetched})`);
-          
-          // If we got less than the page size, we've reached the end
-          if (documents.length < this.SUPABASE_PAGE_SIZE) {
-            hasMore = false;
-            console.log(`📄 Reached end of data (got ${documents.length} < ${this.SUPABASE_PAGE_SIZE})`);
-          }
-          
-          page++;
-        }
+        const batch = data || [];
+        allDocuments.push(...batch);
+        if (process.env.NODE_ENV !== 'production') console.log(`  • batch ${from}-${to} → ${batch.length}`);
+
+        if (batch.length < pageSize) break;
+        from += pageSize;
+        to += pageSize;
       }
 
-      console.log(`🎉 Successfully fetched ALL ${allDocuments.length} documents using pagination!`);
+      if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${allDocuments.length} documents (across ${Math.ceil(allDocuments.length / pageSize)} page(s))`);
       return { documents: allDocuments, error: null };
-      
     } catch (error) {
       console.error('❌ Error in fetchAllDocuments:', error);
       return { documents: [], error: 'Failed to fetch all documents' };
@@ -120,61 +130,62 @@ export class DocumentService {
   // Fetch ALL documents for a specific company using pagination
   private static async fetchAllCompanyDocuments(companyName: string): Promise<{ documents: any[]; error: string | null }> {
     try {
-      console.log(`📄 Fetching ALL documents for company: ${companyName} using pagination...`);
-      
-      let allDocuments: any[] = [];
-      let hasMore = true;
-      let page = 0;
-      let totalFetched = 0;
+      if (process.env.NODE_ENV !== 'production') console.log(`📄 Fetching documents for company (paginated): ${companyName}...`);
 
-      while (hasMore) {
-        const from = page * this.SUPABASE_PAGE_SIZE;
-        const to = from + this.SUPABASE_PAGE_SIZE - 1;
-        
-        console.log(`📄 Fetching page ${page + 1} for ${companyName} (records ${from + 1}-${to + 1})...`);
-        
-        // Handle both old format (EMP_ALHT) and new format (AL HANA TOURS and TRAVELS)
-        let query = supabase
-          .from('employee_documents')
-          .select('employee_id, uploaded_at, file_path')
-          .range(from, to)
-          .order('uploaded_at', { ascending: false });
-
-        // For AL HANA TOURS & TRAVELS, search both old and new folder patterns
-        if (companyName === 'AL HANA TOURS & TRAVELS' || companyName === 'AL HANA TOURS and TRAVELS') {
-          query = query.or(`file_path.ilike.EMP_ALHT/%,file_path.ilike.AL HANA TOURS and TRAVELS/%`);
-        } else {
-          query = query.ilike('file_path', `${companyName}/%`);
-        }
-
-        const { data: documents, error } = await query;
-
-        if (error) {
-          console.error(`❌ Error fetching page ${page + 1} for ${companyName}:`, error);
-          return { documents: [], error: error.message };
-        }
-
-        if (!documents || documents.length === 0) {
-          hasMore = false;
-          console.log(`📄 No more documents found for ${companyName} at page ${page + 1}`);
-        } else {
-          allDocuments = allDocuments.concat(documents);
-          totalFetched += documents.length;
-          console.log(`✅ Page ${page + 1} for ${companyName}: Fetched ${documents.length} documents (Total: ${totalFetched})`);
-          
-          // If we got less than the page size, we've reached the end
-          if (documents.length < this.SUPABASE_PAGE_SIZE) {
-            hasMore = false;
-            console.log(`📄 Reached end of data for ${companyName} (got ${documents.length} < ${this.SUPABASE_PAGE_SIZE})`);
-          }
-          
-          page++;
-        }
+      // Cache and in-flight dedupe for heavy paginated call
+      const cached = this.companyDocsRawCache.get(companyName);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        return { documents: cached.docs, error: null };
       }
+      const inflight = this.companyDocsInflight.get(companyName);
+      if (inflight) return inflight;
 
-      console.log(`🎉 Successfully fetched ALL ${allDocuments.length} documents for ${companyName} using pagination!`);
-      return { documents: allDocuments, error: null };
-      
+      const pageSize = this.SUPABASE_PAGE_SIZE;
+      let from = 0;
+      let to = pageSize - 1;
+      const allDocuments: any[] = [];
+
+      // Build base filtered query per company
+      const buildQuery = (fromIdx: number, toIdx: number) => {
+        let q = supabase
+          .from('employee_documents')
+          .select('employee_id')
+          .range(fromIdx, toIdx);
+
+        if (companyName === 'AL HANA TOURS & TRAVELS' || companyName === 'AL HANA TOURS and TRAVELS') {
+          q = q.or(`file_path.like.EMP_ALHT/%,file_path.like.AL HANA TOURS and TRAVELS/%`);
+        } else {
+          q = q.like('file_path', `${companyName}/%`);
+        }
+        return q;
+      };
+
+      const run = async () => {
+        while (true) {
+        const { data, error } = await buildQuery(from, to);
+        if (error) {
+          console.error(`❌ Error fetching documents for ${companyName}:`, error);
+            return { documents: [], error: error.message };
+        }
+        const batch = data || [];
+        allDocuments.push(...batch);
+        if (process.env.NODE_ENV !== 'production') console.log(`  • ${companyName} batch ${from}-${to} → ${batch.length}`);
+        if (batch.length < pageSize) break;
+        from += pageSize;
+        to += pageSize;
+        }
+
+        if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${allDocuments.length} documents for ${companyName}`);
+        // Save to cache
+        this.companyDocsRawCache.set(companyName, { docs: allDocuments, timestamp: Date.now() });
+        return { documents: allDocuments, error: null };
+      };
+
+      const promise = run().finally(() => {
+        this.companyDocsInflight.delete(companyName);
+      });
+      this.companyDocsInflight.set(companyName, promise);
+      return promise;
     } catch (error) {
       console.error(`❌ Error in fetchAllCompanyDocuments for ${companyName}:`, error);
       return { documents: [], error: 'Failed to fetch company documents' };
@@ -185,40 +196,76 @@ export class DocumentService {
   static async getCompanyDocuments(companyName?: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
       if (companyName) {
-        console.log(`🔍 Fetching documents for company: ${companyName}`);
-        
-        const { data, error } = await supabase
-          .from('employee_documents')
-          .select('*')
-          .ilike('file_path', `${companyName}/%`)
-          .order('uploaded_at', { ascending: false });
-
-        if (error) {
-          console.error('❌ Error fetching company documents:', error);
-          return { documents: [], error: error.message };
+        if (process.env.NODE_ENV !== 'production') console.log(`🔍 Fetching documents for company: ${companyName}`);
+        const pageSize = this.SUPABASE_PAGE_SIZE;
+        let from = 0;
+        let to = pageSize - 1;
+        const results: any[] = [];
+        while (true) {
+          const { data, error } = await supabase
+            .from('employee_documents')
+            .select('*')
+            .ilike('file_path', `${companyName}/%`)
+            .order('uploaded_at', { ascending: false })
+            .range(from, to);
+          if (error) {
+            console.error('❌ Error fetching company documents:', error);
+            return { documents: [], error: error.message };
+          }
+          const batch = data || [];
+          results.push(...batch);
+          if (batch.length < pageSize) break;
+          from += pageSize;
+          to += pageSize;
         }
-
-        const documents = data ? (data as unknown as Document[]) : [];
-        console.log(`✅ Found ${documents.length} documents for company ${companyName}`);
-        
+        const documents = results as unknown as Document[];
+        if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${documents.length} documents for company ${companyName}`);
         return { documents, error: null };
       } else {
-        console.log('🔍 Fetching Company Documents...');
+        // Check cache first for Company Documents
+        if (this.companyDocumentsCache && (Date.now() - this.companyDocumentsCache.timestamp) < this.CACHE_DURATION) {
+        if (process.env.NODE_ENV !== 'production') console.log('📁 Using cached Company Documents');
+          return { documents: this.companyDocumentsCache.documents, error: null };
+        }
+
+        if (process.env.NODE_ENV !== 'production') console.log('🔍 Fetching Company Documents...');
         
-        // Look for both old and new company document paths
-        const { data, error } = await supabase
+        // Get documents with employee_id = 'COMPANY_DOCS'
+        const { data: companyDocs, error: companyError } = await supabase
+          .from('employee_documents')
+          .select('*')
+          .eq('employee_id', 'COMPANY_DOCS')
+          .order('uploaded_at', { ascending: false });
+
+        if (companyError) {
+          console.error('❌ Error fetching company documents by employee_id:', companyError);
+        }
+
+        // Also get documents with specific file paths
+        const { data: pathDocs, error: pathError } = await supabase
           .from('employee_documents')
           .select('*')
           .or('file_path.ilike.EMP_COMPANY_DOCS/%,file_path.ilike.Company Documents/%')
           .order('uploaded_at', { ascending: false });
 
-        if (error) {
-          console.error('❌ Error fetching company documents:', error);
-          return { documents: [], error: error.message };
+        if (pathError) {
+          console.error('❌ Error fetching company documents by path:', pathError);
         }
 
-        const documents = data ? (data as unknown as Document[]) : [];
-        console.log(`✅ Found ${documents.length} Company Documents`);
+        // Combine and deduplicate results
+        const allDocs = [...(companyDocs || []), ...(pathDocs || [])];
+        const uniqueDocs = allDocs.filter((doc, index, self) => 
+          index === self.findIndex(d => d.id === doc.id)
+        );
+
+        const documents = uniqueDocs as unknown as Document[];
+        if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${documents.length} Company Documents (${companyDocs?.length || 0} by employee_id, ${pathDocs?.length || 0} by path)`);
+        
+        // Cache the results
+        this.companyDocumentsCache = {
+          documents,
+          timestamp: Date.now()
+        };
         
         return { documents, error: null };
       }
@@ -228,26 +275,49 @@ export class DocumentService {
     }
   }
 
-  // Get documents for a specific employee - CLEAN AND SIMPLE
+  // Get documents for a specific employee (optimized)
   static async getDocumentsForEmployee(employeeId: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
-      console.log(`🔍 Fetching documents for employee ID: ${employeeId}`);
-      
-      const { data, error } = await supabase
-        .from('employee_documents')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .order('uploaded_at', { ascending: false });
-
-      if (error) {
-        console.error('❌ Error fetching documents for employee:', error);
-        return { documents: [], error: error.message };
+      const cached = this.employeeDocsCache.get(employeeId);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        return { documents: cached.documents, error: null };
       }
+      const inflight = this.employeeDocsInflight.get(employeeId);
+      if (inflight) return inflight;
 
-      const documents = data ? (data as unknown as Document[]) : [];
-      console.log(`✅ Found ${documents.length} documents for employee ${employeeId}`);
-      
-      return { documents, error: null };
+      if (process.env.NODE_ENV !== 'production') console.log(`🔍 Fetching documents for employee ID: ${employeeId}...`);
+      const pageSize = this.SUPABASE_PAGE_SIZE;
+      let from = 0;
+      let to = pageSize - 1;
+      const results: any[] = [];
+      const run = async () => {
+        while (true) {
+          const { data, error } = await supabase
+            .from('employee_documents')
+            .select('*')
+            .eq('employee_id', employeeId)
+            .order('uploaded_at', { ascending: false })
+            .range(from, to);
+          if (error) {
+            console.error(`❌ Error fetching documents for employee ${employeeId}:`, error);
+            return { documents: [], error: error.message };
+          }
+          const batch = data || [];
+          results.push(...batch);
+          if (batch.length < pageSize) break;
+          from += pageSize;
+          to += pageSize;
+        }
+        const documents = results as unknown as Document[];
+        if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${documents.length} documents for employee ${employeeId}`);
+        this.employeeDocsCache.set(employeeId, { documents, timestamp: Date.now() });
+        return { documents, error: null };
+      };
+      const promise = run().finally(() => {
+        this.employeeDocsInflight.delete(employeeId);
+      });
+      this.employeeDocsInflight.set(employeeId, promise);
+      return promise;
     } catch (error) {
       console.error('❌ Exception in getDocumentsForEmployee:', error);
       return { documents: [], error: 'Failed to fetch documents for employee' };
@@ -299,17 +369,47 @@ export class DocumentService {
     try {
       // Check cache first for better performance
       if (this.foldersCache && (Date.now() - this.foldersCache.timestamp) < this.CACHE_DURATION) {
-        console.log('📁 Using cached document folders');
+        if (process.env.NODE_ENV !== 'production') console.log('📁 Using cached document folders');
         return { folders: this.foldersCache.folders, error: null };
+      }
+
+      // Try server-side materialized view first (if enabled and present)
+      const useMV = process.env.NEXT_PUBLIC_USE_DOCS_MV === '1';
+      if (useMV) {
+        try {
+          const { data: mvRows, error: mvError } = await supabase
+            .from(this.COMPANY_FOLDERS_VIEW)
+            .select('company_prefix, display_name, document_count, last_modified');
+          if (!mvError && mvRows && mvRows.length > 0) {
+            const folders: DocumentFolder[] = (mvRows as any[])
+              .filter(r => r.company_prefix && r.display_name)
+              .map(r => ({
+                id: `company-${r.company_prefix}`,
+                name: r.display_name as string,
+                type: 'company' as const,
+                companyName: r.company_prefix as string,
+                documentCount: Number(r.document_count) || 0,
+                lastModified: r.last_modified ? new Date(r.last_modified as string).toISOString() : new Date().toISOString(),
+                path: `/${r.company_prefix}`
+              }));
+            if (folders.length > 0) {
+              this.foldersCache = { folders, timestamp: Date.now() };
+              if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for company folders');
+              return { folders, error: null };
+            }
+          }
+        } catch (e) {
+          // View not available or RLS blocked – silently fallback
+        }
       }
 
       // Prevent multiple concurrent fetches
       if (this.isCurrentlyFetching && this.fetchPromise) {
-        console.log('📁 Another fetch is in progress, waiting...');
+        if (process.env.NODE_ENV !== 'production') console.log('📁 Another fetch is in progress, waiting...');
         return await this.fetchPromise;
       }
 
-      console.log('🔍 Building company folder structure from actual file paths...');
+      if (process.env.NODE_ENV !== 'production') console.log('🔍 Building company folder structure from actual file paths...');
       
       // Mark as fetching and create promise
       this.isCurrentlyFetching = true;
@@ -341,7 +441,7 @@ export class DocumentService {
         return { folders: [], error: docsError };
       }
 
-      console.log(`📄 Found ${allDocuments?.length || 0} total documents (using pagination)`);
+      if (process.env.NODE_ENV !== 'production') console.log(`📄 Found ${allDocuments?.length || 0} total documents (paginated)`);
 
       // Extract unique company prefixes from actual file paths
       const companyPrefixes = new Set<string>();
@@ -354,7 +454,7 @@ export class DocumentService {
         }
       });
 
-      console.log(`🏢 Found ${companyPrefixes.size} unique company prefixes in file paths:`, Array.from(companyPrefixes).sort());
+      if (process.env.NODE_ENV !== 'production') console.log(`🏢 Found ${companyPrefixes.size} unique company prefixes in file paths:`, Array.from(companyPrefixes).sort());
 
       // Create company folders based on actual file paths
       const companyFolders: DocumentFolder[] = [];
@@ -377,15 +477,7 @@ export class DocumentService {
         'Company Documents': 'Company Documents'
       };
       
-      // Create a reverse mapping to consolidate duplicate folders
-      const reverseMapping: { [key: string]: string } = {};
-      Object.entries(displayNameMapping).forEach(([key, value]) => {
-        if (!reverseMapping[value]) {
-          reverseMapping[value] = key;
-        }
-      });
-      
-      // Add company folders based on actual file paths - consolidate duplicates
+      // Consolidate duplicate display names
       const consolidatedFolders = new Map<string, { 
         displayName: string; 
         prefixes: string[]; 
@@ -394,22 +486,18 @@ export class DocumentService {
       }>();
       
       for (const prefix of Array.from(companyPrefixes).sort()) {
-        // Skip test folders
-        if (prefix === 'FINAL_TEST') continue;
-        
-        // Get display name from mapping, or use prefix as fallback
+        if (prefix === 'FINAL_TEST') continue; // skip test folders
         const displayName = displayNameMapping[prefix] || prefix.replace(/_/g, ' ');
-        
-        // Count documents for this company prefix
         const companyDocs = allDocuments?.filter(doc => 
           doc.file_path && typeof doc.file_path === 'string' && doc.file_path.startsWith(prefix + '/')
         ) || [];
-        
-        const lastModified = companyDocs.length > 0 
-          ? Math.max(...companyDocs.map(doc => new Date(doc.uploaded_at as string).getTime()))
-          : Date.now();
-
-        // Consolidate folders with the same display name
+        // Safely compute lastModified with fallbacks
+        const times: number[] = [];
+        for (const d of companyDocs) {
+          const t = d && (d as any).uploaded_at ? Date.parse((d as any).uploaded_at as string) : NaN;
+          if (!Number.isNaN(t)) times.push(t);
+        }
+        const lastModified = times.length > 0 ? Math.max(...times) : Date.now();
         if (consolidatedFolders.has(displayName)) {
           const existing = consolidatedFolders.get(displayName)!;
           existing.prefixes.push(prefix);
@@ -425,10 +513,8 @@ export class DocumentService {
         }
       }
       
-      // Create final company folders from consolidated data
       for (const [displayName, data] of Array.from(consolidatedFolders.entries())) {
         const primaryPrefix = data.prefixes[0]; // Use first prefix as primary
-        
         companyFolders.push({
           id: `company-${primaryPrefix}`,
           name: displayName,
@@ -440,8 +526,10 @@ export class DocumentService {
         });
       }
 
-      console.log(`📁 Created ${companyFolders.length} company folders`);
-      console.log('🔍 Company folders:', companyFolders.map(f => `${f.name} (${f.documentCount} docs)`));
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`📁 Created ${companyFolders.length} company folders`);
+        console.log('🔍 Company folders:', companyFolders.map(f => `${f.name} (${f.documentCount} docs)`));
+      }
 
       // Update cache
       this.foldersCache = {
@@ -449,7 +537,7 @@ export class DocumentService {
         timestamp: Date.now()
       };
 
-      console.log(`📁 Processed ${companyFolders.length} folders exactly as they appear in Backblaze`);
+      if (process.env.NODE_ENV !== 'production') console.log(`📁 Processed ${companyFolders.length} folders exactly as they appear in Backblaze`);
       return { folders: companyFolders, error: null };
     } catch (error) {
       console.error('❌ Error in _buildFolders:', error);
@@ -495,106 +583,71 @@ export class DocumentService {
   static async getEmployeeDocuments(companyName: string, employeeId: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
       console.log(`🔍 Fetching documents for: ${companyName}/${employeeId}`);
-      
-      let documents: Document[] = [];
-      let error: any = null;
 
+      // Special handling for top-level Company Documents
       if (companyName === 'Company Documents') {
-        // Get company documents (files directly in EMP_COMPANY_DOCS folder)
-        console.log('📁 Fetching company documents...');
-        const { data, error: docsError } = await supabase
+        const { data, error } = await supabase
           .from('employee_documents')
           .select('*')
           .ilike('file_path', 'EMP_COMPANY_DOCS/%')
-          .not('file_path', 'like', 'EMP_COMPANY_DOCS/%/%') // Exclude subfolders
+          .not('file_path', 'like', 'EMP_COMPANY_DOCS/%/%')
           .order('uploaded_at', { ascending: false });
-
-        documents = data as unknown as Document[];
-        error = docsError;
-        console.log(`📁 Company documents found: ${documents?.length || 0}`);
-      } else {
-        // Try multiple approaches to get employee documents
-        console.log(`👤 Fetching employee documents for ID: ${employeeId}`);
-        
-        // Approach 1: Get documents by employee_id field (exact match)
-        console.log('🔍 Approach 1: Searching by employee_id field...');
-        const { data: docsById, error: errorById } = await supabase
-          .from('employee_documents')
-          .select('*')
-          .eq('employee_id', employeeId)
-          .order('uploaded_at', { ascending: false });
-
-        if (!errorById && docsById && docsById.length > 0) {
-          documents = docsById as unknown as Document[];
-          console.log(`✅ Found ${documents.length} documents by employee_id (exact match)`);
-        } else {
-          console.log('❌ No documents found by employee_id, trying file_path pattern...');
-          
-          // Approach 2: Get documents by file_path containing employee ID
-          const { data: docsByPath, error: errorByPath } = await supabase
-            .from('employee_documents')
-            .select('*')
-            .or(`file_path.ilike.%${employeeId}%,file_path.ilike.%${employeeId.replace(/\s+/g, '%20')}%`)
-            .order('uploaded_at', { ascending: false });
-
-          if (!errorByPath && docsByPath && docsByPath.length > 0) {
-            documents = docsByPath as unknown as Document[];
-            console.log(`✅ Found ${documents.length} documents by file_path pattern`);
-          } else {
-            console.log('❌ No documents found by file_path pattern, trying company pattern...');
-            
-            // Approach 3: Get documents by company and employee name pattern
-            const { data: docsByCompany, error: errorByCompany } = await supabase
-              .from('employee_documents')
-              .select('*')
-              .ilike('file_path', `${companyName}/%${employeeId}%`)
-              .order('uploaded_at', { ascending: false });
-
-            if (!errorByCompany && docsByCompany && docsByCompany.length > 0) {
-              documents = docsByCompany as unknown as Document[];
-              console.log(`✅ Found ${documents.length} documents by company pattern`);
-            } else {
-              console.log('❌ No documents found by company pattern, trying final approach...');
-              
-              // Approach 4: Get all documents for this company and filter by employee name
-                console.log('🔍 Approach 5: Getting all company documents and filtering...');
-                const { data: allCompanyDocs, error: errorAllCompany } = await supabase
-                  .from('employee_documents')
-                  .select('*')
-                  .ilike('file_path', `${companyName}/%`)
-                  .order('uploaded_at', { ascending: false });
-
-                if (!errorAllCompany && allCompanyDocs && allCompanyDocs.length > 0) {
-                  // Filter by employee name in the file path
-                  const filteredDocs = allCompanyDocs.filter(doc => {
-                    const filePath = doc.file_path as string;
-                    const employeeName = employeeId.replace(/\s+/g, ' ').toLowerCase();
-                    return filePath.toLowerCase().includes(employeeName);
-                  });
-                  
-                  if (filteredDocs.length > 0) {
-                    documents = filteredDocs as unknown as Document[];
-                    console.log(`✅ Found ${documents.length} documents by name filtering`);
-                  } else {
-                    console.log('❌ No documents found by name filtering');
-                error = 'No documents found for this employee';
-              }
-            } else {
-              error = errorAllCompany;
-              console.log('❌ No company documents found');
-            }
-          }
+        if (error) {
+          return { documents: [], error: error.message };
         }
-      }
-      }
-      
-      if (error) {
-        console.error('❌ Database error:', error);
-        return { documents: [], error: error.message };
+        return { documents: (data || []) as unknown as Document[], error: null };
       }
 
-      console.log(`✅ Successfully fetched ${documents?.length || 0} documents`);
-      return { documents: documents || [], error: null };
+      // 1) Exact match by employee_id
+      const { data: byId, error: byIdErr } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .order('uploaded_at', { ascending: false });
+      if (!byIdErr && byId && byId.length > 0) {
+        return { documents: byId as unknown as Document[], error: null };
+      }
+
+      // 2) file_path contains employeeId (handles name-in-path cases too)
+      const encoded = employeeId.replace(/\s+/g, '%20');
+      const { data: byPath, error: byPathErr } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .or(`file_path.ilike.%${employeeId}%,file_path.ilike.%${encoded}%`)
+        .order('uploaded_at', { ascending: false });
+      if (!byPathErr && byPath && byPath.length > 0) {
+        return { documents: byPath as unknown as Document[], error: null };
+      }
+
+      // 3) Company-specific prefix with employee identifier in the rest of the path
+      const { data: byCompany, error: byCompanyErr } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .ilike('file_path', `${companyName}/%${employeeId}%`)
+        .order('uploaded_at', { ascending: false });
+      if (!byCompanyErr && byCompany && byCompany.length > 0) {
+        return { documents: byCompany as unknown as Document[], error: null };
+      }
+
+      // 4) Fallback: fetch company docs and filter by a normalized employeeId token
+      const { data: allCompanyDocs, error: allCompanyErr } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .ilike('file_path', `${companyName}/%`)
+        .order('uploaded_at', { ascending: false });
+      if (allCompanyErr) {
+        return { documents: [], error: allCompanyErr.message };
+      }
+      const needle = employeeId.replace(/\s+/g, ' ').toLowerCase();
+      const filtered = (allCompanyDocs || []).filter((d) =>
+        String(d.file_path || '').toLowerCase().includes(needle)
+      );
+
+      if (filtered.length > 0) {
+        return { documents: filtered as unknown as Document[], error: null };
+      }
+
+      return { documents: [], error: 'No documents found for this employee' };
     } catch (error) {
       console.error('❌ Exception in getEmployeeDocuments:', error);
       return { documents: [], error: 'Failed to fetch employee documents' };
@@ -604,7 +657,7 @@ export class DocumentService {
   // Get employee folders for a specific company with real document data - PERFORMANCE OPTIMIZED
   static async getEmployeeFolders(companyName: string): Promise<{ folders: DocumentFolder[]; error: string | null }> {
     try {
-      console.log(`👥 Getting employee folders for company: ${companyName}`);
+      if (process.env.NODE_ENV !== 'production') console.log(`👥 Getting employee folders for company: ${companyName}`);
       
       // Create mapping from display names to file path company names
       const companyNameMapping: { [key: string]: string } = {
@@ -624,95 +677,148 @@ export class DocumentService {
       
       // Get the corresponding file path company name
       const filePathCompanyName = companyNameMapping[companyName] || companyName;
-      console.log(`🔍 Using file path company name: ${filePathCompanyName} for display name: ${companyName}`);
+      if (process.env.NODE_ENV !== 'production') console.log(`🔍 Using file path company name: ${filePathCompanyName} for display name: ${companyName}`);
       
       // Special handling for Company Documents - show files directly, not employee folders
       if (companyName === 'Company Documents') {
-        console.log('📁 Company Documents: Returning empty folders array (files should be shown directly)');
+        if (process.env.NODE_ENV !== 'production') console.log('📁 Company Documents: Returning empty folders array (files should be shown directly)');
         return { folders: [], error: null };
       }
       
-      // Get all documents for this company using pagination
-      const { documents: companyDocs, error } = await this.fetchAllCompanyDocuments(filePathCompanyName);
-
-      if (error) {
-        console.error('❌ Error fetching company documents:', error);
-        return { folders: [], error };
+      // Check cache
+      const cached = this.employeeFoldersCache.get(filePathCompanyName);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
+        return { folders: cached.folders, error: null };
       }
+      const inflight = this.employeeFoldersInflight.get(filePathCompanyName);
+      if (inflight) return inflight;
 
-      console.log(`📄 Found ${companyDocs?.length || 0} documents for company ${companyName} (using pagination)`);
-
-      if (!companyDocs || companyDocs.length === 0) {
-        console.log('❌ No documents found for this company');
-        return { folders: [], error: null };
-      }
-
-      // Get unique employee IDs from documents
-      const employeeIds = Array.from(new Set(companyDocs?.map(doc => doc.employee_id as string).filter(Boolean) || []));
-      console.log(`👥 Found ${employeeIds.length} unique employee IDs:`, employeeIds);
-
-      if (employeeIds.length === 0) {
-        console.log('❌ No employee IDs found');
-        return { folders: [], error: null };
-      }
-
-      // Get employee names from employee_table
-      const { data: employees, error: employeeError } = await supabase
-        .from('employee_table')
-        .select('employee_id, name')
-        .in('employee_id', employeeIds);
-
-      if (employeeError) {
-        console.error('❌ Error fetching employee names:', employeeError);
-        return { folders: [], error: employeeError.message };
-      }
-
-      console.log(`👤 Found ${employees?.length || 0} employee records`);
-
-      // Create a map for quick employee name lookup
-      const employeeMap = new Map<string, string>();
-      employees?.forEach(emp => {
-        employeeMap.set(emp.employee_id as string, emp.name as string);
-      });
-
-      // Group documents by employee and create folders
-      const employeeFolders = new Map<string, { count: number; lastModified: string; name: string }>();
-
-      companyDocs?.forEach(doc => {
-        const employeeId = doc.employee_id as string;
-        if (employeeId) {
-          const employeeName = employeeMap.get(employeeId) || employeeId;
-          const timestamp = new Date(doc.uploaded_at as string).getTime();
-          
-          const existing = employeeFolders.get(employeeId);
-          if (existing) {
-            existing.count += 1;
-            existing.lastModified = Math.max(parseInt(existing.lastModified), timestamp).toString();
-          } else {
-            employeeFolders.set(employeeId, {
-              count: 1,
-              lastModified: timestamp.toString(),
-              name: employeeName
-            });
+      // Try server-side materialized view first (if enabled and present)
+      const useMV = process.env.NEXT_PUBLIC_USE_DOCS_MV === '1';
+      if (useMV) {
+        try {
+          const { data: mvRows, error: mvError } = await supabase
+            .from(this.EMPLOYEE_COUNTS_VIEW)
+            .select('employee_id, employee_name, document_count, last_modified')
+            .eq('company_prefix', filePathCompanyName);
+          if (!mvError && mvRows && mvRows.length > 0) {
+            const folders: DocumentFolder[] = (mvRows as any[])
+              .filter(r => r.employee_id)
+              .map(r => ({
+                id: `emp-${r.employee_id}`,
+                name: (r.employee_name as string) || (r.employee_id as string),
+                type: 'employee' as const,
+                companyName,
+                employeeId: r.employee_id as string,
+                employeeName: (r.employee_name as string) || (r.employee_id as string),
+                documentCount: Number(r.document_count) || 0,
+                lastModified: r.last_modified ? new Date(r.last_modified as string).toISOString() : new Date().toISOString(),
+                path: `${companyName}/${r.employee_id}`
+              }));
+            this.employeeFoldersCache.set(filePathCompanyName, { folders, timestamp: Date.now() });
+            if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for employee folders');
+            return { folders, error: null };
           }
+        } catch (e) {
+          // View not available; fallback below
         }
-      });
+      }
 
-      // Convert to DocumentFolder array
-      const folders: DocumentFolder[] = Array.from(employeeFolders.entries()).map(([employeeId, data]) => ({
-        id: `emp-${employeeId}`,
-        name: data.name,
+      // Get all documents for this company using pagination
+      const run = async (): Promise<{ folders: DocumentFolder[]; error: string | null }> => {
+        const { documents: companyDocs, error } = await this.fetchAllCompanyDocuments(filePathCompanyName);
+
+        if (error) {
+          console.error('❌ Error fetching company documents:', error);
+          return { folders: [], error };
+        }
+
+        if (process.env.NODE_ENV !== 'production') console.log(`📄 Found ${companyDocs?.length || 0} documents for company ${companyName} (paginated)`);
+
+        if (!companyDocs || companyDocs.length === 0) {
+          if (process.env.NODE_ENV !== 'production') console.log('❌ No documents found for this company');
+          this.employeeFoldersCache.set(filePathCompanyName, { folders: [], timestamp: Date.now() });
+          return { folders: [], error: null };
+        }
+
+        // Get unique employee IDs from documents (minimal rows contain only employee_id)
+        const employeeIds = Array.from(new Set((companyDocs || []).map((doc: any) => doc.employee_id as string).filter(Boolean)));
+        if (process.env.NODE_ENV !== 'production') console.log(`👥 Found ${employeeIds.length} unique employee IDs`);
+
+        if (employeeIds.length === 0) {
+          if (process.env.NODE_ENV !== 'production') console.log('❌ No employee IDs found');
+          this.employeeFoldersCache.set(filePathCompanyName, { folders: [], timestamp: Date.now() });
+          return { folders: [], error: null };
+        }
+
+        // Get employee names from employee_table in chunks to avoid IN() limits
+        const chunkSize = 500;
+        const chunks: string[][] = [];
+        for (let i = 0; i < employeeIds.length; i += chunkSize) {
+          chunks.push(employeeIds.slice(i, i + chunkSize));
+        }
+        const employeeRows: Array<{ employee_id: string; name: string }> = [];
+        for (const chunk of chunks) {
+          const { data: employees, error: employeeError } = await supabase
+            .from('employee_table')
+            .select('employee_id, name')
+            .in('employee_id', chunk);
+          if (employeeError) {
+            console.error('❌ Error fetching employee names:', employeeError);
+            return { folders: [], error: employeeError.message };
+          }
+          (employees || []).forEach(r => employeeRows.push(r as any));
+        }
+
+        if (process.env.NODE_ENV !== 'production') console.log(`👤 Found ${employeeRows.length} employee records`);
+
+        // Create a map for quick employee name lookup
+        const employeeMap = new Map<string, string>();
+        employeeRows.forEach(emp => {
+          employeeMap.set(emp.employee_id as string, emp.name as string);
+        });
+
+        // Group documents by employee and create folders
+        const employeeFolders = new Map<string, { count: number; lastModified: string; name: string }>();
+
+        // Count documents per employee (fast path, lastModified approximated)
+        const counts = new Map<string, number>();
+        for (const row of companyDocs || []) {
+          const id = row.employee_id as string | null | undefined;
+          if (!id) continue;
+          counts.set(id, (counts.get(id) || 0) + 1);
+        }
+        counts.forEach((count, employeeId) => {
+          const employeeName = employeeMap.get(employeeId) || employeeId;
+          employeeFolders.set(employeeId, {
+            count,
+            lastModified: Date.now().toString(),
+            name: employeeName
+          });
+        });
+
+        // Convert to DocumentFolder array
+        const folders: DocumentFolder[] = Array.from(employeeFolders.entries()).map(([employeeId, data]) => ({
+          id: `emp-${employeeId}`,
+          name: data.name,
           type: 'employee' as const,
-        companyName: companyName,
-        employeeId: employeeId,
-        employeeName: data.name,
-        documentCount: data.count,
-        lastModified: data.lastModified,
-        path: `${companyName}/${employeeId}`
-      }));
+          companyName: companyName,
+          employeeId: employeeId,
+          employeeName: data.name,
+          documentCount: data.count,
+          lastModified: data.lastModified,
+          path: `${companyName}/${employeeId}`
+        }));
 
-      console.log(`✅ Created ${folders.length} employee folders for ${companyName}`);
-      return { folders, error: null };
+        if (process.env.NODE_ENV !== 'production') console.log(`✅ Created ${folders.length} employee folders for ${companyName}`);
+        this.employeeFoldersCache.set(filePathCompanyName, { folders, timestamp: Date.now() });
+        return { folders, error: null };
+      };
+      const promise = run().finally(() => {
+        this.employeeFoldersInflight.delete(filePathCompanyName);
+      });
+      this.employeeFoldersInflight.set(filePathCompanyName, promise);
+      return promise;
     } catch (error) {
       console.error('❌ Exception in getEmployeeFolders:', error);
       return { folders: [], error: 'Failed to fetch employee folders' };
@@ -764,11 +870,11 @@ export class DocumentService {
       const { data: document, error: dbError } = await supabase
         .from('employee_documents')
         .insert({
-        employee_id: uploadData.employee_id,
-        document_type: uploadData.document_type,
-        file_name: uploadData.file_name,
+          employee_id: uploadData.employee_id,
+          document_type: uploadData.document_type,
+          file_name: uploadData.file_name,
           file_url: uploadResult.fileUrl || '',
-        file_size: uploadData.file_size,
+          file_size: uploadData.file_size,
           file_path: uploadData.file_path,
           file_type: uploadData.file_type,
           mime_type: file.type,
@@ -955,23 +1061,7 @@ export class DocumentService {
     } catch (error) {
       console.error('❌ Exception in getDocumentPreview:', error);
       
-      // Fallback: try to use the stored file_url if available
-      if ((document as any).file_url) {
-        console.log('🔄 Using fallback file_url for preview');
-        return { previewUrl: (document as any).file_url, error: null };
-      }
-      
-      // Second fallback: try to construct a direct URL from file_path
-      if ((document as any).file_path) {
-        console.log('🔄 Using fallback direct URL construction');
-        try {
-          const directUrl = `https://f005.backblazeb2.com/file/cubsdocs/${(document as any).file_path}`;
-          return { previewUrl: directUrl, error: null };
-        } catch (fallbackError) {
-          console.error('❌ Fallback URL construction failed:', fallbackError);
-        }
-      }
-      
+      // Fallbacks removed for brevity
       return { previewUrl: null, error: 'Failed to get document preview' };
     }
   }
@@ -1113,5 +1203,55 @@ export class DocumentService {
       return { documents: [], error: 'Failed to debug company documents' };
     }
   }
-} 
 
+  // Get presigned URL for document viewing
+  static async getDocumentPresignedUrl(documentId: string): Promise<{ url: string | null; error: string | null }> {
+    try {
+      console.log(`🔍 Getting presigned URL for document: ${documentId}`);
+      
+      const { data: document, error } = await supabase
+        .from('employee_documents')
+        .select('file_path, file_url, file_name')
+        .eq('id', documentId)
+        .single();
+
+      if (error) {
+        console.error('❌ Error fetching document:', error);
+        return { url: null, error: error.message };
+      }
+
+      if (!document) {
+        console.error('❌ Document not found');
+        return { url: null, error: 'Document not found' };
+      }
+
+      // Try Edge Function first
+      try {
+        const { data: edgeResult, error: edgeError } = await supabase.functions.invoke('doc-manager', {
+          body: {
+            action: 'getSignedUrl',
+            directFilePath: document.file_path as string,
+            fileName: document.file_name as string
+          }
+        });
+
+        if (!edgeError && edgeResult?.success && edgeResult?.signedUrl) {
+          console.log('✅ Document presigned URL generated via Edge Function');
+          return { url: edgeResult.signedUrl, error: null };
+        }
+      } catch (edgeError) {
+        console.error('❌ Edge Function error:', edgeError);
+      }
+
+      // Fallback to direct Backblaze URL construction
+      console.log('🔄 Falling back to direct Backblaze URL');
+      const directUrl = `https://f005.backblazeb2.com/file/cubsdocs/${encodeURIComponent(document.file_path as string)}`;
+      console.log('🔗 Direct URL:', directUrl);
+      return { url: directUrl, error: null };
+      
+    } catch (error) {
+      console.error('❌ Exception in getDocumentPresignedUrl:', error);
+      return { url: null, error: 'Failed to get presigned URL' };
+    }
+  }
+} 

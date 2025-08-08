@@ -101,7 +101,7 @@ export default function SettingsPage() {
   ];
 
   const renderProfileTab = () => (
-    <div className="space-y-6">
+          <div className="space-y-6">
       {/* Profile Picture Section */}
       <div className="flex items-center space-x-4">
         <div className="relative">
@@ -113,14 +113,14 @@ export default function SettingsPage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <User className="w-10 h-10 text-gray-500" />
+          <User className="w-10 h-10 text-gray-500" />
             )}
           </div>
           <button className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 transition-colors">
             <Camera className="w-4 h-4" />
           </button>
         </div>
-        <div>
+            <div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile Picture</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload a new photo</p>
         </div>
@@ -129,7 +129,7 @@ export default function SettingsPage() {
       {/* Profile Information */}
       <div className="space-y-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile Information</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Input 
             label="First Name" 
             placeholder="Enter your first name"
@@ -155,58 +155,58 @@ export default function SettingsPage() {
             value={profileData.phone}
             onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
           />
-        </div>
-      </div>
+            </div>
+          </div>
 
       {/* Security Section */}
-      <div className="space-y-4">
+              <div className="space-y-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Security</h3>
         
         {/* Change Password */}
         <div className="space-y-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
           <h4 className="font-medium text-gray-900 dark:text-white">Change Password</h4>
-          
-          <div className="relative">
-            <Input
-              label="Current Password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="Enter current password"
-              icon={<Key className="w-4 h-4" />}
+        
+                    <div className="relative">
+                      <Input
+                        label="Current Password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter current password"
+            icon={<Key className="w-4 h-4" />}
               value={securityData.currentPassword}
               onChange={(e) => setSecurityData(prev => ({ ...prev, currentPassword: e.target.value }))}
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
 
-          <div className="relative">
-            <Input
-              label="New Password"
-              type={showNewPassword ? 'text' : 'password'}
-              placeholder="Enter new password"
-              icon={<Key className="w-4 h-4" />}
+                    <div className="relative">
+                      <Input
+                        label="New Password"
+                        type={showNewPassword ? 'text' : 'password'}
+                        placeholder="Enter new password"
+            icon={<Key className="w-4 h-4" />}
               value={securityData.newPassword}
               onChange={(e) => setSecurityData(prev => ({ ...prev, newPassword: e.target.value }))}
-            />
-            <button
-              type="button"
-              onClick={() => setShowNewPassword(!showNewPassword)}
-              className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
-            >
-              {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPassword(!showNewPassword)}
+            className="absolute right-3 top-8 text-gray-400 hover:text-gray-600"
+                      >
+                        {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
 
-          <Input
-            label="Confirm New Password"
-            type="password"
-            placeholder="Confirm new password"
-            icon={<Key className="w-4 h-4" />}
+        <Input
+          label="Confirm New Password"
+          type="password"
+          placeholder="Confirm new password"
+          icon={<Key className="w-4 h-4" />}
             value={securityData.confirmPassword}
             onChange={(e) => setSecurityData(prev => ({ ...prev, confirmPassword: e.target.value }))}
           />
@@ -302,7 +302,7 @@ export default function SettingsPage() {
           value={companyData.address}
           onChange={(e) => setCompanyData(prev => ({ ...prev, address: e.target.value }))}
         />
-      </div>
+                  </div>
 
       {/* Default Settings */}
       <div className="space-y-4">
@@ -329,23 +329,23 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="flex justify-end">
+            <div className="flex justify-end">
         <Button onClick={() => toast.success('Company settings updated successfully!')} disabled={isLoading}>
           <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'Saving...' : 'Save Changes'}
         </Button>
-      </div>
-    </div>
-  );
+            </div>
+          </div>
+        );
 
   const renderNotificationsTab = () => (
-    <div className="space-y-6">
+          <div className="space-y-6">
       {/* Notification Toggle */}
       <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-        <div>
+            <div>
           <h3 className="text-lg font-medium text-gray-900 dark:text-white">Visa Expiry Notifications</h3>
           <p className="text-sm text-gray-600 dark:text-gray-400">Enable automated visa expiry alerts</p>
-        </div>
+                  </div>
         <button
           onClick={() => setNotificationSettings(prev => ({ ...prev, enabled: !prev.enabled }))}
           className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -356,10 +356,10 @@ export default function SettingsPage() {
         >
           {notificationSettings.enabled ? 'Enabled' : 'Disabled'}
         </button>
-      </div>
+                </div>
 
       {/* Notification Schedule */}
-      <div className="space-y-4">
+              <div className="space-y-4">
         <h3 className="text-lg font-medium text-gray-900 dark:text-white">Notification Schedule</h3>
         <p className="text-sm text-gray-600 dark:text-gray-400">Choose when to receive visa expiry alerts</p>
         
@@ -427,16 +427,16 @@ export default function SettingsPage() {
             Use {'{employee_name}'} and {'{expiry_date}'} as placeholders
           </p>
         </div>
-      </div>
+                </div>
 
       <div className="flex justify-end">
         <Button onClick={() => toast.success('Notification settings updated successfully!')} disabled={isLoading}>
           <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'Saving...' : 'Save Changes'}
-        </Button>
-      </div>
-    </div>
-  );
+                  </Button>
+            </div>
+          </div>
+        );
 
   const renderSystemTab = () => (
     <div className="space-y-6">

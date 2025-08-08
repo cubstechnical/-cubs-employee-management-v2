@@ -64,21 +64,22 @@ export async function DELETE(
 ) {
   return withAdminAuth(request, async (req) => {
     try {
-      const success = await EmployeeService.deleteEmployee(params.id);
+      const result = await EmployeeService.deleteEmployee(params.id);
 
-      if (!success) {
+      if (!result.success) {
         return NextResponse.json(
-          { error: 'Employee not found or delete failed' },
+          { error: result.error || 'Employee not found or delete failed' },
           { status: 404 }
         );
       }
 
       return NextResponse.json({
         success: true,
-        message: 'Employee deleted successfully',
+        message: `Employee deleted successfully${result.deletedDocuments ? ` along with ${result.deletedDocuments} documents` : ''}`,
+        deletedDocuments: result.deletedDocuments || 0
       });
     } catch (error) {
       return handleApiError(error);
     }
   });
-} 
+}

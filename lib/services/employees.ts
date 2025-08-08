@@ -105,6 +105,10 @@ export interface DashboardFilters {
 }
 
 export class EmployeeService {
+  // In-memory cache and dedupe for employee lists
+  private static employeesCache: Map<string, { data: PaginatedEmployeesResponse; timestamp: number }> = new Map();
+  private static employeesInflight: Map<string, Promise<PaginatedEmployeesResponse>> = new Map();
+  private static readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
   // Helper function to calculate visa status based on expiry dates
   static calculateVisaStatus(employee: any): string {
     if (!employee.visa_expiry_date) return 'unknown';
@@ -139,29 +143,56 @@ export class EmployeeService {
     return employees.map(employee => ({
       ...employee,
       visa_status: this.calculateVisaStatus(employee),
-      status: this.calculateEmployeeStatus(employee)
+      status: this.calculateEmployeeStatus(employee),
+      // Ensure visa_expiry_date is properly mapped
+      visa_expiry_date: employee.visa_expiry_date || employee.visa_expiry || null,
+      // Map other fields for consistency
+      mobile_number: employee.mobile_number || employee.phone || null,
+      email_id: employee.email_id || employee.email || null,
+      basic_salary: employee.basic_salary || employee.salary || null
     }));
   }
 
   // Generate unique employee ID based on company and employee name
   static async generateEmployeeId(companyName: string, employeeName: string): Promise<string> {
     try {
+      // Special handling for AL ASHBAL AJMAN
+      if (companyName === 'AL ASHBAL AJMAN') {
+        return await this.generateAshbalEmployeeId();
+      }
+      
       // Generate company prefix
       const companyPrefix = this.generateCompanyPrefix(companyName);
       
-      // Get existing employee count for this company
-      const { count, error } = await supabase
+      // Get existing employees for this company to find the highest number
+      const { data: existingEmployees, error } = await supabase
         .from('employee_table')
-        .select('*', { count: 'exact', head: true })
+        .select('employee_id')
         .eq('company_name', companyName);
 
       if (error) {
-        console.error('Error getting employee count:', error);
+        console.error('Error getting existing employees:', error);
         // Fallback to timestamp-based ID
         return `${companyPrefix}${Date.now().toString().slice(-4)}`;
       }
 
-      const nextNumber = (count || 0) + 1;
+      // Find the highest employee number for this company
+      let maxNumber = 0;
+      if (existingEmployees && existingEmployees.length > 0) {
+        existingEmployees.forEach(emp => {
+          const employeeId = emp.employee_id as string;
+          if (employeeId && employeeId.startsWith(companyPrefix)) {
+            // Extract the number part after the prefix
+            const numberPart = employeeId.substring(companyPrefix.length);
+            const number = parseInt(numberPart);
+            if (!isNaN(number) && number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        });
+      }
+
+      const nextNumber = maxNumber + 1;
       const paddedNumber = nextNumber.toString().padStart(3, '0');
       
       return `${companyPrefix}${paddedNumber}`;
@@ -172,6 +203,45 @@ export class EmployeeService {
     }
   }
 
+  // Special method for AL ASHBAL AJMAN employee IDs
+  private static async generateAshbalEmployeeId(): Promise<string> {
+    try {
+      const { data: existingEmployees, error } = await supabase
+        .from('employee_table')
+        .select('employee_id')
+        .eq('company_name', 'AL ASHBAL AJMAN');
+
+      if (error) {
+        console.error('Error getting AL ASHBAL employees:', error);
+        return `AL ASHBAL ${Date.now().toString().slice(-3)}`;
+      }
+
+      // Find the highest employee number
+      let maxNumber = 0;
+      if (existingEmployees && existingEmployees.length > 0) {
+        existingEmployees.forEach(emp => {
+          const employeeId = emp.employee_id as string;
+          if (employeeId && employeeId.startsWith('AL ASHBAL ')) {
+            // Extract the number part after "AL ASHBAL "
+            const numberPart = employeeId.substring('AL ASHBAL '.length);
+            const number = parseInt(numberPart);
+            if (!isNaN(number) && number > maxNumber) {
+              maxNumber = number;
+            }
+          }
+        });
+      }
+
+      const nextNumber = maxNumber + 1;
+      const paddedNumber = nextNumber.toString().padStart(3, '0');
+      
+      return `AL ASHBAL ${paddedNumber}`;
+    } catch (error) {
+      console.error('Error generating AL ASHBAL employee ID:', error);
+      return `AL ASHBAL ${Date.now().toString().slice(-3)}`;
+    }
+  }
+
   // Generate company prefix from company name
   static generateCompanyPrefix(companyName: string): string {
     const prefixMap: { [key: string]: string } = {
@@ -179,14 +249,23 @@ export class EmployeeService {
       'AL HANA TOURS': 'ALHT',
       'ALHT': 'ALHT',
       'EMP_ALHT': 'ALHT',
-      'COMPANY_DOCS': 'COMP'
+      'COMPANY_DOCS': 'COMP',
+      'AL ASHBAL AJMAN': 'AL ASHBAL',
+      'ASHBAL AL KHALEEJ': 'AAK',
+      'CUBS CONTRACTING': 'CUBC',
+      'CUBS CONTRACTING & SERVICES W L L': 'CUBC',
+      'FLUID': 'FES',
+      'RUKIN': 'RUKIN',
+      'GOLDEN CUBS': 'GCGC',
+      'AL MACEN': 'ALMAC',
+      'CUBS': 'CUB',
+      'CUBS TECH': 'CTECH'
     };
 
     // Check for exact match first
     if (prefixMap[companyName]) {
       return prefixMap[companyName];
     }
-
     // Generate prefix from company name
     const words = companyName
       .replace(/[&]/g, 'and')
@@ -219,17 +298,29 @@ export class EmployeeService {
         }
       }
 
-      // Check if employee ID already exists
-      const { data: existingEmployee } = await supabase
-        .from('employee_table')
-        .select('employee_id')
-        .eq('employee_id', employeeData.employee_id)
-        .single();
+      // Check if employee ID already exists and generate a new one if needed
+      let attempts = 0;
+      const maxAttempts = 5;
+      
+      while (attempts < maxAttempts) {
+        const { data: existingEmployee } = await supabase
+          .from('employee_table')
+          .select('employee_id')
+          .eq('employee_id', employeeData.employee_id)
+          .single();
 
-      if (existingEmployee) {
+        if (!existingEmployee) {
+          break; // ID is unique, proceed
+        }
+
         // If ID exists, generate a new one
         const newId = await this.generateEmployeeId(employeeData.company_name, employeeData.name);
         employeeData.employee_id = newId;
+        attempts++;
+      }
+
+      if (attempts >= maxAttempts) {
+        return { success: false, error: 'Unable to generate unique employee ID after multiple attempts' };
       }
 
       // Insert employee data
@@ -238,7 +329,7 @@ export class EmployeeService {
         .insert({
           employee_id: employeeData.employee_id,
           name: employeeData.name,
-          dob: employeeData.dob,
+          date_of_birth: employeeData.dob,
           trade: employeeData.trade,
           nationality: employeeData.nationality,
           joining_date: employeeData.joining_date,
@@ -251,7 +342,7 @@ export class EmployeeService {
           eid: employeeData.eid || null,
           wcc: employeeData.wcc || null,
           lulu_wps_card: employeeData.lulu_wps_card || null,
-          salary: employeeData.basic_salary ? parseInt(employeeData.basic_salary) : null,
+          basic_salary: employeeData.basic_salary ? parseFloat(employeeData.basic_salary) : null,
           company_name: employeeData.company_name,
           status: employeeData.status || 'active',
           is_active: employeeData.is_active !== false,
@@ -281,6 +372,15 @@ export class EmployeeService {
     filters?: EmployeeFilters
   ): Promise<PaginatedEmployeesResponse> {
     try {
+      const cacheKey = JSON.stringify({ p: pagination, f: filters || {} });
+      const cached = this.employeesCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION_MS) {
+        return cached.data;
+      }
+      const inflight = this.employeesInflight.get(cacheKey);
+      if (inflight) return inflight;
+
+      const run = async (): Promise<PaginatedEmployeesResponse> => {
       // Real Supabase query
       let query = supabase
         .from('employee_table')
@@ -357,7 +457,7 @@ export class EmployeeService {
       const total = count || 0;
       const totalPages = Math.ceil(total / pagination.pageSize);
 
-      return {
+      const response: PaginatedEmployeesResponse = {
         employees: (employees || []) as unknown as Employee[],
         total,
         page: pagination.page,
@@ -365,6 +465,14 @@ export class EmployeeService {
         totalPages,
         error: null
       };
+      this.employeesCache.set(cacheKey, { data: response, timestamp: Date.now() });
+      return response;
+      };
+      const promise = run().finally(() => {
+        this.employeesInflight.delete(cacheKey);
+      });
+      this.employeesInflight.set(cacheKey, promise);
+      return promise;
     } catch (error) {
       console.error('Error fetching employees:', error);
       return {
@@ -468,21 +576,78 @@ export class EmployeeService {
     }
   }
 
-  static async deleteEmployee(employeeId: string): Promise<boolean> {
+  static async deleteEmployee(employeeId: string): Promise<{ success: boolean; error?: string; deletedDocuments?: number }> {
     try {
+      console.log(`🗑️ Starting deletion of employee: ${employeeId}`);
+      
+      // Step 1: Find all documents for this employee
+      const { data: documents, error: docError } = await supabase
+        .from('employee_documents')
+        .select('*')
+        .eq('employee_id', employeeId);
+
+      if (docError) {
+        console.error('Error fetching employee documents:', docError);
+        return { success: false, error: docError.message };
+      }
+
+      let deletedDocuments = 0;
+
+      // Step 2: Delete documents from Backblaze (if any)
+      if (documents && documents.length > 0) {
+        console.log(`🗂️ Deleting ${documents.length} documents for employee ${employeeId}`);
+        
+        // Import BackblazeService dynamically
+        const { BackblazeService } = await import('./backblaze');
+        
+        for (const doc of documents) {
+          try {
+            if (doc.file_path && typeof doc.file_path === 'string' && doc.file_path.trim() !== '') {
+              const deleteResult = await BackblazeService.deleteFile(doc.file_path);
+              if (deleteResult.success) {
+                console.log(`✅ Deleted from Backblaze: ${doc.file_name}`);
+              } else {
+                console.log(`⚠️ Failed to delete from Backblaze: ${doc.file_name} - ${deleteResult.error || 'Unknown error'}`);
+              }
+            } else {
+              console.log(`⚠️ Skipping document with invalid file_path: ${doc.file_name}`);
+            }
+          } catch (error) {
+            console.log(`⚠️ Error deleting from Backblaze: ${doc.file_name} - ${error instanceof Error ? error.message : 'Unknown error'}`);
+          }
+        }
+
+        // Step 3: Delete documents from database
+        const { error: deleteDocsError } = await supabase
+          .from('employee_documents')
+          .delete()
+          .eq('employee_id', employeeId);
+
+        if (deleteDocsError) {
+          console.error('Error deleting documents from database:', deleteDocsError);
+          return { success: false, error: deleteDocsError.message };
+        }
+
+        deletedDocuments = documents.length;
+        console.log(`✅ Successfully deleted ${deletedDocuments} documents from database`);
+      }
+
+      // Step 4: Delete employee from database
       const { error } = await supabase
         .from('employee_table')
         .delete()
         .eq('employee_id', employeeId);
 
       if (error) {
-        throw new Error(error.message);
+        console.error('Error deleting employee from database:', error);
+        return { success: false, error: error.message };
       }
 
-      return true;
+      console.log(`✅ Successfully deleted employee: ${employeeId}`);
+      return { success: true, deletedDocuments };
     } catch (error) {
       console.error('Error deleting employee:', error);
-      return false;
+      return { success: false, error: error instanceof Error ? error.message : 'Failed to delete employee' };
     }
   }
 
@@ -519,7 +684,7 @@ export class EmployeeService {
         .not('visa_status', 'is', null);
 
       return {
-        companies: Array.from(new Set(companies?.map(c => c.company_name as string) || [])).sort(),
+        companies: Array.from(new Set(companies?.map(c => c.company_name as string) || [])).sort().filter(company => company !== 'Company Documents'),
         trades: Array.from(new Set(trades?.map(t => t.trade as string) || [])).sort(),
         nationalities: Array.from(new Set(nationalities?.map(n => n.nationality as string) || [])).sort(),
         statuses: ['active', 'inactive', 'pending', 'suspended'], // Use standard status values

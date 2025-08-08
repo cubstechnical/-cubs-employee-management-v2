@@ -29,7 +29,7 @@ export default function ResetPassword() {
     confirmPassword: ''
   });
 
-  const token = searchParams.get('token');
+  const token = searchParams?.get('token') || '';
 
   useEffect(() => {
     if (!token) {

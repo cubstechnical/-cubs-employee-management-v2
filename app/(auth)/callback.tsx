@@ -24,8 +24,8 @@ export default function Callback() {
 
   const handleCallback = async () => {
     try {
-      const urlError = searchParams.get('error');
-      const errorDescription = searchParams.get('error_description');
+      const urlError = searchParams?.get('error') || null;
+      const errorDescription = searchParams?.get('error_description') || null;
 
       if (urlError) {
         setStatus('error');

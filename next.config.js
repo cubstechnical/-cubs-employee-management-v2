@@ -15,6 +15,25 @@ const nextConfig = {
     B2_ENDPOINT: process.env.B2_ENDPOINT,
     B2_BUCKET_ID: process.env.B2_BUCKET_ID,
   },
+  webpack: (config, { isServer }) => {
+    // Ignore optional native deps used by ws in Node, not needed for Next builds
+    config.externals = config.externals || [];
+    // For server builds, mark as externals false via fallback so bundler won't try to resolve
+    config.resolve.fallback = {
+      ...(config.resolve.fallback || {}),
+      bufferutil: false,
+      'utf-8-validate': false,
+    };
+
+    // Also alias to false to be extra safe
+    config.resolve.alias = {
+      ...(config.resolve.alias || {}),
+      bufferutil: false,
+      'utf-8-validate': false,
+    };
+
+    return config;
+  },
 }
 
 module.exports = nextConfig 

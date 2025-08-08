@@ -5,19 +5,19 @@ import { useParams, useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { 
   ArrowLeft,
   Edit,
   Trash2,
-  Download,
-  Eye,
+  Save,
+  X,
   Calendar,
   MapPin,
   Phone,
   Mail,
   Building2,
   User,
-  FileText,
   AlertTriangle,
   CheckCircle,
   Clock
@@ -30,11 +30,14 @@ import toast from 'react-hot-toast';
 export default function EmployeeDetail() {
   const params = useParams();
   const router = useRouter();
+  // derive employeeId safely
+  const employeeId = typeof params?.id === 'string' ? decodeURIComponent(params.id) : Array.isArray(params?.id) ? decodeURIComponent(params!.id[0]) : '';
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
-
-  const employeeId = params.id as string;
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [editData, setEditData] = useState<Partial<Employee>>({});
 
   useEffect(() => {
     if (employeeId) {
@@ -54,6 +57,7 @@ export default function EmployeeDetail() {
       }
 
       setEmployee(emp.employee);
+      setEditData(emp.employee || {});
     } catch (error) {
       toast.error('Failed to load employee details');
       router.push('/employees');
@@ -62,22 +66,91 @@ export default function EmployeeDetail() {
     }
   };
 
+  const handleEdit = () => {
+    setIsEditing(true);
+    setEditData(employee || {});
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditData(employee || {});
+  };
+
+  const handleSave = async () => {
+    if (!employee || !editData) return;
+
+    setSaving(true);
+    try {
+      // Call the employee service to update the employee
+      const updatedEmployee = await EmployeeService.updateEmployee({
+        employee_id: employee.employee_id,
+        ...editData
+      });
+      
+      if (updatedEmployee) {
+        toast.success('Employee updated successfully');
+        setEmployee(updatedEmployee);
+        setIsEditing(false);
+        // Reload to get enhanced data
+        await loadEmployee();
+      } else {
+        toast.error('Failed to update employee');
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      toast.error('Failed to update employee');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFieldChange = (field: keyof Employee, value: any) => {
+    setEditData(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+
+  const renderField = (label: string, fieldKey: keyof Employee, type: 'text' | 'date' | 'email' | 'tel' = 'text', readonly = false) => {
+    const value = isEditing ? editData[fieldKey] || '' : employee?.[fieldKey] || '';
+    const displayValue = type === 'date' && value ? formatDate(new Date(value as string)) : value;
+
+    return (
+      <div>
+        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</label>
+        {isEditing && !readonly ? (
+          <Input
+            type={type}
+            value={String(editData[fieldKey] || '')}
+            onChange={(e) => handleFieldChange(fieldKey, e.target.value)}
+            className="w-full"
+          />
+        ) : (
+          <p className="text-gray-900 dark:text-white">{displayValue || 'N/A'}</p>
+        )}
+      </div>
+    );
+  };
+
   const handleDelete = async () => {
     if (!employee) return;
 
-    if (!confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone.`)) {
+    if (!confirm(`Are you sure you want to delete ${employee.name}? This action cannot be undone and will also delete all associated documents.`)) {
       return;
     }
 
     setDeleting(true);
     try {
-      const success = await EmployeeService.deleteEmployee(employeeId);
+      const result = await EmployeeService.deleteEmployee(employeeId);
       
-      if (success) {
-        toast.success('Employee deleted successfully');
+      if (result.success) {
+        const message = result.deletedDocuments 
+          ? `Employee deleted successfully along with ${result.deletedDocuments} documents`
+          : 'Employee deleted successfully';
+        toast.success(message);
         router.push('/employees');
       } else {
-        toast.error('Failed to delete employee');
+        toast.error(result.error || 'Failed to delete employee');
       }
     } catch (error) {
       toast.error('Failed to delete employee');
@@ -209,29 +282,46 @@ export default function EmployeeDetail() {
             </div>
           </div>
           <div className="flex items-center space-x-3">
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/admin/employees/${employeeId}/edit`)}
-              icon={<Edit className="w-4 h-4" />}
-            >
-              Edit
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/admin/employees/${employeeId}/documents`)}
-              icon={<FileText className="w-4 h-4" />}
-            >
-              Documents
-            </Button>
-            <Button
-              variant="danger"
-              onClick={handleDelete}
-              loading={deleting}
-              disabled={deleting}
-              icon={<Trash2 className="w-4 h-4" />}
-            >
-              Delete
-            </Button>
+            {!isEditing ? (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleEdit}
+                  icon={<Edit className="w-4 h-4" />}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleDelete}
+                  loading={deleting}
+                  disabled={deleting}
+                  icon={<Trash2 className="w-4 h-4" />}
+                >
+                  Delete
+                </Button>
+              </>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  onClick={handleSave}
+                  loading={saving}
+                  disabled={saving}
+                  icon={<Save className="w-4 h-4" />}
+                >
+                  Save
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={handleCancelEdit}
+                  disabled={saving}
+                  icon={<X className="w-4 h-4" />}
+                >
+                  Cancel
+                </Button>
+              </>
+            )}
           </div>
         </div>
 
@@ -242,32 +332,12 @@ export default function EmployeeDetail() {
             <Card>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Basic Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Full Name</label>
-                  <p className="text-gray-900 dark:text-white">{employee.name || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Employee ID</label>
-                  <p className="text-gray-900 dark:text-white">{employee.employee_id}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Date of Birth</label>
-                  <p className="text-gray-900 dark:text-white">
-                    {employee.dob ? formatDate(employee.dob) : 'N/A'}
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nationality</label>
-                  <p className="text-gray-900 dark:text-white">{employee.nationality || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Trade</label>
-                  <p className="text-gray-900 dark:text-white">{employee.trade || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company</label>
-                  <p className="text-gray-900 dark:text-white">{employee.company_name || 'N/A'}</p>
-                </div>
+                {renderField('Full Name', 'name')}
+                {renderField('Employee ID', 'employee_id', 'text', true)}
+                {renderField('Date of Birth', 'date_of_birth', 'date')}
+                {renderField('Nationality', 'nationality')}
+                {renderField('Trade', 'trade')}
+                {renderField('Company', 'company_name')}
               </div>
             </Card>
 
@@ -275,22 +345,10 @@ export default function EmployeeDetail() {
             <Card>
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">Contact Information</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email</label>
-                  <p className="text-gray-900 dark:text-white">{employee.email_id || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Mobile Number</label>
-                  <p className="text-gray-900 dark:text-white">{employee.mobile_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Home Phone</label>
-                  <p className="text-gray-900 dark:text-white">{employee.home_phone_number || 'N/A'}</p>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">EID</label>
-                  <p className="text-gray-900 dark:text-white">{employee.eid || 'N/A'}</p>
-                </div>
+                {renderField('Email', 'email_id', 'email')}
+                {renderField('Mobile Number', 'mobile_number', 'tel')}
+                {renderField('Home Phone', 'home_phone_number', 'tel')}
+                {renderField('EID', 'eid')}
               </div>
             </Card>
 
@@ -385,25 +443,11 @@ export default function EmployeeDetail() {
                 <Button
                   variant="outline"
                   className="w-full justify-start"
-                  onClick={() => router.push(`/admin/employees/${employeeId}/edit`)}
+                  onClick={handleEdit}
                   icon={<Edit className="w-4 h-4" />}
+                  disabled={isEditing}
                 >
                   Edit Employee
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  onClick={() => router.push(`/admin/employees/${employeeId}/documents`)}
-                  icon={<FileText className="w-4 h-4" />}
-                >
-                  View Documents
-                </Button>
-                <Button
-                  variant="outline"
-                  className="w-full justify-start"
-                  icon={<Download className="w-4 h-4" />}
-                >
-                  Export Data
                 </Button>
               </div>
             </Card>
@@ -412,5 +456,4 @@ export default function EmployeeDetail() {
       </div>
     </Layout>
   );
-} 
-
+}

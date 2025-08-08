@@ -22,7 +22,7 @@ const employeeSchema = z.object({
   job_title: z.string().min(1, 'Job title is required'),
   phone_number: z.string().optional(),
   hire_date: z.date({
-    required_error: 'Hire date is required',
+    message: 'Hire date is required',
   }),
   company_id: z.string().min(1, 'Company is required'),
   status: z.string().min(1, 'Status is required'),

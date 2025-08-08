@@ -11,6 +11,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 
 const loginSchema = z.object({
@@ -104,12 +105,9 @@ export default function LoginPage() {
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary-600 rounded-full mb-4">
-            <span className="text-2xl font-bold text-white">C</span>
+          <div className="flex justify-center mb-4">
+            <Logo size="xl" showText={true} />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-            CUBS Technical
-          </h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Employee Management Portal
           </p>

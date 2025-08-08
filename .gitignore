@@ -137,4 +137,10 @@ supabase/functions/**/.env
 
 # Cache directories
 .cache/
-.metro-cache/ 
+.metro-cache/
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

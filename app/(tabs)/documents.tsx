@@ -1,363 +1,356 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import Input from '@/components/ui/Input';
-import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { DocumentService, Document } from '@/lib/services/documents';
-import { EdgeFunctionService } from '@/lib/services/edgeFunctions';
-import { 
-  Folder, 
-  Search, 
-  Upload, 
-  MoreVertical,
-  Copy,
-  Scissors,
-  Trash2,
-  ChevronRight,
-  FileText,
-  Download,
-  Eye,
-  File,
-  FileImage,
-  FileVideo,
-  FileArchive,
-  Grid,
-  List,
-  Calendar
-} from 'lucide-react';
-import { DocumentGridSkeleton } from '@/components/ui/Skeleton';
-import toast from 'react-hot-toast';
-import { formatDate } from '@/utils/date';
-
-
-// Import UploadModal directly to avoid chunk loading issues
+import { Upload, Search, Folder, File, ChevronRight, Download, Eye, Trash2, MoreVertical, FileText, Image, FileImage, FileVideo, FileAudio, Archive } from 'lucide-react';
+import { DocumentService } from '@/lib/services/documents';
 import UploadModal from '@/components/documents/UploadModal';
+import toast from 'react-hot-toast';
 
-interface DocumentItem {
+interface Document {
   id: string;
-  name: string;
-  type: 'folder' | 'file';
-  size?: string;
-  modified: string;
-  path: string;
-  icon?: React.ReactNode;
-  documentCount?: number;
-  companyName?: string;
-  employeeId?: string;
-  employeeName?: string;
-  fileUrl?: string;
-  fileType?: string;
-  documentType?: string;
-  employee_id?: string;
-  file_size?: number;
-  uploaded_at?: string;
-  is_active?: boolean;
+  employee_id: string;
+  document_type: string;
+  file_name: string;
+  file_path: string;
+  file_url: string;
+  file_size: number;
+  file_type: string;
+  uploaded_at: string;
+  notes?: string;
 }
 
-interface BreadcrumbItem {
+interface FolderItem {
   name: string;
+  type: 'folder' | 'document';
+  employeeId?: string;
+  documentCount?: number;
   path: string;
+  file_size?: number;
+  file_url?: string;
+  document_id?: string;
+  file_type?: string;
 }
 
 export default function Documents() {
-  return (
-    <ProtectedRoute>
-      <DocumentsContent />
-    </ProtectedRoute>
-  );
-}
-
-function DocumentsContent() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [folders, setFolders] = useState<DocumentItem[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
+  const [items, setItems] = useState<FolderItem[]>([]);
   const [currentPath, setCurrentPath] = useState('/');
   const [loading, setLoading] = useState(true);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [currentView, setCurrentView] = useState<'folders' | 'documents'>('folders');
-  const [employeeNameMap, setEmployeeNameMap] = useState<Map<string, string>>(new Map());
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [loadingDocumentId, setLoadingDocumentId] = useState<string | null>(null);
+  const viewerRef = useRef<Window | null>(null);
+  const latestRequestIdRef = useRef(0);
+  const localCacheTTLms = 5 * 60 * 1000; // 5 minutes
 
-  // Enhanced debounce search term with better performance
-  const [isSearching, setIsSearching] = useState(false);
-
-  // Memoized expensive calculations
-  const filteredFolders = useMemo(() => {
-    if (!debouncedSearchTerm) return folders;
-    return folders.filter(folder => 
-      folder.name.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-    );
-  }, [folders, debouncedSearchTerm]);
-
-  const filteredDocuments = useMemo(() => {
-    if (!debouncedSearchTerm) return documents;
-    return documents.filter(doc => 
-      doc.file_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-      doc.document_type.toLowerCase().includes(debouncedSearchTerm.toLowerCase())
-    );
-  }, [documents, debouncedSearchTerm]);
-
-  // Memoized breadcrumbs with employee name mapping
-  const breadcrumbs = useMemo(() => {
-    const parts = currentPath.split('/').filter(Boolean);
-    const result = [{ name: 'Documents', path: '/' }];
-    
-    let currentPathBuilder = '';
-    parts.forEach((part, index) => {
-      currentPathBuilder += `/${part}`;
-      // For employee IDs (usually the second part), show the employee name if available
-      const displayName = (index === 1 && employeeNameMap.has(part)) 
-        ? employeeNameMap.get(part) 
-        : part;
-      result.push({ name: displayName || part, path: currentPathBuilder });
-    });
-    
-    return result;
-  }, [currentPath, employeeNameMap]);
-
-  // Handle URL path parameter for direct navigation
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const pathParam = urlParams.get('path');
-    
-    if (pathParam) {
-      setCurrentPath(pathParam);
-      // Clear the URL parameter after setting the path
-      const newUrl = new URL(window.location.href);
-      newUrl.searchParams.delete('path');
-      window.history.replaceState({}, '', newUrl.toString());
-    }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
-      setIsSearching(false);
-    }, 300);
-
-    setIsSearching(true);
-    return () => clearTimeout(timer);
-  }, [searchTerm]);
-
-  // Load items when path changes
   useEffect(() => {
     loadItems();
   }, [currentPath]);
 
-  // Search functionality
-  useEffect(() => {
-    if (debouncedSearchTerm) {
-      searchDocuments();
-    } else {
-      loadItems();
-    }
-  }, [debouncedSearchTerm]);
-
   const loadItems = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    
-    // Clear cache to ensure fresh data with employee names and Company Documents fix
-    DocumentService.clearCache();
-    
+    const requestId = ++latestRequestIdRef.current;
     try {
+      console.log('🔄 Loading items for path:', currentPath);
+      let showSpinner = true;
+      
       if (currentPath === '/') {
-        // Load both company folders and company-wide documents
-        
-        // Load root level folders (Company Documents and All Companies)
-        const { folders: allFolders, error: folderError } = await DocumentService.getDocumentFolders();
-        
-        if (folderError) {
-          console.error('❌ Error loading folders:', folderError);
-          setError(folderError);
+        // Try local cache first for root folders
+        const cacheKey = 'docs:root-folders';
+        if (typeof window !== 'undefined') {
+          const cached = window.localStorage.getItem(cacheKey);
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached) as { items: FolderItem[]; ts: number };
+              if (Date.now() - parsed.ts < localCacheTTLms) {
+                setItems(parsed.items);
+                showSpinner = false;
+              }
+            } catch {}
+          }
+        }
+        if (showSpinner) setLoading(true);
+        // Load company folders
+        const { folders, error } = await DocumentService.getDocumentFolders();
+        if (error) {
+          toast.error(error);
           return;
         }
 
-        // Show only company folders at root level (not employee folders or documents)
-        const rootFolders = allFolders.filter(folder => folder.type === 'company');
-
-        const folderItems: DocumentItem[] = rootFolders.map(folder => ({
-          id: folder.id,
+        const folderItems: FolderItem[] = folders
+          .filter(folder => folder.type === 'company')
+          .map(folder => ({
           name: folder.name,
-          type: 'folder' as const,
-          size: '', // No document count display
-          modified: folder.lastModified,
-          path: folder.path,
-          icon: getFolderIcon(folder.name, true),
-          documentCount: folder.documentCount,
-          companyName: folder.companyName
-        }));
-
-        setFolders(folderItems);
-        setDocuments([]); // No documents at root level - only folders
-        setCurrentView('folders');
+            type: 'folder',
+            path: `/${folder.companyName}`
+          }));
+        if (latestRequestIdRef.current === requestId) {
+          setItems(folderItems);
+          // Save to local cache
+          if (typeof window !== 'undefined') {
+            try { window.localStorage.setItem(cacheKey, JSON.stringify({ items: folderItems, ts: Date.now() })); } catch {}
+          }
+        }
       } else {
-        // Load documents for specific path (company or employee level)
+        // Load documents for current path
         const pathParts = currentPath.split('/').filter(Boolean);
-        console.log(`🔍 Loading items for path: ${currentPath} (parts: ${pathParts.join(', ')})`);
+        const companyName = pathParts[0];
         
         if (pathParts.length === 1) {
-          // Company level - show employee folders and company documents
-          const companyName = pathParts[0];
-          console.log(`🏢 Loading for company: ${companyName}`);
-          
-          // Special handling for Company Documents folder
-          if (companyName === 'Company Documents' || companyName === 'EMP_COMPANY_DOCS') {
-            console.log('📄 Loading Company Documents (all company documents)...');
-            const { documents: companyDocs, error: docError } = await DocumentService.getCompanyDocuments();
-            
-            if (docError) {
-              console.error('❌ Error loading company documents:', docError);
-              setError(docError);
+          // Company level - show employee folders or documents
+                     if (companyName === 'Company Documents') {
+             // For Company Documents, show documents directly
+             const { documents, error } = await DocumentService.getCompanyDocuments(); // No company name to get all company documents
+             if (error) {
+               toast.error(error);
               return;
             }
 
-            setDocuments(companyDocs || []);
-            setFolders([]);
-            setCurrentView('documents');
-            console.log(`📄 Loaded ${companyDocs?.length || 0} company documents`);
+            const documentItems: FolderItem[] = documents.map(doc => ({
+              name: doc.file_name,
+              type: 'document',
+              path: doc.file_path,
+              file_size: doc.file_size,
+              file_url: doc.file_url,
+              document_id: doc.id,
+              file_type: doc.file_type
+            }));
+            if (latestRequestIdRef.current === requestId) {
+              setItems(documentItems);
+            }
           } else {
-            // For other companies, show ONLY employee folders (no documents mixed in)
-            const { folders: employeeFolders, error: folderError } = await DocumentService.getEmployeeFolders(companyName);
-            if (folderError) {
-              console.error('❌ Error loading employee folders:', folderError);
-              setError(folderError);
+            // For other companies, show employee folders
+            // Try per-company local cache first
+            const cacheKey = `docs:company:${companyName}`;
+            if (typeof window !== 'undefined') {
+              const cached = window.localStorage.getItem(cacheKey);
+              if (cached) {
+                try {
+                  const parsed = JSON.parse(cached) as { items: FolderItem[]; ts: number };
+                  if (Date.now() - parsed.ts < localCacheTTLms) {
+                    setItems(parsed.items);
+                    showSpinner = false;
+                  }
+                } catch {}
+              }
+            }
+            if (showSpinner) setLoading(true);
+
+            const { folders, error } = await DocumentService.getEmployeeFolders(companyName);
+            if (error) {
+              toast.error(error);
               return;
             }
 
-            console.log(`📁 Found ${employeeFolders?.length || 0} employee folders for ${companyName}`);
-
-            // Create folder items for employees and update name mapping
-            const folderItems: DocumentItem[] = (employeeFolders || []).map(folder => {
-              console.log('🔍 Creating folder item:', {
-                id: folder.id,
-                name: folder.name,
-                employeeId: folder.employeeId,
-                employeeName: folder.employeeName
-              });
-              return {
-                id: folder.id,
-                name: folder.name,
-                type: 'folder' as const,
-                size: '', // Remove document count display
-                modified: folder.lastModified,
-                path: folder.path,
-                icon: getFolderIcon(folder.name, false),
-                documentCount: folder.documentCount,
-                employeeId: folder.employeeId,
-                employeeName: folder.employeeName
-              };
-            });
-
-            // Update employee name mapping for breadcrumbs
-            const newNameMap = new Map(employeeNameMap);
-            employeeFolders?.forEach(folder => {
-              if (folder.employeeId && folder.employeeName) {
-                newNameMap.set(folder.employeeId, folder.employeeName);
+            const folderItems: FolderItem[] = folders
+              .filter(folder => folder.type === 'employee')
+              .map(folder => ({
+                name: folder.employeeName || folder.name,
+                type: 'folder',
+              employeeId: folder.employeeId,
+                path: `${currentPath}/${folder.employeeId}`
+            }));
+            if (latestRequestIdRef.current === requestId) {
+              setItems(folderItems);
+              if (typeof window !== 'undefined') {
+                try { window.localStorage.setItem(cacheKey, JSON.stringify({ items: folderItems, ts: Date.now() })); } catch {}
               }
-            });
-            setEmployeeNameMap(newNameMap);
-
-            setFolders(folderItems);
-            setDocuments([]); // No documents at company level
-            setCurrentView('folders'); // Always show folders at company level
-            console.log(`🏢 Loaded ${folderItems.length} employee folders for ${companyName}`);
+            }
           }
-        } else if (pathParts.length === 2) {
-          // Employee level - show employee documents
-          const companyName = pathParts[0];
+        } else {
+          // Employee level - show documents
           const employeeId = pathParts[1];
-          
-          console.log(`📄 Loading documents for employee: ${employeeId} in company: ${companyName}`);
-          const { documents: employeeDocs, error: docError } = await DocumentService.getEmployeeDocuments(companyName, employeeId);
-          
-          if (docError) {
-            console.error('❌ Error loading employee documents:', docError);
-            setError(docError);
-            setDocuments([]);
+          if (items.length > 0) showSpinner = false;
+          if (showSpinner) setLoading(true);
+          const { documents, error } = await DocumentService.getDocumentsForEmployee(employeeId);
+          if (error) {
+            toast.error(error);
             return;
           }
 
-          setDocuments(employeeDocs || []);
-          setFolders([]);
-          setCurrentView('documents');
-          console.log(`📄 Loaded ${employeeDocs?.length || 0} documents for employee ${employeeId}`);
+          const documentItems: FolderItem[] = documents.map(doc => ({
+            name: doc.file_name,
+            type: 'document',
+            path: doc.file_path,
+            file_size: doc.file_size,
+            file_url: doc.file_url,
+            document_id: doc.id,
+            file_type: doc.file_type
+          }));
+          if (latestRequestIdRef.current === requestId) {
+            setItems(documentItems);
+          }
         }
       }
     } catch (error) {
-      console.error('❌ Error loading items:', error);
-      setError('Failed to load items');
+      console.error('Error loading items:', error);
+      toast.error('Failed to load documents');
     } finally {
-      setLoading(false);
+      if (latestRequestIdRef.current === requestId) {
+        setLoading(false);
+      }
     }
   }, [currentPath]);
 
-  const searchDocuments = useCallback(async () => {
-    setLoading(true);
-    setError(null);
+  const handleItemClick = (item: FolderItem) => {
+    if (item.type === 'folder') {
+      setCurrentPath(item.path);
+    }
+    // Document clicks are handled by action buttons
+  };
+
+  const handleDocumentAction = async (action: 'view' | 'download' | 'delete', item: FolderItem) => {
+    if (!item.document_id) {
+      toast.error('Document ID not available');
+      return;
+    }
+
+    setLoadingDocumentId(item.document_id);
 
     try {
-      const { documents: searchResults, error: searchError } = await DocumentService.getDocuments({
-        file_path: debouncedSearchTerm
-      });
-
-      if (searchError) {
-        setError(searchError);
-        return;
+      switch (action) {
+        case 'view':
+          if (item.document_id) {
+            // Ensure a persistent named window is opened synchronously to keep user gesture
+            if (typeof window !== 'undefined') {
+              if (!viewerRef.current || viewerRef.current.closed) {
+                viewerRef.current = window.open('', 'docview');
+              } else {
+                try { viewerRef.current.focus(); } catch {}
+              }
+            }
+            try {
+              console.log('🔍 Attempting to get presigned URL for document:', item.document_id);
+              const { url, error } = await DocumentService.getDocumentPresignedUrl(item.document_id);
+              const target = viewerRef.current;
+              if (error) {
+                console.error('❌ Presigned URL error:', error);
+                if (item.file_url) {
+                  console.log('🔄 Using fallback file_url:', item.file_url);
+                  if (target && !target.closed) target.location.href = item.file_url; else window.open(item.file_url, 'docview');
+                } else {
+                  if (target && !target.closed) target.close();
+                  toast.error('Document URL not available');
+                }
+              } else if (url) {
+                console.log('✅ Opening presigned URL:', url);
+                if (target && !target.closed) target.location.href = url; else window.open(url, 'docview');
+              } else {
+                console.error('❌ No presigned URL returned');
+                if (item.file_url) {
+                  console.log('🔄 Using fallback file_url:', item.file_url);
+                  if (target && !target.closed) target.location.href = item.file_url; else window.open(item.file_url, 'docview');
+                } else {
+                  if (target && !target.closed) target.close();
+                  toast.error('Document URL not available');
+                }
+              }
+            } catch (err) {
+              console.error('❌ Error opening document:', err);
+              if (viewerRef.current && !viewerRef.current.closed) viewerRef.current.close();
+              toast.error('Failed to open document');
+            }
+          } else {
+            toast.error('Document ID not available');
+          }
+          break;
+        case 'download':
+          if (item.document_id) {
+            console.log('🔍 Attempting to get download URL for document:', item.document_id);
+            const { downloadUrl, error } = await DocumentService.downloadDocument(item.document_id);
+            if (error) {
+              console.error('❌ Download URL error:', error);
+              // Fallback to stored file_url
+              if (item.file_url) {
+                console.log('🔄 Using fallback file_url for download:', item.file_url);
+                const link = document.createElement('a');
+                link.href = item.file_url;
+                link.download = item.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } else {
+                toast.error('Document URL not available');
+              }
+            } else if (downloadUrl) {
+              console.log('✅ Downloading with URL:', downloadUrl);
+              const link = document.createElement('a');
+              link.href = downloadUrl;
+              link.download = item.name;
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            } else {
+              console.error('❌ No download URL returned');
+              // Fallback to stored file_url
+              if (item.file_url) {
+                console.log('🔄 Using fallback file_url for download:', item.file_url);
+                const link = document.createElement('a');
+                link.href = item.file_url;
+                link.download = item.name;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+              } else {
+                toast.error('Document URL not available');
+              }
+            }
+          } else {
+            toast.error('Document ID not available');
+          }
+          break;
+        case 'delete':
+          if (confirm(`Are you sure you want to delete "${item.name}"?`)) {
+            const { error } = await DocumentService.deleteDocument(item.document_id);
+            if (error) {
+              toast.error(error);
+            } else {
+              toast.success('Document deleted successfully');
+              loadItems(); // Refresh the list
+            }
+          }
+          break;
       }
-
-      setDocuments(searchResults);
-      setFolders([]);
-      setCurrentView('documents');
     } catch (error) {
-      console.error('Error searching documents:', error);
-      setError('Failed to search documents');
+      console.error('Error handling document action:', error);
+      toast.error('Failed to perform action');
     } finally {
-      setLoading(false);
+      setLoadingDocumentId(null);
     }
-  }, [debouncedSearchTerm]);
-
-  const isFileViewable = (fileType: string, fileName: string) => {
-    const type = fileType?.toLowerCase() || '';
-    const name = fileName?.toLowerCase() || '';
-    
-    return type.includes('pdf') || 
-           type.includes('image') || 
-           type.includes('text') ||
-           name.endsWith('.pdf') ||
-           name.endsWith('.jpg') ||
-           name.endsWith('.jpeg') ||
-           name.endsWith('.png') ||
-           name.endsWith('.gif') ||
-           name.endsWith('.txt') ||
-           name.endsWith('.html');
   };
 
-  const getFileIcon = (fileType: string, documentType?: string) => {
-    const type = fileType?.toLowerCase() || documentType?.toLowerCase() || '';
-    
-    if (type.includes('pdf')) return <FileText className="w-5 h-5 text-red-500" />;
-    if (type.includes('jpg') || type.includes('jpeg')) return <FileImage className="w-5 h-5 text-green-500" />;
-    if (type.includes('png')) return <FileImage className="w-5 h-5 text-blue-500" />;
-    if (type.includes('doc') || type.includes('docx')) return <FileText className="w-5 h-5 text-blue-600" />;
-    if (type.includes('txt')) return <FileText className="w-5 h-5 text-gray-500" />;
-    if (type.includes('image')) return <FileImage className="w-5 h-5 text-green-500" />;
-    if (type.includes('video')) return <FileVideo className="w-5 h-5 text-purple-500" />;
-    if (type.includes('zip') || type.includes('rar')) return <FileArchive className="w-5 h-5 text-orange-500" />;
-    
-    return <FileText className="w-5 h-5 text-gray-500" />;
+  const handleBackClick = () => {
+    const pathParts = currentPath.split('/').filter(Boolean);
+    if (pathParts.length > 1) {
+      // Go back to company level
+      setCurrentPath(`/${pathParts[0]}`);
+    } else if (pathParts.length === 1) {
+      // Go back to root
+      setCurrentPath('/');
+    }
   };
 
-  const getFolderIcon = (folderName: string, isCompany: boolean = false) => {
-    // All folders now use consistent blue color and medium size
-    return <Folder className="w-6 h-6 text-blue-600" />;
+  const getBreadcrumbs = () => {
+    const parts = currentPath.split('/').filter(Boolean);
+    const breadcrumbs = [{ name: 'Home', path: '/' }];
+    
+    let currentPathBuilder = '';
+    parts.forEach((part, index) => {
+      currentPathBuilder += `/${part}`;
+      breadcrumbs.push({
+        name: part,
+        path: currentPathBuilder
+      });
+    });
+    
+    return breadcrumbs;
   };
+
+  const filteredItems = items.filter(item =>
+    item.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const formatFileSize = (bytes: number) => {
     if (bytes === 0) return '0 Bytes';
@@ -367,398 +360,341 @@ function DocumentsContent() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const handleViewDocument = useCallback(async (document: Document) => {
-    try {
-      const { previewUrl, error } = await DocumentService.getDocumentPreview(document.id);
-      
-      if (error) {
-        toast.error(`Failed to preview document: ${error}`);
-        return;
-      }
-      
-      if (previewUrl) {
-        const canDisplayInBrowser = isFileViewable(document.file_type, document.file_name);
-        
-        if (canDisplayInBrowser) {
-          // Open document in new tab for viewable files
-          window.open(previewUrl, '_blank');
-          toast.success('Document opened in new tab');
-        } else {
-          // For non-viewable files, trigger download
-          const link = window.document.createElement('a');
-          link.href = previewUrl;
-          link.download = document.file_name || 'document';
-          link.target = '_blank';
-          window.document.body.appendChild(link);
-          link.click();
-          window.document.body.removeChild(link);
-          toast.success('Document downloaded (not viewable in browser)');
-        }
-      }
-    } catch (error) {
-      console.error('View error:', error);
-      toast.error('Failed to view document');
-    }
-  }, []);
-
-  const handleItemClick = useCallback((item: DocumentItem) => {
-    if (item.type === 'folder') {
-      // For employee folders, use employeeId instead of name for the path
-      const pathSegment = item.employeeId || item.name;
-      console.log('🔍 Folder clicked:', {
-        name: item.name,
-        employeeId: item.employeeId,
-        pathSegment: pathSegment,
-        currentPath: currentPath
-      });
-      const newPath = currentPath === '/' ? `/${pathSegment}` : `${currentPath}/${pathSegment}`;
-      console.log('🔍 Setting new path:', newPath);
-      setCurrentPath(newPath);
-    } else {
-      // Handle file click - use the proper view document function
-      // Find the document in the documents array to get the full Document object
-      const document = documents.find(doc => doc.id === item.id);
-      if (document) {
-        handleViewDocument(document);
-      } else {
-        // Fallback to direct URL if document not found
-        if (item.fileUrl) {
-          window.open(item.fileUrl, '_blank');
-        }
-      }
-    }
-  }, [currentPath, documents, handleViewDocument]);
-
-  const handleBreadcrumbClick = useCallback((breadcrumb: BreadcrumbItem) => {
-    setCurrentPath(breadcrumb.path);
-  }, []);
-
-  const handleItemSelect = useCallback((itemId: string) => {
-    setSelectedItems(prev => 
-      prev.includes(itemId) 
-        ? prev.filter(id => id !== itemId)
-        : [...prev, itemId]
-    );
-  }, []);
-
-  const handleSelectAll = useCallback(() => {
-    const allFolderIds = folders.map(folder => folder.id);
-    const allDocumentIds = documents.map(doc => doc.id);
-    const allIds = [...allFolderIds, ...allDocumentIds];
+  const getFileIcon = (fileName: string, fileType?: string, size: 'sm' | 'md' = 'md') => {
+    const extension = fileName.split('.').pop()?.toLowerCase();
+    const mimeType = fileType?.toLowerCase();
     
-    if (selectedItems.length === allIds.length) {
-      setSelectedItems([]);
-    } else {
-      setSelectedItems(allIds);
+    const sizeClasses = {
+      sm: 'w-6 h-6',
+      md: 'w-12 h-12 mb-2'
+    };
+    
+    // PDF files
+    if (extension === 'pdf' || mimeType?.includes('pdf')) {
+      return <FileText className={`${sizeClasses[size]} text-red-500`} />;
     }
-  }, [folders, documents, selectedItems.length]);
-
-  const handleDownloadDocument = useCallback(async (document: Document) => {
-    try {
-      const { downloadUrl, error } = await DocumentService.downloadDocument(document.id);
-      
-      if (error) {
-        toast.error(`Failed to download document: ${error}`);
-        return;
-      }
-
-      if (downloadUrl) {
-        // Create a temporary link and trigger download
-        const link = window.document.createElement('a');
-        link.href = downloadUrl;
-        link.download = document.file_name;
-        window.document.body.appendChild(link);
-        link.click();
-        window.document.body.removeChild(link);
-        toast.success('Download started');
-      }
-    } catch (error) {
-      console.error('Download error:', error);
-      toast.error('Failed to download document');
+    
+    // Image files
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(extension || '') || 
+        mimeType?.includes('image')) {
+      return <Image className={`${sizeClasses[size]} text-green-500`} />;
     }
-  }, []);
-
-  const handleDeleteDocument = useCallback(async (document: Document) => {
-    if (!confirm('Are you sure you want to delete this document?')) {
-      return;
+    
+    // Video files
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension || '') || 
+        mimeType?.includes('video')) {
+      return <FileVideo className={`${sizeClasses[size]} text-purple-500`} />;
     }
-
-    try {
-      const { error } = await DocumentService.deleteDocument(document.id);
-      
-      if (error) {
-        toast.error('Failed to delete document');
-        return;
-      }
-
-      toast.success('Document deleted successfully');
-      loadItems(); // Reload the current view
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete document');
+    
+    // Audio files
+    if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(extension || '') || 
+        mimeType?.includes('audio')) {
+      return <FileAudio className={`${sizeClasses[size]} text-blue-500`} />;
     }
-  }, [loadItems]);
+    
+    // Archive files
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '') || 
+        mimeType?.includes('archive') || mimeType?.includes('compressed')) {
+      return <Archive className={`${sizeClasses[size]} text-orange-500`} />;
+    }
+    
+    // Word documents
+    if (['doc', 'docx'].includes(extension || '') || 
+        mimeType?.includes('word') || mimeType?.includes('document')) {
+      return <FileText className={`${sizeClasses[size]} text-blue-600`} />;
+    }
+    
+    // Excel files
+    if (['xls', 'xlsx'].includes(extension || '') || 
+        mimeType?.includes('excel') || mimeType?.includes('spreadsheet')) {
+      return <FileText className={`${sizeClasses[size]} text-green-600`} />;
+    }
+    
+    // Default file icon
+    return <File className={`${sizeClasses[size]} text-gray-500`} />;
+  };
 
-
-
-  const renderDocumentItem = (document: Document) => (
-    <div 
-      key={document.id}
-      className={`group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer ${
-        selectedItems.includes(document.id) ? 'ring-2 ring-blue-500' : ''
-      }`}
-      onClick={() => handleViewDocument(document)}
-    >
-      <div className="p-4">
-        <div className="flex items-start justify-between">
-          <div className="flex items-center space-x-3 flex-1 min-w-0">
-            <div className="flex-shrink-0">
-              {getFileIcon(document.file_type, document.document_type)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                {document.file_name}
+  const renderGridView = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+      {filteredItems.map((item) => (
+        <div
+          key={item.path}
+          onClick={() => handleItemClick(item)}
+          className="group relative cursor-pointer p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-md transition-all duration-200"
+        >
+          <div className="flex flex-col items-center text-center">
+            {item.type === 'folder' ? (
+              <Folder className="w-12 h-12 text-blue-500 mb-2" />
+            ) : (
+              getFileIcon(item.name, item.file_type)
+            )}
+            <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate w-full">
+              {item.name}
               </h3>
+            {item.type === 'document' && (
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {document.document_type} • {formatFileSize(document.file_size)}
-              </p>
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Uploaded {formatDate(document.uploaded_at)}
-              </p>
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleViewDocument(document)}
-            >
-              {isFileViewable(document.file_type, document.file_name) ? (
-                <Eye className="w-4 h-4" />
-              ) : (
-                <Download className="w-4 h-4" />
-              )}
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDownloadDocument(document)}
-            >
-              <Download className="w-4 h-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleDeleteDocument(document)}
-            >
-              <Trash2 className="w-4 h-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderFolderItem = (folder: DocumentItem) => (
-    <div 
-      key={folder.id}
-      className={`group relative bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-200 cursor-pointer ${
-        selectedItems.includes(folder.id) ? 'ring-2 ring-blue-500' : ''
-      }`}
-      onClick={() => handleItemClick(folder)}
-    >
-      <div className="p-4">
-        <div className="flex items-center space-x-3">
-                     <div className="flex-shrink-0">
-             {folder.icon || getFolderIcon(folder.name, false)}
-           </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-              {folder.name}
-            </h3>
-            {/* Document count removed as requested */}
-            {folder.employeeName && (
-              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                Employee: {folder.employeeName}
+                {formatFileSize(item.file_size || 0)}
               </p>
             )}
           </div>
-          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300" />
+          
+          {/* Document action buttons */}
+          {item.type === 'document' && (
+            <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+              <div className="flex space-x-1">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDocumentAction('view', item);
+                  }}
+                  disabled={loadingDocumentId === item.document_id}
+                  className="p-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="View"
+                >
+                  {loadingDocumentId === item.document_id ? (
+                    <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Eye className="w-3 h-3" />
+                  )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDocumentAction('download', item);
+                  }}
+                  disabled={loadingDocumentId === item.document_id}
+                  className="p-1 bg-green-500 text-white rounded hover:bg-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Download"
+                >
+                  {loadingDocumentId === item.document_id ? (
+                    <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Download className="w-3 h-3" />
+                  )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDocumentAction('delete', item);
+                  }}
+                  disabled={loadingDocumentId === item.document_id}
+                  className="p-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Delete"
+                >
+                  {loadingDocumentId === item.document_id ? (
+                    <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Trash2 className="w-3 h-3" />
+                  )}
+                </button>
+              </div>
+          </div>
+          )}
         </div>
-      </div>
+      ))}
     </div>
   );
 
-  const renderListView = () => {
-    return (
-      <div className="space-y-2">
-        {/* Show folders OR documents, not both */}
-        {filteredFolders.map(folder => renderFolderItem(folder))}
-        {filteredDocuments.map(document => renderDocumentItem(document))}
-      </div>
-    );
-  };
-
-  const renderGridView = () => {
-    return (
-      <div className="space-y-6">
-        {/* Show folders OR documents, not both */}
-        {filteredFolders.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Folders</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredFolders.map(folder => renderFolderItem(folder))}
-            </div>
+  const renderListView = () => (
+    <div className="space-y-2">
+      {filteredItems.map((item) => (
+        <div
+          key={item.path}
+          onClick={() => handleItemClick(item)}
+          className="flex items-center p-3 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-blue-300 dark:hover:border-blue-600 hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-all duration-200"
+        >
+          {item.type === 'folder' ? (
+            <Folder className="w-6 h-6 text-blue-500 mr-3" />
+          ) : (
+            getFileIcon(item.name, item.file_type, 'sm')
+          )}
+          <div className="flex-1">
+            <h3 className="font-medium text-gray-900 dark:text-white">
+              {item.name}
+            </h3>
+            {item.type === 'document' && (
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                {formatFileSize(item.file_size || 0)}
+              </p>
+            )}
           </div>
-        )}
-        
-        {filteredDocuments.length > 0 && (
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Documents</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-              {filteredDocuments.map(document => renderDocumentItem(document))}
+          
+          {/* Document action buttons */}
+          {item.type === 'document' ? (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDocumentAction('view', item);
+                }}
+                disabled={loadingDocumentId === item.document_id}
+                className="p-1 text-blue-500 hover:text-blue-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="View"
+              >
+                {loadingDocumentId === item.document_id ? (
+                  <div className="w-4 h-4 border border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Eye className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDocumentAction('download', item);
+                }}
+                disabled={loadingDocumentId === item.document_id}
+                className="p-1 text-green-500 hover:text-green-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Download"
+              >
+                {loadingDocumentId === item.document_id ? (
+                  <div className="w-4 h-4 border border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Download className="w-4 h-4" />
+                )}
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDocumentAction('delete', item);
+                }}
+                disabled={loadingDocumentId === item.document_id}
+                className="p-1 text-red-500 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                title="Delete"
+              >
+                {loadingDocumentId === item.document_id ? (
+                  <div className="w-4 h-4 border border-red-500 border-t-transparent rounded-full animate-spin"></div>
+                ) : (
+                  <Trash2 className="w-4 h-4" />
+                )}
+              </button>
             </div>
-          </div>
-        )}
-      </div>
-    );
-  };
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          )}
+        </div>
+      ))}
+    </div>
+  );
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="max-w-7xl mx-auto">
+        <div className="mb-6">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Documents</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Manage and view all employee documents
-            </p>
-          </div>
-          <div className="flex items-center space-x-3">
-            <Button 
-              onClick={() => setIsUploadModalOpen(true)}
-            >
-              <Upload className="w-4 h-4 mr-2" />
-              Upload
-            </Button>
-
-          </div>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Manage and organize employee documents.
+          </p>
         </div>
 
-        {/* Search and Filters */}
-        <Card>
-          <div className="space-y-4">
-            <div className="flex items-center space-x-4">
-              <div className="flex-1">
-              <Input
+        {/* Breadcrumbs */}
+        <Card className="p-4 mb-6">
+          <nav className="flex items-center space-x-2">
+            {getBreadcrumbs().map((breadcrumb, index) => (
+              <div key={breadcrumb.path} className="flex items-center">
+                {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400 mx-2" />}
+                <button
+                  onClick={() => setCurrentPath(breadcrumb.path)}
+                  className={`text-sm font-medium ${
+                    breadcrumb.path === currentPath
+                      ? 'text-blue-600 dark:text-blue-400'
+                      : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                  }`}
+                >
+                  {breadcrumb.name}
+                </button>
+              </div>
+            ))}
+          </nav>
+        </Card>
+
+        {/* Header with Search and Actions */}
+        <Card className="p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
+            <div className="flex-1 max-w-md">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
                   type="text"
                 placeholder="Search documents..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                  icon={<Search className="w-4 h-4 text-gray-400" />}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
                 />
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  variant={viewMode === 'grid' ? 'primary' : 'outline'}
-                  size="sm"
+            </div>
+            
+            <div className="flex items-center space-x-4">
+              <div className="flex border border-gray-300 dark:border-gray-600 rounded-lg">
+                <button
                   onClick={() => setViewMode('grid')}
+                  className={`p-2 ${
+                    viewMode === 'grid'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                  } rounded-l-lg`}
                 >
-                  <Grid className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'primary' : 'outline'}
-                  size="sm"
+                  <div className="w-4 h-4 grid grid-cols-2 gap-0.5">
+                    <div className="w-1.5 h-1.5 bg-current"></div>
+                    <div className="w-1.5 h-1.5 bg-current"></div>
+                    <div className="w-1.5 h-1.5 bg-current"></div>
+                    <div className="w-1.5 h-1.5 bg-current"></div>
+                  </div>
+                </button>
+                <button
                   onClick={() => setViewMode('list')}
+                  className={`p-2 ${
+                    viewMode === 'list'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-400'
+                  } rounded-r-lg`}
                 >
-                  <List className="w-4 h-4" />
-                </Button>
+                  <div className="w-4 h-4 space-y-0.5">
+                    <div className="w-full h-0.5 bg-current"></div>
+                    <div className="w-full h-0.5 bg-current"></div>
+                    <div className="w-full h-0.5 bg-current"></div>
+                  </div>
+                </button>
               </div>
+              
+              <Button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="flex items-center space-x-2"
+              >
+                <Upload className="w-4 h-4" />
+                <span>Upload</span>
+              </Button>
             </div>
           </div>
         </Card>
 
-        {/* Breadcrumbs */}
-        {breadcrumbs.length > 1 && (
-          <Card>
-        <div className="flex items-center space-x-2 text-sm">
-          {breadcrumbs.map((breadcrumb, index) => (
-                <div key={breadcrumb.path} className="flex items-center">
-                  {index > 0 && <ChevronRight className="w-4 h-4 text-gray-400 mx-2" />}
-              <button
-                onClick={() => handleBreadcrumbClick(breadcrumb)}
-                    className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${
-                      index === breadcrumbs.length - 1 
-                        ? 'text-gray-900 dark:text-white font-medium' 
-                        : 'text-gray-600 dark:text-gray-400'
-                    }`}
-              >
-                {breadcrumb.name}
-              </button>
-            </div>
-          ))}
-            </div>
-          </Card>
-        )}
-
         {/* Content */}
-        <Card>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-                               <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                   {filteredFolders.length > 0 ? 'Folders' : 
-                    filteredDocuments.length > 0 ? 'Documents' : 'Content'}
-                   {loading && <span className="ml-2 text-sm text-gray-500">Loading...</span>}
-                 </h2>
-              
-              {!loading && (filteredFolders.length > 0 || filteredDocuments.length > 0) && (
-                              <div className="flex items-center space-x-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSelectAll}
-                >
-                  {selectedItems.length === (filteredFolders.length + filteredDocuments.length)
-                    ? 'Deselect All' 
-                    : 'Select All'
-                  }
-                </Button>
-              </div>
-              )}
+        <Card className="p-6">
+          {loading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">Loading documents...</p>
+              <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">This may take a few seconds</p>
             </div>
-
-            {error && (
-              <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
-                <p className="text-red-800 dark:text-red-200">{error}</p>
-                          </div>
-                        )}
-
-            {loading ? (
-              <DocumentGridSkeleton />
-            ) : filteredFolders.length === 0 && filteredDocuments.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+          ) : filteredItems.length === 0 ? (
+            <div className="text-center py-8">
+              <File className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                 <p className="text-gray-600 dark:text-gray-400">
-                  {searchTerm ? 'No documents found matching your search.' : 'No documents found.'}
+                {searchTerm ? 'No documents found matching your search.' : 'No documents found in this location.'}
                 </p>
               </div>
             ) : (
-              viewMode === 'grid' ? renderGridView() : renderListView()
+            <div>
+              {viewMode === 'grid' ? renderGridView() : renderListView()}
+            </div>
             )}
-          </div>
         </Card>
 
       {/* Upload Modal */}
       <UploadModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+          onUploadComplete={loadItems}
         currentPath={currentPath}
-        onUploadComplete={() => {
-            setIsUploadModalOpen(false);
-          loadItems();
-        }}
       />
       </div>
     </Layout>

@@ -53,7 +53,7 @@ function StatCard({ label, value, change, icon: Icon, color }: any) {
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</p>
+          <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</div>
           <p className="text-sm text-green-600 dark:text-green-400 mt-1">{change} from last month</p>
         </div>
         <div className={`w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center ${color}`}>

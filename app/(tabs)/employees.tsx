@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
@@ -54,19 +54,18 @@ interface ColumnConfig {
 }
 
 const DEFAULT_COLUMNS: ColumnConfig[] = [
-  { key: 'employee_id', label: 'Employee ID', visible: true, sortable: true, width: 'w-32' },
-  { key: 'name', label: 'Name', visible: true, sortable: true, width: 'w-48' },
-  { key: 'company_name', label: 'Company', visible: true, sortable: true, width: 'w-40' },
-  { key: 'trade', label: 'Trade', visible: true, sortable: true, width: 'w-32' },
-  { key: 'nationality', label: 'Nationality', visible: true, sortable: true, width: 'w-32' },
-  { key: 'status', label: 'Status', visible: true, sortable: true, width: 'w-24' },
-  { key: 'visa_status', label: 'Visa Status', visible: true, sortable: true, width: 'w-28' },
-  { key: 'visa_expiry', label: 'Visa Expiry', visible: true, sortable: true, width: 'w-32' },
-  { key: 'passport_expiry', label: 'Passport Expiry', visible: false, sortable: true, width: 'w-32' },
-  { key: 'phone', label: 'Phone', visible: false, sortable: false, width: 'w-32' },
-  { key: 'email', label: 'Email', visible: false, sortable: false, width: 'w-48' },
-  { key: 'salary', label: 'Salary', visible: false, sortable: true, width: 'w-24' },
-  { key: 'created_at', label: 'Created', visible: false, sortable: true, width: 'w-32' }
+  { key: 'name', label: 'Employee', visible: true, sortable: true, width: 'w-36' },
+  { key: 'company_name', label: 'Company', visible: true, sortable: true, width: 'w-32' },
+  { key: 'trade', label: 'Trade', visible: true, sortable: true, width: 'w-28' },
+  { key: 'nationality', label: 'Nationality', visible: true, sortable: true, width: 'w-24' },
+  { key: 'status', label: 'Status', visible: true, sortable: true, width: 'w-20' },
+  { key: 'visa_status', label: 'Visa Status', visible: true, sortable: true, width: 'w-24' },
+  { key: 'visa_expiry_date', label: 'Visa Expiry', visible: true, sortable: true, width: 'w-28' },
+  { key: 'passport_expiry', label: 'Passport Expiry', visible: false, sortable: true, width: 'w-28' },
+  { key: 'mobile_number', label: 'Phone', visible: false, sortable: false, width: 'w-28' },
+  { key: 'email_id', label: 'Email', visible: false, sortable: false, width: 'w-40' },
+  { key: 'basic_salary', label: 'Salary', visible: false, sortable: true, width: 'w-20' },
+  { key: 'created_at', label: 'Created', visible: false, sortable: true, width: 'w-28' }
 ];
 
 export default function Employees() {
@@ -97,6 +96,7 @@ function EmployeesContent() {
     statuses: [],
     visaStatuses: []
   });
+  const localCacheTTLms = 5 * 60 * 1000; // 5 minutes
   
   const [filters, setFilters] = useState<EmployeeFilters>({
     status: '',
@@ -119,8 +119,23 @@ function EmployeesContent() {
   useEffect(() => {
     const loadFilterOptions = async () => {
       try {
+        // local cache first
+        if (typeof window !== 'undefined') {
+          const cached = window.localStorage.getItem('employees:filterOptions');
+          if (cached) {
+            try {
+              const parsed = JSON.parse(cached) as { data: FilterOptions; ts: number };
+              if (Date.now() - parsed.ts < localCacheTTLms) {
+                setFilterOptions(parsed.data);
+              }
+            } catch {}
+          }
+        }
         const options = await EmployeeService.getFilterOptions();
         setFilterOptions(options);
+        if (typeof window !== 'undefined') {
+          try { window.localStorage.setItem('employees:filterOptions', JSON.stringify({ data: options, ts: Date.now() })); } catch {}
+        }
       } catch (error) {
         console.error('Error fetching filter options:', error);
       }
@@ -128,7 +143,9 @@ function EmployeesContent() {
     loadFilterOptions();
   }, []);
 
+  const latestReqRef = useRef(0);
   const fetchEmployees = useCallback(async (page: number = currentPage, search: string = debouncedSearchTerm, filterOpts: EmployeeFilters = filters) => {
+    const reqId = ++latestReqRef.current;
     try {
       setLoading(true);
       
@@ -137,21 +154,46 @@ function EmployeesContent() {
         pageSize: 25
       };
 
+      // try local cache first
+      const cacheKey = `employees:list:${params.page}:${params.pageSize}:${JSON.stringify(filterOpts)}:${search}`;
+      if (typeof window !== 'undefined') {
+        const cached = window.localStorage.getItem(cacheKey);
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached) as { data: any; ts: number };
+            if (Date.now() - parsed.ts < localCacheTTLms) {
+              if (latestReqRef.current === reqId) {
+                setEmployees(parsed.data.employees);
+                setTotalPages(parsed.data.totalPages);
+                setTotalEmployees(parsed.data.total);
+              }
+            }
+          } catch {}
+        }
+      }
+
       const result = await EmployeeService.getEmployees(params, {
         ...filterOpts,
         search
       });
       
-      setEmployees(result.employees);
-      setTotalPages(result.totalPages);
-      setTotalEmployees(result.total);
+      if (latestReqRef.current === reqId) {
+        setEmployees(result.employees);
+        setTotalPages(result.totalPages);
+        setTotalEmployees(result.total);
+        if (typeof window !== 'undefined') {
+          try { window.localStorage.setItem(cacheKey, JSON.stringify({ data: result, ts: Date.now() })); } catch {}
+        }
+      }
       
     } catch (error) {
       console.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
     } finally {
-      setLoading(false);
-      setInitialLoading(false);
+      if (latestReqRef.current === reqId) {
+        setLoading(false);
+        setInitialLoading(false);
+      }
     }
   }, [currentPage, debouncedSearchTerm, filters]);
 
@@ -237,31 +279,29 @@ function EmployeesContent() {
 
   const renderCellContent = (employee: Employee, columnKey: string) => {
     switch (columnKey) {
-      case 'employee_id':
-    return (
-          <div className="font-mono text-sm font-medium text-blue-600 dark:text-blue-400">
-            {employee.employee_id}
-          </div>
-        );
+      
       case 'name':
-        return (
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
+    return (
+        <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white text-xs font-medium">
               {employee.name?.charAt(0)?.toUpperCase() || 'N'}
             </div>
             <div>
-              <div className="font-medium text-gray-900 dark:text-white">{employee.name}</div>
-              {employee.mobile_number && (
-                <div className="text-sm text-gray-500 dark:text-gray-400">{employee.mobile_number}</div>
-              )}
+              <button 
+                onClick={() => router.push(`/admin/employees/${encodeURIComponent(employee.employee_id)}`)}
+                className="text-left hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+              >
+                <div className="font-medium text-gray-900 dark:text-white text-sm">{employee.name}</div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">ID: {employee.employee_id}</div>
+              </button>
             </div>
           </div>
         );
       case 'company_name':
-    return (
-        <div className="flex items-center space-x-2">
-            <Building className="w-4 h-4 text-gray-400" />
-            <span className="font-medium text-gray-900 dark:text-white">{employee.company_name}</span>
+        return (
+          <div className="flex items-center space-x-1">
+            <Building className="w-3 h-3 text-gray-400" />
+            <span className="font-medium text-gray-900 dark:text-white text-sm">{employee.company_name}</span>
           </div>
         );
       case 'status':
@@ -282,7 +322,7 @@ function EmployeesContent() {
             {employee.visa_status?.replace('_', ' ').charAt(0)?.toUpperCase()}{employee.visa_status?.replace('_', ' ').slice(1)}
           </span>
         );
-      case 'visa_expiry':
+      case 'visa_expiry_date':
       case 'passport_expiry':
       case 'created_at':
         const date = employee[columnKey as keyof Employee] as string;
@@ -293,7 +333,7 @@ function EmployeesContent() {
         ) : (
           <span className="text-gray-400 text-sm">-</span>
         );
-      case 'salary':
+      case 'basic_salary':
         return employee.basic_salary ? (
           <div className="text-sm font-medium text-gray-900 dark:text-white">
             AED {parseInt(employee.basic_salary).toLocaleString()}
@@ -381,7 +421,7 @@ function EmployeesContent() {
               >
                 <Filter className="w-4 h-4" />
                 <span>Filters</span>
-                {Object.values(filters).some(v => v && v !== false) && (
+                {filters.company_name && (
                   <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                 )}
               </Button>
@@ -450,90 +490,26 @@ function EmployeesContent() {
                     size="sm"
                   >
                     <X className="w-4 h-4" />
-                  </Button>
-                </div>
+                </Button>
               </div>
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Company
                   </label>
-              <select
-                value={filters.company_name}
-                onChange={(e) => handleFilterChange('company_name', e.target.value)}
+                  <select
+                    value={filters.company_name}
+                    onChange={(e) => handleFilterChange('company_name', e.target.value)}
                     className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="">All Companies</option>
+                  >
+                    <option value="">All Companies</option>
                     {filterOptions.companies.map((company) => (
-                  <option key={company} value={company}>{company}</option>
-                ))}
-              </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Status
-                  </label>
-                <select
-                  value={filters.status}
-                  onChange={(e) => handleFilterChange('status', e.target.value)}
-                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-                >
-                  <option value="">All Statuses</option>
-                    {filterOptions.statuses.map((status) => (
-                      <option key={status} value={status}>{status}</option>
+                      <option key={company} value={company}>{company}</option>
                     ))}
                   </select>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Visa Status
-                  </label>
-                  <select
-                    value={filters.visa_status}
-                    onChange={(e) => handleFilterChange('visa_status', e.target.value)}
-                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-                  >
-                    <option value="">All Visa Statuses</option>
-                    {filterOptions.visaStatuses.map((status) => (
-                    <option key={status} value={status}>{status}</option>
-                ))}
-              </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Trade
-                  </label>
-              <select
-                value={filters.trade}
-                onChange={(e) => handleFilterChange('trade', e.target.value)}
-                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="">All Trades</option>
-                    {filterOptions.trades.map((trade) => (
-                  <option key={trade} value={trade}>{trade}</option>
-                ))}
-              </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Nationality
-                  </label>
-              <select
-                value={filters.nationality}
-                onChange={(e) => handleFilterChange('nationality', e.target.value)}
-                    className="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="">All Nationalities</option>
-                    {filterOptions.nationalities.map((nationality) => (
-                  <option key={nationality} value={nationality}>{nationality}</option>
-                ))}
-              </select>
-          </div>
               </div>
             </div>
           )}
@@ -541,14 +517,15 @@ function EmployeesContent() {
 
         {/* Table Section */}
         <Card className="overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <div className="overflow-x-auto max-w-full">
+            <div className="inline-block min-w-full align-middle">
+              <table data-testid="employee-table" className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
               <thead className="bg-gray-50 dark:bg-gray-800">
                 <tr>
                   {visibleColumns.map((column) => (
                     <th
                       key={column.key}
-                      className={`px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${column.width || ''} ${
+                      className={`px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider ${column.width || ''} ${
                         column.sortable ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700' : ''
                       }`}
                       onClick={() => column.sortable && handleSort(column.key)}
@@ -564,7 +541,7 @@ function EmployeesContent() {
                           </div>
                         </th>
                   ))}
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  <th className="px-3 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                     Actions
                   </th>
                 </tr>
@@ -593,14 +570,15 @@ function EmployeesContent() {
                   employees.map((employee, index) => (
                     <tr
                       key={employee.employee_id}
+                      data-testid="employee-row"
                       className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
                     >
                       {visibleColumns.map((column) => (
-                        <td key={column.key} className="px-6 py-4 whitespace-nowrap">
+                        <td key={column.key} className="px-3 py-3 whitespace-nowrap">
                           {renderCellContent(employee, column.key)}
                         </td>
                       ))}
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                               <Button
                             onClick={() => router.push(`/employees/${employee.employee_id}`)}
@@ -625,6 +603,7 @@ function EmployeesContent() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Pagination */}

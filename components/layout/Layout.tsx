@@ -2,8 +2,10 @@
 
 import { ReactNode, useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
-import { cn } from '@/utils/cn';
+import ThemeToggle from '@/components/ui/ThemeToggle';
+import Logo from '@/components/ui/Logo';
 import { Menu, X } from 'lucide-react';
+import { cn } from '@/utils/cn';
 
 interface LayoutProps {
   children: ReactNode;
@@ -64,6 +66,19 @@ export default function Layout({ children, className }: LayoutProps) {
         isMobile ? 'ml-0' : 'lg:ml-64',
         className
       )}>
+        {/* Header */}
+        <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Logo size="sm" showText={true} />
+            </div>
+            <div className="flex items-center space-x-4">
+              <ThemeToggle size="sm" variant="minimal" />
+            </div>
+          </div>
+        </header>
+        
+        {/* Content */}
         <div className="p-4 lg:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
           {children}
         </div>
