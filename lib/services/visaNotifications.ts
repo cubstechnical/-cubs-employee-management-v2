@@ -67,7 +67,7 @@ export class VisaNotificationService {
         if (shouldSendNotification) {
           const notification: VisaExpiryData = {
             employeeName: employee.name as string,
-            employeeEmail: employee.email_id as string,
+            employeeEmail: 'info@cubstechnical.com',
             visaType: employee.visa_type as string,
             expiryDate: employee.visa_expiry_date as string,
             daysUntilExpiry: daysUntilExpiry,

@@ -149,7 +149,7 @@ export class DocumentService {
       const buildQuery = (fromIdx: number, toIdx: number) => {
         let q = supabase
           .from('employee_documents')
-          .select('employee_id')
+          .select('employee_id, file_path, uploaded_at, file_name')
           .range(fromIdx, toIdx);
 
         if (companyName === 'AL HANA TOURS & TRAVELS' || companyName === 'AL HANA TOURS and TRAVELS') {
@@ -230,22 +230,22 @@ export class DocumentService {
 
         if (process.env.NODE_ENV !== 'production') console.log('🔍 Fetching Company Documents...');
         
-        // Get documents with employee_id = 'COMPANY_DOCS'
+        // Get documents for Company Documents via canonical prefix and label
         const { data: companyDocs, error: companyError } = await supabase
           .from('employee_documents')
           .select('*')
-          .eq('employee_id', 'COMPANY_DOCS')
+          .or('employee_id.eq.COMPANY_DOCS,file_path.ilike.EMP_COMPANY_DOCS/%')
           .order('uploaded_at', { ascending: false });
 
         if (companyError) {
           console.error('❌ Error fetching company documents by employee_id:', companyError);
         }
 
-        // Also get documents with specific file paths
+        // Also get documents with user-friendly path
         const { data: pathDocs, error: pathError } = await supabase
           .from('employee_documents')
           .select('*')
-          .or('file_path.ilike.EMP_COMPANY_DOCS/%,file_path.ilike.Company Documents/%')
+          .ilike('file_path', 'Company Documents/%')
           .order('uploaded_at', { ascending: false });
 
         if (pathError) {
@@ -381,20 +381,49 @@ export class DocumentService {
             .from(this.COMPANY_FOLDERS_VIEW)
             .select('company_prefix, display_name, document_count, last_modified');
           if (!mvError && mvRows && mvRows.length > 0) {
-            const folders: DocumentFolder[] = (mvRows as any[])
-              .filter(r => r.company_prefix && r.display_name)
-              .map(r => ({
-                id: `company-${r.company_prefix}`,
-                name: r.display_name as string,
-                type: 'company' as const,
-                companyName: r.company_prefix as string,
-                documentCount: Number(r.document_count) || 0,
-                lastModified: r.last_modified ? new Date(r.last_modified as string).toISOString() : new Date().toISOString(),
-                path: `/${r.company_prefix}`
-              }));
+            // 1) Remove test/special folders we don't want to show
+            const filtered = (mvRows as any[]).filter(r => r.company_prefix && r.display_name && r.company_prefix !== 'FINAL_TEST');
+
+            // 2) Deduplicate entries that map to the same display name (e.g., EMP_COMPANY_DOCS and Company Documents)
+            const groups = new Map<string, any[]>();
+            for (const row of filtered) {
+              const key = (row.display_name as string).trim();
+              if (!groups.has(key)) groups.set(key, []);
+              groups.get(key)!.push(row);
+            }
+
+            const folders: DocumentFolder[] = [];
+            groups.forEach((rows, displayName) => {
+              // Choose a canonical prefix for this display name
+              let canonical = rows[0];
+              // Prefer EMP_COMPANY_DOCS as canonical for Company Documents
+              if (displayName === 'Company Documents') {
+                const preferred = rows.find(r => r.company_prefix === 'EMP_COMPANY_DOCS');
+                if (preferred) canonical = preferred;
+              }
+              // Aggregate document counts and last modified across duplicates
+              const totalCount = rows.reduce((sum, r) => sum + (Number(r.document_count) || 0), 0);
+              const lastModified = rows.reduce((maxTs, r) => {
+                const ts = r.last_modified ? Date.parse(r.last_modified as string) : 0;
+                return Math.max(maxTs, ts);
+              }, 0);
+
+              folders.push({
+                id: `company-${canonical.company_prefix}`,
+                name: displayName,
+                type: 'company',
+                // Use display name as companyName so downstream mapping can normalize to file-path prefixes
+                companyName: displayName,
+                documentCount: totalCount,
+                lastModified: lastModified > 0 ? new Date(lastModified).toISOString() : new Date().toISOString(),
+                // Path uses display name to avoid surfacing raw prefixes like EMP_COMPANY_DOCS
+                path: `/${displayName}`
+              });
+            });
+
             if (folders.length > 0) {
               this.foldersCache = { folders, timestamp: Date.now() };
-              if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for company folders');
+              if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for company folders (deduped)');
               return { folders, error: null };
             }
           }
@@ -453,6 +482,9 @@ export class DocumentService {
           }
         }
       });
+
+      // Remove unwanted folders like FINAL_TEST
+      companyPrefixes.delete('FINAL_TEST');
 
       if (process.env.NODE_ENV !== 'production') console.log(`🏢 Found ${companyPrefixes.size} unique company prefixes in file paths:`, Array.from(companyPrefixes).sort());
 
@@ -514,15 +546,19 @@ export class DocumentService {
       }
       
       for (const [displayName, data] of Array.from(consolidatedFolders.entries())) {
-        const primaryPrefix = data.prefixes[0]; // Use first prefix as primary
+        // For Company Documents, force canonical to display name and avoid nested subfolder entry duplication
+        const isCompanyDocs = displayName === 'Company Documents';
+        const primaryPrefix = isCompanyDocs ? 'EMP_COMPANY_DOCS' : data.prefixes[0];
         companyFolders.push({
           id: `company-${primaryPrefix}`,
           name: displayName,
           type: 'company',
-          companyName: primaryPrefix, // Use primary prefix for internal operations
+          // Use display name in companyName so downstream routing uses the friendly label
+          companyName: displayName,
           documentCount: data.documents.length,
           lastModified: new Date(data.lastModified).toISOString(),
-          path: `/${primaryPrefix}`
+          // Use display name in path for stable, friendly routing
+          path: `/${displayName}`
         });
       }
 
@@ -584,13 +620,12 @@ export class DocumentService {
     try {
       console.log(`🔍 Fetching documents for: ${companyName}/${employeeId}`);
 
-      // Special handling for top-level Company Documents
+      // Special handling for top-level Company Documents (canonical)
       if (companyName === 'Company Documents') {
         const { data, error } = await supabase
           .from('employee_documents')
           .select('*')
-          .ilike('file_path', 'EMP_COMPANY_DOCS/%')
-          .not('file_path', 'like', 'EMP_COMPANY_DOCS/%/%')
+          .or('employee_id.eq.COMPANY_DOCS,file_path.ilike.EMP_COMPANY_DOCS/%')
           .order('uploaded_at', { ascending: false });
         if (error) {
           return { documents: [], error: error.message };
@@ -742,7 +777,7 @@ export class DocumentService {
         }
 
         // Get unique employee IDs from documents (minimal rows contain only employee_id)
-        const employeeIds = Array.from(new Set((companyDocs || []).map((doc: any) => doc.employee_id as string).filter(Boolean)));
+         const employeeIds = Array.from(new Set((companyDocs || []).map((doc: any) => doc.employee_id as string).filter(Boolean)));
         if (process.env.NODE_ENV !== 'production') console.log(`👥 Found ${employeeIds.length} unique employee IDs`);
 
         if (employeeIds.length === 0) {
@@ -758,17 +793,17 @@ export class DocumentService {
           chunks.push(employeeIds.slice(i, i + chunkSize));
         }
         const employeeRows: Array<{ employee_id: string; name: string }> = [];
-        for (const chunk of chunks) {
-          const { data: employees, error: employeeError } = await supabase
-            .from('employee_table')
-            .select('employee_id, name')
-            .in('employee_id', chunk);
-          if (employeeError) {
-            console.error('❌ Error fetching employee names:', employeeError);
-            return { folders: [], error: employeeError.message };
-          }
-          (employees || []).forEach(r => employeeRows.push(r as any));
-        }
+         for (const chunk of chunks) {
+           const { data: employees, error: employeeError } = await supabase
+             .from('employee_table')
+             .select('employee_id, name')
+             .in('employee_id', chunk);
+           if (employeeError) {
+             console.error('❌ Error fetching employee names:', employeeError);
+             return { folders: [], error: employeeError.message };
+           }
+           (employees || []).forEach(r => employeeRows.push(r as any));
+         }
 
         if (process.env.NODE_ENV !== 'production') console.log(`👤 Found ${employeeRows.length} employee records`);
 
@@ -778,16 +813,16 @@ export class DocumentService {
           employeeMap.set(emp.employee_id as string, emp.name as string);
         });
 
-        // Group documents by employee and create folders
-        const employeeFolders = new Map<string, { count: number; lastModified: string; name: string }>();
+         // Group documents by employee and create folders
+         const employeeFolders = new Map<string, { count: number; lastModified: string; name: string }>();
 
         // Count documents per employee (fast path, lastModified approximated)
         const counts = new Map<string, number>();
-        for (const row of companyDocs || []) {
-          const id = row.employee_id as string | null | undefined;
-          if (!id) continue;
-          counts.set(id, (counts.get(id) || 0) + 1);
-        }
+         for (const row of companyDocs || []) {
+           const id = row.employee_id as string | null | undefined;
+           if (!id) continue;
+           counts.set(id, (counts.get(id) || 0) + 1);
+         }
         counts.forEach((count, employeeId) => {
           const employeeName = employeeMap.get(employeeId) || employeeId;
           employeeFolders.set(employeeId, {
@@ -798,13 +833,13 @@ export class DocumentService {
         });
 
         // Convert to DocumentFolder array
-        const folders: DocumentFolder[] = Array.from(employeeFolders.entries()).map(([employeeId, data]) => ({
+         const folders: DocumentFolder[] = Array.from(employeeFolders.entries()).map(([employeeId, data]) => ({
           id: `emp-${employeeId}`,
-          name: data.name,
+           name: data.name && data.name.trim().length > 0 ? data.name : employeeId,
           type: 'employee' as const,
           companyName: companyName,
           employeeId: employeeId,
-          employeeName: data.name,
+           employeeName: data.name && data.name.trim().length > 0 ? data.name : employeeId,
           documentCount: data.count,
           lastModified: data.lastModified,
           path: `${companyName}/${employeeId}`

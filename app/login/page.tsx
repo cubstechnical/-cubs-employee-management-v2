@@ -238,9 +238,20 @@ export default function LoginPage() {
         </Card>
 
         {/* Footer */}
-        <div className="text-center mt-8">
+        <div className="text-center mt-8 space-y-1">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            © 2024 CUBS Technical. All rights reserved.
+            © 2025 CUBS Technical. All rights reserved.
+          </p>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
+            Developed by{' '}
+            <a
+              href="https://chocosoft.dev"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-gray-700 dark:hover:text-gray-300"
+            >
+              ChocoSoft Dev
+            </a>
           </p>
         </div>
       </div>

@@ -15,24 +15,17 @@ import {
   Eye,
   EyeOff,
   Key,
-  Building,
   Bell,
-  Camera,
-  Upload,
   CheckCircle,
   AlertTriangle,
   Info,
-  FileText,
-  Mail,
   Clock,
-  Users,
-  Globe,
-  Lock,
   Shield as ShieldIcon,
   Activity,
   Database,
   Code
 } from 'lucide-react';
+import AuthService from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
@@ -42,13 +35,8 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(false);
 
   // Profile state
-  const [profileData, setProfileData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    phone: '',
-    profileImage: null as File | null
-  });
+  // Simplified profile: display only
+  const [displayName] = useState('Main Admin');
 
   // Security state
   const [securityData, setSecurityData] = useState({
@@ -59,20 +47,11 @@ export default function SettingsPage() {
   });
 
   // Company state
-  const [companyData, setCompanyData] = useState({
-    name: '',
-    address: '',
-    phone: '',
-    email: '',
-    website: '',
-    defaultDepartment: '',
-    logo: null as File | null
-  });
+  // Remove company settings
 
   // Notifications state
   const [notificationSettings, setNotificationSettings] = useState({
     enabled: true,
-    primaryEmail: '',
     schedule: {
       days90: true,
       days60: true,
@@ -80,8 +59,7 @@ export default function SettingsPage() {
       days15: true,
       days7: true,
       days1: true
-    },
-    emailTemplate: ''
+    }
   });
 
   // System state
@@ -95,68 +73,23 @@ export default function SettingsPage() {
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'company', label: 'Company', icon: Building },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'system', label: 'System & Security', icon: ShieldIcon },
   ];
 
   const renderProfileTab = () => (
-          <div className="space-y-6">
-      {/* Profile Picture Section */}
-      <div className="flex items-center space-x-4">
-        <div className="relative">
-          <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center overflow-hidden">
-            {profileData.profileImage ? (
-              <img 
-                src={URL.createObjectURL(profileData.profileImage)} 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-          <User className="w-10 h-10 text-gray-500" />
-            )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-full flex items-center justify-center">
+            <User className="w-10 h-10 text-gray-500" />
           </div>
-          <button className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 transition-colors">
-            <Camera className="w-4 h-4" />
-          </button>
-        </div>
-            <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile Picture</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Click to upload a new photo</p>
+          <div>
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{displayName}</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400">Administrator</p>
+          </div>
         </div>
       </div>
-
-      {/* Profile Information */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Profile Information</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input 
-            label="First Name" 
-            placeholder="Enter your first name"
-            value={profileData.firstName}
-            onChange={(e) => setProfileData(prev => ({ ...prev, firstName: e.target.value }))}
-          />
-          <Input 
-            label="Last Name" 
-            placeholder="Enter your last name"
-            value={profileData.lastName}
-            onChange={(e) => setProfileData(prev => ({ ...prev, lastName: e.target.value }))}
-          />
-          <Input 
-            label="Email" 
-            type="email" 
-            placeholder="Enter your email"
-            value={profileData.email}
-            onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-          />
-          <Input 
-            label="Phone" 
-            placeholder="Enter your phone number"
-            value={profileData.phone}
-            onChange={(e) => setProfileData(prev => ({ ...prev, phone: e.target.value }))}
-          />
-            </div>
-          </div>
 
       {/* Security Section */}
               <div className="space-y-4">
@@ -212,27 +145,29 @@ export default function SettingsPage() {
           />
         </div>
 
-        {/* Two-Factor Authentication */}
-        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-          <div>
-            <h4 className="font-medium text-gray-900 dark:text-white">Two-Factor Authentication</h4>
-            <p className="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security to your account</p>
-          </div>
-          <button
-            onClick={() => setSecurityData(prev => ({ ...prev, twoFactorEnabled: !prev.twoFactorEnabled }))}
-            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-              securityData.twoFactorEnabled
-                ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
-                : 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-          >
-            {securityData.twoFactorEnabled ? 'Enabled' : 'Disabled'}
-          </button>
-        </div>
+        {/* Two-Factor Authentication (hidden per requirements) */}
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => toast.success('Profile updated successfully!')} disabled={isLoading}>
+        <Button onClick={async () => {
+          if (!securityData.newPassword) {
+            toast.success('Profile updated');
+            return;
+          }
+          if (securityData.newPassword !== securityData.confirmPassword) {
+            toast.error('New password and confirmation do not match');
+            return;
+          }
+          setIsLoading(true);
+          const { error } = await AuthService.updatePassword({ newPassword: securityData.newPassword });
+          setIsLoading(false);
+          if (error) {
+            toast.error(error.message || 'Failed to update password');
+          } else {
+            toast.success('Password updated successfully');
+            setSecurityData(prev => ({ ...prev, currentPassword: '', newPassword: '', confirmPassword: '' }));
+          }
+        }} disabled={isLoading}>
           <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'Saving...' : 'Save Changes'}
         </Button>
@@ -240,103 +175,7 @@ export default function SettingsPage() {
     </div>
   );
 
-  const renderCompanyTab = () => (
-    <div className="space-y-6">
-      {/* Company Logo Section */}
-      <div className="flex items-center space-x-4">
-        <div className="relative">
-          <div className="w-20 h-20 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center overflow-hidden">
-            {companyData.logo ? (
-              <img 
-                src={URL.createObjectURL(companyData.logo)} 
-                alt="Company Logo" 
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <Building className="w-10 h-10 text-gray-500" />
-            )}
-          </div>
-          <button className="absolute bottom-0 right-0 bg-blue-500 text-white rounded-full p-1 hover:bg-blue-600 transition-colors">
-            <Upload className="w-4 h-4" />
-          </button>
-        </div>
-        <div>
-          <h3 className="text-lg font-medium text-gray-900 dark:text-white">Company Logo</h3>
-          <p className="text-sm text-gray-600 dark:text-gray-400">Upload your company logo</p>
-        </div>
-      </div>
-
-      {/* Company Details */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Company Details</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Input 
-            label="Company Name" 
-            placeholder="Enter company name"
-            value={companyData.name}
-            onChange={(e) => setCompanyData(prev => ({ ...prev, name: e.target.value }))}
-          />
-          <Input 
-            label="Phone" 
-            placeholder="Enter company phone"
-            value={companyData.phone}
-            onChange={(e) => setCompanyData(prev => ({ ...prev, phone: e.target.value }))}
-          />
-          <Input 
-            label="Email" 
-            type="email" 
-            placeholder="Enter company email"
-            value={companyData.email}
-            onChange={(e) => setCompanyData(prev => ({ ...prev, email: e.target.value }))}
-          />
-          <Input 
-            label="Website" 
-            placeholder="Enter company website"
-            value={companyData.website}
-            onChange={(e) => setCompanyData(prev => ({ ...prev, website: e.target.value }))}
-          />
-        </div>
-        <Input 
-          label="Address" 
-          placeholder="Enter company address"
-          value={companyData.address}
-          onChange={(e) => setCompanyData(prev => ({ ...prev, address: e.target.value }))}
-        />
-                  </div>
-
-      {/* Default Settings */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Default Settings</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Default Department
-            </label>
-            <select 
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              value={companyData.defaultDepartment}
-              onChange={(e) => setCompanyData(prev => ({ ...prev, defaultDepartment: e.target.value }))}
-            >
-              <option value="">Select Department</option>
-              <option value="HR">Human Resources</option>
-              <option value="IT">Information Technology</option>
-              <option value="Finance">Finance</option>
-              <option value="Operations">Operations</option>
-              <option value="Sales">Sales</option>
-              <option value="Marketing">Marketing</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-            <div className="flex justify-end">
-        <Button onClick={() => toast.success('Company settings updated successfully!')} disabled={isLoading}>
-          <Save className="w-4 h-4 mr-2" />
-          {isLoading ? 'Saving...' : 'Save Changes'}
-        </Button>
-            </div>
-          </div>
-        );
+  // Company tab removed per requirements
 
   const renderNotificationsTab = () => (
           <div className="space-y-6">
@@ -393,41 +232,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      {/* Recipient Configuration */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Recipient Configuration</h3>
-        <Input 
-          label="Primary Email Address" 
-          type="email" 
-          placeholder="hr@company.com"
-          value={notificationSettings.primaryEmail}
-          onChange={(e) => setNotificationSettings(prev => ({ ...prev, primaryEmail: e.target.value }))}
-          icon={<Mail className="w-4 h-4" />}
-        />
-        <p className="text-sm text-gray-600 dark:text-gray-400">
-          All visa expiry notifications will be sent to this email address
-        </p>
-      </div>
-
-      {/* Email Template */}
-      <div className="space-y-4">
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white">Email Template</h3>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Custom Email Message
-          </label>
-          <textarea
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={4}
-            placeholder="Dear HR Team,&#10;&#10;This is a reminder that {employee_name}'s visa expires on {expiry_date}. Please take necessary action.&#10;&#10;Best regards,&#10;CUBS Visa Management System"
-            value={notificationSettings.emailTemplate}
-            onChange={(e) => setNotificationSettings(prev => ({ ...prev, emailTemplate: e.target.value }))}
-          />
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-            Use {'{employee_name}'} and {'{expiry_date}'} as placeholders
-          </p>
-        </div>
-                </div>
+      {/* Recipient and template configuration removed per requirements */}
 
       <div className="flex justify-end">
         <Button onClick={() => toast.success('Notification settings updated successfully!')} disabled={isLoading}>
@@ -555,8 +360,6 @@ export default function SettingsPage() {
     switch (activeTab) {
       case 'profile':
         return renderProfileTab();
-      case 'company':
-        return renderCompanyTab();
       case 'notifications':
         return renderNotificationsTab();
       case 'system':

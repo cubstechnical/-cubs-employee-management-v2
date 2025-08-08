@@ -1,17 +1,69 @@
-                                    -- Updated database schema to work with existing Supabase tables
-                                    -- Run these SQL commands in your Supabase SQL editor
+-- Updated database schema to work with existing Supabase tables
+-- Run these SQL commands in your Supabase SQL editor
 
-                                    -- Update existing notifications table to support admin notifications
-                                    -- (Uses existing 'notifications' table from your database-schema.sql)
+-- Ensure employee_documents table exists to match app/services and materialized views
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.tables 
+    WHERE table_schema = 'public' AND table_name = 'employee_documents'
+  ) THEN
+    CREATE TABLE public.employee_documents (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      employee_id TEXT NOT NULL,
+      document_type TEXT NOT NULL,
+      file_name TEXT NOT NULL,
+      file_url TEXT NOT NULL,
+      file_size INTEGER,
+      file_path TEXT,
+      file_type TEXT,
+      uploaded_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      uploaded_by TEXT,
+      is_active BOOLEAN DEFAULT TRUE,
+      notes TEXT,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+      mime_type TEXT,
+      document_number TEXT,
+      issuing_authority TEXT,
+      expiry_date DATE
+    );
 
-                                    -- First, check if title column exists, if not add it
-                                    DO $$
-                                    BEGIN
-                                        IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
-                                                    WHERE table_name = 'notifications' AND column_name = 'title') THEN
-                                            ALTER TABLE notifications ADD COLUMN title TEXT;
-                                        END IF;
-                                    END $$;
+    -- Basic indexes for performance
+    CREATE INDEX IF NOT EXISTS idx_employee_documents_employee_id ON public.employee_documents(employee_id);
+    CREATE INDEX IF NOT EXISTS idx_employee_documents_file_path ON public.employee_documents(file_path);
+    CREATE INDEX IF NOT EXISTS idx_employee_documents_uploaded_at ON public.employee_documents(uploaded_at);
+
+    -- Enable RLS and allow authenticated read/write consistent with app usage
+    ALTER TABLE public.employee_documents ENABLE ROW LEVEL SECURITY;
+    DO $$ BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='employee_documents' AND policyname='Allow authenticated read'
+      ) THEN
+        CREATE POLICY "Allow authenticated read" ON public.employee_documents
+          FOR SELECT USING (auth.role() = 'authenticated');
+      END IF;
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='employee_documents' AND policyname='Allow authenticated write'
+      ) THEN
+        CREATE POLICY "Allow authenticated write" ON public.employee_documents
+          FOR ALL USING (auth.role() = 'authenticated');
+      END IF;
+    END $$;
+  END IF;
+END $$;
+
+-- Update existing notifications table to support admin notifications
+-- (Uses existing 'notifications' table from your database-schema.sql)
+
+-- First, check if title column exists, if not add it
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                WHERE table_name = 'notifications' AND column_name = 'title') THEN
+        ALTER TABLE notifications ADD COLUMN title TEXT;
+    END IF;
+END $$;
 
                                     -- Check if priority column exists, if not add it
                                     DO $$

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import dynamic from 'next/dynamic';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -8,43 +9,22 @@ import {
   Users, 
   FileText, 
   AlertTriangle, 
-  TrendingUp, 
   Calendar,
   CheckCircle,
   Clock,
-  Building2,
-  BarChart3,
   Download,
-  Eye,
-  ArrowUpRight,
-  ArrowDownRight,
-  Activity,
-  DollarSign,
-  Target,
-  Zap,
   Filter,
   RefreshCw,
-  Settings,
   Monitor,
-  Sparkles,
-  Globe,
-  Shield,
-  Award,
-  PieChart,
-  LineChart,
-  BarChart,
-  Target as TargetIcon,
-  TrendingDown,
-  Plus,
-  Minus,
-  ChevronRight,
   Play,
-  Pause
+  Pause,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
 import { cn } from '@/utils/cn';
 import Logo from '@/components/ui/Logo';
-import { EmployeeService, DashboardStats, DepartmentDistribution, GrowthTrendData, ExpiringVisa, DashboardFilters } from '@/lib/services/employees';
+import { EmployeeService, DashboardStats, ExpiringVisa, DashboardFilters, CompanyDistribution } from '@/lib/services/employees';
 import { useRealtimeDashboard } from '@/hooks/useRealtimeDashboard';
 import PerformanceDashboard from '@/components/admin/PerformanceDashboard';
 import toast from 'react-hot-toast';
@@ -201,9 +181,9 @@ function EnhancedChartCard({ title, children, className = '', subtitle, loading 
   );
 }
 
-// Enhanced Department Chart with Apple aesthetics
-function EnhancedDepartmentChart({ data, loading }: { data: DepartmentDistribution[], loading: boolean }) {
-  const [hoveredDept, setHoveredDept] = useState<string | null>(null);
+// Enhanced Company Chart with Apple aesthetics
+function EnhancedCompanyChart({ data, loading }: { data: CompanyDistribution[], loading: boolean }) {
+  const Chart = dynamic(() => import('react-apexcharts'), { ssr: false }) as any;
 
   if (loading) {
     return (
@@ -218,124 +198,54 @@ function EnhancedDepartmentChart({ data, loading }: { data: DepartmentDistributi
     );
   }
 
-  const gradients = [
-    'from-blue-500 to-purple-600',
-    'from-emerald-500 to-teal-600',
-    'from-orange-500 to-red-500',
-    'from-pink-500 to-rose-600',
-    'from-indigo-500 to-blue-600'
-  ];
+  const labels = (data || []).map(d => d.name);
+  const series = (data || []).map(d => Math.max(0, Number(d.employees) || 0));
+  const total = series.reduce((a, b) => a + b, 0);
+  const isDark = typeof document !== 'undefined' && document.documentElement.classList.contains('dark');
+
+  const options: any = {
+    chart: {
+      type: 'donut',
+      animations: { enabled: true, easing: 'easeinout', speed: 700 },
+      toolbar: { show: false },
+      dropShadow: { enabled: true, top: 2, left: 2, blur: 3, opacity: 0.15 }
+    },
+    labels,
+    legend: { position: 'bottom', labels: { colors: undefined } },
+    stroke: { width: 2, colors: ['transparent'] },
+    dataLabels: { enabled: true, style: { fontSize: '12px' } },
+    tooltip: { y: { formatter: (val: number) => `${val.toLocaleString()} employees` } },
+    fill: {
+      type: 'gradient',
+      gradient: { shade: 'light', type: 'horizontal', shadeIntensity: 0.3, opacityFrom: 0.9, opacityTo: 0.9 }
+    },
+    theme: { mode: isDark ? 'dark' : 'light' },
+    plotOptions: {
+      pie: {
+        startAngle: 0,
+        donut: {
+          size: '62%',
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: 'Employees',
+              formatter: () => total.toLocaleString()
+            }
+          }
+        }
+      }
+    },
+    responsive: [
+      { breakpoint: 1280, options: { chart: { height: 340 } } },
+      { breakpoint: 1024, options: { chart: { height: 300 }, legend: { position: 'bottom' } } },
+      { breakpoint: 640, options: { chart: { height: 280 } } }
+    ]
+  };
 
   return (
-    <div className="space-y-4">
-      {data.map((dept, index) => (
-        <div 
-          key={index} 
-          className="group p-4 rounded-xl border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all duration-200"
-          onMouseEnter={() => setHoveredDept(dept.name)}
-          onMouseLeave={() => setHoveredDept(null)}
-        >
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center space-x-3">
-              <div 
-                className="w-3 h-3 rounded-full"
-                style={{ background: `linear-gradient(135deg, ${gradients[index % gradients.length]})` }}
-              ></div>
-              <span className="font-medium text-gray-900 dark:text-white">{dept.name}</span>
-            </div>
-            <div className="text-right">
-              <p className="font-semibold text-gray-900 dark:text-white">{dept.employees}</p>
-              <p className="text-xs text-green-600 dark:text-green-400">{dept.growth}</p>
-            </div>
-          </div>
-          <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-            <div 
-              className="h-2 rounded-full transition-all duration-500 ease-out"
-              style={{ 
-                width: `${dept.percentage}%`,
-                background: `linear-gradient(135deg, ${gradients[index % gradients.length]})`
-              }}
-            ></div>
-          </div>
-          <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{dept.percentage}% of workforce</p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-// Enhanced Trend Chart with Apple design
-function EnhancedTrendChart({ data, loading }: { data: GrowthTrendData[], loading: boolean }) {
-  const [hoveredMonth, setHoveredMonth] = useState<string | null>(null);
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded-full w-32"></div>
-        <div className="h-48 bg-gray-200 dark:bg-gray-700 rounded-2xl"></div>
-      </div>
-    );
-  }
-
-  const maxEmployees = Math.max(...data.map(m => m.employees));
-  const maxDocuments = Math.max(...data.map(m => m.documents));
-
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-6">
-          <div className="flex items-center space-x-3">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-blue-500 to-purple-600"></div>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Employees</span>
-          </div>
-          <div className="flex items-center space-x-3">
-            <div className="w-4 h-4 rounded-full bg-gradient-to-r from-emerald-500 to-teal-600"></div>
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Documents</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex items-end justify-between h-32 space-x-2">
-        {data.map((month, index) => (
-          <div 
-            key={index} 
-            className="flex-1 flex flex-col items-center space-y-2 group cursor-pointer"
-            onMouseEnter={() => setHoveredMonth(month.month)}
-            onMouseLeave={() => setHoveredMonth(null)}
-          >
-            <div className="flex flex-col items-center space-y-1 w-full relative">
-              {/* Employees bar */}
-              <div 
-                className="w-full rounded-t-lg transition-all duration-300 ease-out"
-                style={{ 
-                  height: `${maxEmployees > 0 ? (month.employees / maxEmployees) * 80 : 0}px`,
-                  background: `linear-gradient(180deg, #3b82f6 0%, #6366f1 100%)`
-                }}
-              ></div>
-              
-              {/* Documents bar */}
-              <div 
-                className="w-full rounded-b-lg transition-all duration-300 ease-out"
-                style={{ 
-                  height: `${maxDocuments > 0 ? (month.documents / maxDocuments) * 40 : 0}px`,
-                  background: `linear-gradient(180deg, #10b981 0%, #14b8a6 100%)`
-                }}
-              ></div>
-              
-              {/* Hover effect */}
-              {hoveredMonth === month.month && (
-                <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white px-2 py-1 rounded text-xs whitespace-nowrap z-10">
-                  <div>E: {month.employees}</div>
-                  <div>D: {month.documents}</div>
-                </div>
-              )}
-            </div>
-            <span className="text-xs text-gray-600 dark:text-gray-400">
-              {month.month}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div className="w-full">
+      <Chart options={options} series={series} type="donut" height={380} />
     </div>
   );
 }
@@ -411,7 +321,7 @@ export default function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPerformance, setShowPerformance] = useState(false);
-  const [isAutoRefresh, setIsAutoRefresh] = useState(true);
+  // Auto refresh disabled per requirements
   
   // Dashboard data state
   const [stats, setStats] = useState<DashboardStats>({
@@ -422,8 +332,7 @@ export default function AdminDashboard() {
     visasExpiringSoon: 0,
     departments: 0
   });
-  const [departmentData, setDepartmentData] = useState<DepartmentDistribution[]>([]);
-  const [growthData, setGrowthData] = useState<GrowthTrendData[]>([]);
+  const [companyData, setCompanyData] = useState<CompanyDistribution[]>([]);
   const [visaAlerts, setVisaAlerts] = useState<ExpiringVisa[]>([]);
   
   // Filter state
@@ -434,24 +343,22 @@ export default function AdminDashboard() {
   // Real-time updates (throttled inside hook); enable only when page is visible
   const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
     onDataChange: fetchDashboardData,
-    enabled: isAutoRefresh
+    enabled: false
   });
 
   async function fetchDashboardData() {
     try {
       setIsRefreshing(true);
       
-      // Fetch all dashboard data in parallel
-      const [statsData, deptData, growthData, visaData] = await Promise.all([
+      // Fetch only required dashboard data in parallel
+      const [statsData, companyDist, visaData] = await Promise.all([
         EmployeeService.getAdminDashboardStats(filters),
-        EmployeeService.getEmployeeDistributionByDepartment(filters),
-        EmployeeService.getGrowthTrendData(filters),
-        EmployeeService.getExpiringVisasSummary(5)
+        EmployeeService.getEmployeeDistributionByCompany(filters),
+        EmployeeService.getExpiringVisasSummary(8)
       ]);
 
       setStats(statsData);
-      setDepartmentData(deptData);
-      setGrowthData(growthData);
+      setCompanyData(companyDist);
       setVisaAlerts(visaData);
 
       console.log('✅ Dashboard data refreshed successfully');
@@ -479,40 +386,31 @@ export default function AdminDashboard() {
 
   const statCards = [
     {
-      label: 'Total Employees',
+      label: 'Employees',
       value: stats.totalEmployees,
       change: '+12%',
       changeType: 'positive' as const,
       icon: Users,
       gradient: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-      description: 'Active workforce across all departments'
+      description: 'Current headcount'
     },
     {
-      label: 'Active Documents',
+      label: 'Documents',
       value: stats.totalDocuments,
       change: '+8%',
       changeType: 'positive' as const,
       icon: FileText,
       gradient: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
-      description: 'Compliance documents and records'
+      description: 'All compliance files'
     },
     {
-      label: 'Pending Approvals',
-      value: stats.pendingApprovals,
-      change: '-5%',
-      changeType: 'negative' as const,
+      label: 'Upcoming Visa Expiries',
+      value: visaAlerts.length,
+      change: '',
+      changeType: 'positive' as const,
       icon: Clock,
       gradient: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
-      description: 'Requests awaiting review'
-    },
-    {
-      label: 'Departments',
-      value: stats.departments,
-      change: '+2%',
-      changeType: 'positive' as const,
-      icon: Building2,
-      gradient: 'linear-gradient(135deg, #ec4899 0%, #f97316 100%)',
-      description: 'Organizational units'
+      description: 'Next 90 days'
     }
   ];
 
@@ -581,13 +479,6 @@ export default function AdminDashboard() {
                 <Monitor className="w-4 h-4 mr-2 inline" />
                 {showPerformance ? 'Hide' : 'Show'} Performance
               </button>
-              <button 
-                onClick={() => setIsAutoRefresh(!isAutoRefresh)}
-                className="px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                {isAutoRefresh ? <Pause className="w-4 h-4 mr-2 inline" /> : <Play className="w-4 h-4 mr-2 inline" />}
-                {isAutoRefresh ? 'Auto' : 'Manual'}
-              </button>
             </div>
           </div>
 
@@ -626,8 +517,8 @@ export default function AdminDashboard() {
         </div>
           )}
 
-          {/* Compact Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Stats Grid: exactly three cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {statCards.map((stat, index) => (
             <div 
               key={index} 
@@ -639,69 +530,71 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-          {/* Compact Charts Grid */}
+          {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {/* Department Distribution */}
-            <EnhancedChartCard title="Department Distribution" subtitle="Employee distribution" loading={isRefreshing}>
-              <EnhancedDepartmentChart data={departmentData} loading={isRefreshing} />
+            {/* Employees per company */}
+            <EnhancedChartCard title="Employees per Company" subtitle="Active employees grouped by company" loading={isRefreshing}>
+              <EnhancedCompanyChart data={companyData} loading={isRefreshing} />
             </EnhancedChartCard>
 
-          {/* Growth Trends */}
-            <EnhancedChartCard title="Growth Trends" subtitle="Monthly growth data" loading={isRefreshing}>
-              <EnhancedTrendChart data={growthData} loading={isRefreshing} />
-            </EnhancedChartCard>
-        </div>
-
-        {/* Visa Alerts */}
-          <EnhancedChartCard title="Visa Expiry Alerts" subtitle="Employees with expiring visas" loading={isRefreshing}>
-            <div className="space-y-3">
+            {/* Upcoming visa expiries */}
+            <EnhancedChartCard title="Upcoming Visa Expiries" subtitle="Next 90 days" loading={isRefreshing}>
               {visaAlerts.length > 0 ? (
-                visaAlerts.map((alert) => (
-                  <EnhancedVisaAlertCard key={alert.employee_id} alert={alert} />
-                ))
+                <div className="space-y-6">
+                  {/* Summary chips */}
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {[
+                      { label: '≤7d', color: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400', count: visaAlerts.filter(a => (a as any).daysRemaining! <= 7).length },
+                      { label: '≤15d', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 7 && (a as any).daysRemaining! <= 15).length },
+                      { label: '≤30d', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 15 && (a as any).daysRemaining! <= 30).length },
+                      { label: '≤60d', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 30 && (a as any).daysRemaining! <= 60).length },
+                      { label: '≤90d', color: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 60 && (a as any).daysRemaining! <= 90).length },
+                    ].map((chip, idx) => (
+                      <div key={idx} className={cn('rounded-lg px-3 py-2 text-center text-sm font-medium', chip.color)}>
+                        {chip.label}: {chip.count}
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Stacked progress bar */}
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
+                    {(() => {
+                      const totals = [
+                        visaAlerts.filter(a => (a as any).daysRemaining! <= 7).length,
+                        visaAlerts.filter(a => (a as any).daysRemaining! > 7 && (a as any).daysRemaining! <= 15).length,
+                        visaAlerts.filter(a => (a as any).daysRemaining! > 15 && (a as any).daysRemaining! <= 30).length,
+                        visaAlerts.filter(a => (a as any).daysRemaining! > 30 && (a as any).daysRemaining! <= 60).length,
+                        visaAlerts.filter(a => (a as any).daysRemaining! > 60 && (a as any).daysRemaining! <= 90).length,
+                      ];
+                      const total = Math.max(1, totals.reduce((a,b)=>a+b,0));
+                      const colors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#22c55e'];
+                      return (
+                        <div className="flex w-full h-3">
+                          {totals.map((v, i) => (
+                            <div key={i} style={{ width: `${(v/total)*100}%`, backgroundColor: colors[i] }} className="h-3 transition-all duration-500"></div>
+                          ))}
+                        </div>
+                      );
+                    })()}
+                  </div>
+
+                  {/* Top N list */}
+                  <div className="space-y-3">
+                    {visaAlerts.slice(0, 8).map((alert) => (
+                      <EnhancedVisaAlertCard key={alert.employee_id} alert={alert} />
+                    ))}
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-8">
                   <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-          </div>
+                  </div>
                   <p className="text-gray-600 dark:text-gray-400 font-medium">No visas expiring soon</p>
                   <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">All employee visas are up to date</p>
                 </div>
               )}
-            </div>
-          </EnhancedChartCard>
-
-          {/* Compact Quick Actions */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="p-4 rounded-xl bg-blue-600 text-white hover:bg-blue-700 transition-colors cursor-pointer">
-              <div className="flex items-center space-x-3">
-                <Users className="w-5 h-5" />
-                <div>
-                  <h3 className="font-semibold">Add Employee</h3>
-                  <p className="text-blue-100 text-sm">Register new team member</p>
-                </div>
-              </div>
-          </div>
-
-            <div className="p-4 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors cursor-pointer">
-              <div className="flex items-center space-x-3">
-                <FileText className="w-5 h-5" />
-                <div>
-                  <h3 className="font-semibold">Upload Documents</h3>
-                  <p className="text-green-100 text-sm">Manage compliance files</p>
-                </div>
-              </div>
-          </div>
-
-            <div className="p-4 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-colors cursor-pointer">
-              <div className="flex items-center space-x-3">
-                <BarChart3 className="w-5 h-5" />
-                <div>
-                  <h3 className="font-semibold">View Reports</h3>
-                  <p className="text-purple-100 text-sm">Generate insights</p>
-                </div>
-              </div>
-            </div>
+            </EnhancedChartCard>
           </div>
         </div>
       </div>

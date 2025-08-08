@@ -24,9 +24,9 @@ export async function withAuth(
       );
     }
 
-    // Get user profile from database
+    // Get user profile from database (use profiles table)
     const { data: profile, error: profileError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -38,8 +38,8 @@ export async function withAuth(
       );
     }
 
-    // Check if user is approved
-    if (!profile.is_approved) {
+    // Check if user is approved (profiles uses approved_by=null to indicate pending)
+    if (profile.approved_by === null || profile.approved_by === undefined) {
       return NextResponse.json(
         { error: 'Account pending approval' },
         { status: 403 }
@@ -77,9 +77,9 @@ export async function withAdminAuth(
       );
     }
 
-    // Get user profile from database
+    // Get user profile from database (use profiles table)
     const { data: profile, error: profileError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -92,7 +92,7 @@ export async function withAdminAuth(
     }
 
     // Check if user is approved and has admin role
-    if (!profile.is_approved || (profile.role !== 'admin' && profile.role !== 'master_admin')) {
+    if ((profile.approved_by === null || profile.approved_by === undefined) || (profile.role !== 'admin' && profile.role !== 'master_admin')) {
       return NextResponse.json(
         { error: 'Admin access required' },
         { status: 403 }
@@ -130,9 +130,9 @@ export async function withMasterAdminAuth(
       );
     }
 
-    // Get user profile from database
+    // Get user profile from database (use profiles table)
     const { data: profile, error: profileError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -145,7 +145,7 @@ export async function withMasterAdminAuth(
     }
 
     // Check if user is approved and has master admin role
-    if (!profile.is_approved || profile.role !== 'master_admin') {
+    if ((profile.approved_by === null || profile.approved_by === undefined) || profile.role !== 'master_admin') {
       return NextResponse.json(
         { error: 'Master admin access required' },
         { status: 403 }

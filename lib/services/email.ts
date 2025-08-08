@@ -61,7 +61,7 @@ export class EmailService {
   static async sendEmail(emailData: EmailData): Promise<{ success: boolean; error?: string }> {
     try {
       const msg = {
-        to: emailData.to,
+        to: 'info@cubstechnical.com',
         from: {
           email: this.fromEmail,
           name: this.fromName,
@@ -422,7 +422,7 @@ CUBS Technical Team
     `;
 
     return this.sendEmail({
-      to: data.employeeEmail,
+      to: 'info@cubstechnical.com',
       subject: `[${urgency}] Visa Expiry Alert - ${data.visaType}`,
       html,
       text,

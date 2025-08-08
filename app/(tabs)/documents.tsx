@@ -5,6 +5,8 @@ import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { Upload, Search, Folder, File, ChevronRight, Download, Eye, Trash2, MoreVertical, FileText, Image, FileImage, FileVideo, FileAudio, Archive } from 'lucide-react';
+import JSZip from 'jszip';
+import { saveAs } from 'file-saver';
 import { DocumentService } from '@/lib/services/documents';
 import UploadModal from '@/components/documents/UploadModal';
 import toast from 'react-hot-toast';
@@ -43,12 +45,16 @@ export default function Documents() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [loadingDocumentId, setLoadingDocumentId] = useState<string | null>(null);
   const viewerRef = useRef<Window | null>(null);
+  const shouldRefreshOnFocusRef = useRef(false);
   const latestRequestIdRef = useRef(0);
   const localCacheTTLms = 5 * 60 * 1000; // 5 minutes
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isBulkDownloading, setIsBulkDownloading] = useState(false);
 
-  useEffect(() => {
-    loadItems();
-  }, [currentPath]);
+  // Initial and path change load
+  // (moved below) effects will run after loadItems is defined
+
+  // (moved below) focus/visibility refresh effect will be defined after loadItems
 
   const loadItems = useCallback(async () => {
     const requestId = ++latestRequestIdRef.current;
@@ -197,9 +203,76 @@ export default function Documents() {
   const handleItemClick = (item: FolderItem) => {
     if (item.type === 'folder') {
       setCurrentPath(item.path);
+      // cancel inflight and clear selections
+      latestRequestIdRef.current++;
+      setSelectedIds(new Set());
     }
     // Document clicks are handled by action buttons
   };
+
+  const toggleSelect = (docId?: string) => {
+    if (!docId) return;
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(docId)) next.delete(docId); else next.add(docId);
+      return next;
+    });
+  };
+
+  const downloadSelectedAsZip = async () => {
+    if (selectedIds.size === 0) return;
+    try {
+      setIsBulkDownloading(true);
+      const zip = new JSZip();
+      const targets = items.filter(i => i.type === 'document' && i.document_id && selectedIds.has(i.document_id));
+      await Promise.all(targets.map(async (doc) => {
+        const { downloadUrl } = await DocumentService.downloadDocument(doc.document_id!);
+        const url = downloadUrl || doc.file_url;
+        if (!url) return;
+        const res = await fetch(url);
+        if (!res.ok) return;
+        const blob = await res.blob();
+        zip.file(doc.name, blob);
+      }));
+      const content = await zip.generateAsync({ type: 'blob' });
+      saveAs(content, 'documents.zip');
+      toast.success('Download started');
+    } catch (e) {
+      console.error('Bulk download error', e);
+      toast.error('Failed to prepare zip');
+    } finally {
+      setIsBulkDownloading(false);
+    }
+  };
+
+  // Initial and path change load (after loadItems is declared)
+  useEffect(() => {
+    loadItems();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPath]);
+
+  // After viewing a document in a separate window/tab, refresh when user returns
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onFocus = () => {
+      if (shouldRefreshOnFocusRef.current) {
+        shouldRefreshOnFocusRef.current = false;
+        loadItems();
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible' && shouldRefreshOnFocusRef.current) {
+        shouldRefreshOnFocusRef.current = false;
+        loadItems();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [loadItems]);
 
   const handleDocumentAction = async (action: 'view' | 'download' | 'delete', item: FolderItem) => {
     if (!item.document_id) {
@@ -223,6 +296,8 @@ export default function Documents() {
             }
             try {
               console.log('🔍 Attempting to get presigned URL for document:', item.document_id);
+              // Mark that we should refresh when user returns to this tab
+              shouldRefreshOnFocusRef.current = true;
               const { url, error } = await DocumentService.getDocumentPresignedUrl(item.document_id);
               const target = viewerRef.current;
               if (error) {
@@ -438,6 +513,17 @@ export default function Documents() {
             )}
           </div>
           
+          {/* Selection checkbox for documents */}
+          {item.type === 'document' && (
+            <input
+              type="checkbox"
+              checked={!!(item.document_id && selectedIds.has(item.document_id))}
+              onChange={(e) => { e.stopPropagation(); toggleSelect(item.document_id); }}
+              className="absolute left-2 top-2 w-4 h-4"
+              title="Select"
+            />
+          )}
+
           {/* Document action buttons */}
           {item.type === 'document' && (
             <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -663,6 +749,20 @@ export default function Documents() {
                 <Upload className="w-4 h-4" />
                 <span>Upload</span>
               </Button>
+              {currentPath !== '/' && items.some(i => i.type === 'document') && (
+                <Button
+                  onClick={downloadSelectedAsZip}
+                  disabled={selectedIds.size === 0 || isBulkDownloading}
+                  className="flex items-center space-x-2"
+                >
+                  {isBulkDownloading ? (
+                    <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin"></div>
+                  ) : (
+                    <Download className="w-4 h-4" />
+                  )}
+                  <span>Download Selected</span>
+                </Button>
+              )}
             </div>
           </div>
         </Card>

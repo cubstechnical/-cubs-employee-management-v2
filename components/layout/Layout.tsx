@@ -70,7 +70,7 @@ export default function Layout({ children, className }: LayoutProps) {
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              <Logo size="sm" showText={true} />
+              <Logo size="lg" showText={true} />
             </div>
             <div className="flex items-center space-x-4">
               <ThemeToggle size="sm" variant="minimal" />

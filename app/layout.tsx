@@ -19,12 +19,13 @@ export const metadata: Metadata = {
   keywords: 'employee management, visa tracking, document management, CUBS Technical',
   authors: [{ name: 'CUBS Technical' }],
   robots: 'index, follow',
+  manifest: '/manifest.webmanifest',
   icons: {
     icon: [
-      { url: '/assets/favicon.ico', sizes: '32x32', type: 'image/x-icon' },
+      { url: '/assets/appicon.png', sizes: '32x32', type: 'image/png' },
       { url: '/assets/appicon.png', sizes: '192x192', type: 'image/png' },
     ],
-    shortcut: '/assets/favicon.ico',
+    shortcut: '/assets/appicon.png',
     apple: [
       { url: '/assets/appicon.png', sizes: '180x180', type: 'image/png' },
     ],
@@ -57,6 +58,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <link rel="manifest" href="/manifest.webmanifest" />
+        <meta name="theme-color" content="#111827" />
         <ThemeProvider>
           <AuthProvider>
             {children}

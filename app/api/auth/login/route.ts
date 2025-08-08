@@ -31,9 +31,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user profile from database
+    // Get user profile from database (use profiles table)
     const { data: profile, error: profileError } = await supabase
-      .from('users')
+      .from('profiles')
       .select('*')
       .eq('id', user.id)
       .single();
@@ -45,8 +45,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if user is approved
-    if (!profile.is_approved) {
+    // Check if user is approved (approved_by=null means pending)
+    if (profile.approved_by === null || profile.approved_by === undefined) {
       return NextResponse.json(
         { error: 'Account pending approval. Please contact the administrator.' },
         { status: 403 }

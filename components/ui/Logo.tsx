@@ -47,9 +47,9 @@ export default function Logo({
   const sizeClasses = {
     sm: 'h-6 w-6',
     md: 'h-8 w-8',
-    lg: 'h-12 w-12',
-    xl: 'h-16 w-16',
-  };
+    lg: 'h-14 w-14',
+    xl: 'h-20 w-20',
+  } as const;
 
   const textSizeClasses = {
     sm: 'text-sm',
@@ -66,9 +66,10 @@ export default function Logo({
         <Image
           src={getLogoPath()}
           alt="CUBS Technical Logo"
-          width={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
-          height={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
+          width={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 56 : 80}
+          height={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 56 : 80}
           className={cn('object-contain', sizeClasses[size])}
+          sizes="(max-width: 1024px) 56px, 80px"
           priority
         />
       </div>
@@ -80,9 +81,10 @@ export default function Logo({
       <Image
         src={getLogoPath()}
         alt="CUBS Technical Logo"
-        width={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
-        height={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 48 : 64}
+        width={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 56 : 80}
+        height={size === 'sm' ? 24 : size === 'md' ? 32 : size === 'lg' ? 56 : 80}
         className={cn('object-contain', sizeClasses[size])}
+        sizes="(max-width: 1024px) 56px, 80px"
         priority
       />
       <div className={cn('font-bold text-gray-900 dark:text-white transition-colors duration-300', textSizeClasses[size])}>

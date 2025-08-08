@@ -82,6 +82,13 @@ export interface DepartmentDistribution {
   growth: string;
 }
 
+export interface CompanyDistribution {
+  name: string;
+  employees: number;
+  percentage: number;
+  growth: string;
+}
+
 export interface GrowthTrendData {
   month: string;
   employees: number;
@@ -818,6 +825,45 @@ export class EmployeeService {
       }));
     } catch (error) {
       console.error('Error in getEmployeeDistributionByDepartment:', error);
+      throw error;
+    }
+  }
+
+  static async getEmployeeDistributionByCompany(filters?: DashboardFilters): Promise<CompanyDistribution[]> {
+    try {
+      const dateFilter = this.getDateFilter(filters?.dateRange);
+      const { data, error } = await supabase
+        .from('employee_table')
+        .select('company_name, created_at')
+        .gte('created_at', dateFilter)
+        .eq('is_active', true);
+
+      if (error) {
+        console.error('Error fetching company distribution:', error);
+        throw error;
+      }
+
+      const companyMap = new Map<string, { count: number; recentCount: number }>();
+      data?.forEach(emp => {
+        const company = (emp.company_name as string) || 'Unknown';
+        const isRecent = new Date(emp.created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        if (!companyMap.has(company)) companyMap.set(company, { count: 0, recentCount: 0 });
+        const v = companyMap.get(company)!;
+        v.count++;
+        if (isRecent) v.recentCount++;
+      });
+
+      const totalEmployees = Array.from(companyMap.values()).reduce((sum, v) => sum + v.count, 0);
+      return Array.from(companyMap.entries())
+        .map(([name, stats]) => ({
+          name,
+          employees: stats.count,
+          percentage: totalEmployees > 0 ? Math.round((stats.count / totalEmployees) * 100) : 0,
+          growth: stats.recentCount > 0 ? `+${stats.recentCount}` : '0',
+        }))
+        .sort((a, b) => b.employees - a.employees);
+    } catch (error) {
+      console.error('Error in getEmployeeDistributionByCompany:', error);
       throw error;
     }
   }
