@@ -8,8 +8,13 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const baseConfig = {
+  compress: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com'],
+  },
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react'],
   },
   headers: async () => ([
     {
@@ -19,6 +24,7 @@ const baseConfig = {
         { key: 'X-Content-Type-Options', value: 'nosniff' },
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        { key: 'Cache-Control', value: 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' },
       ],
     },
     {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { X, Download, ExternalLink, FileText, FileImage, FileVideo, FileAudio, Archive } from 'lucide-react';
 
 interface DocumentPreviewProps {
@@ -196,12 +197,15 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
     // Image preview
     if (mimeType?.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'svg', 'webp'].includes(extension || '')) {
       return (
-        <div className="flex items-center justify-center h-96">
-          <img
+        <div className="relative h-96 w-full">
+          <Image
             src={previewUrl}
             alt={document.file_name}
-            className="max-w-full max-h-full object-contain rounded-lg shadow-lg"
+            fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 800px"
+            className="object-contain rounded-lg shadow-lg"
             onError={() => setError('Failed to load image')}
+            priority={false}
           />
         </div>
       );

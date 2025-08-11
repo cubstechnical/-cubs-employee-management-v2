@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/utils/cn';
 
 interface CustomIconProps {
@@ -55,11 +56,15 @@ export default function CustomIcon({ name, size = 'md', className }: CustomIconP
     );
   }
 
+  const dimension = size === 'sm' ? 16 : size === 'md' ? 24 : size === 'lg' ? 32 : 48;
   return (
-    <img
+    <Image
       src={getIconPath()}
       alt={`${name} icon`}
+      width={dimension}
+      height={dimension}
       className={cn('object-contain', sizeClasses[size], className)}
+      priority={false}
     />
   );
 } 

@@ -58,6 +58,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://s3.us-east-005.backblazeb2.com" crossOrigin="anonymous" />
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#111827" />
         {/* Web-vitals to Sentry (if Sentry is present) */}
