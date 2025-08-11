@@ -98,3 +98,8 @@ export class PerformanceMonitor {
     this.entries = [];
   }
 }
+
+// Web-vitals reporting to Sentry (browser)
+export function reportWebVitalsToSentry() {
+  // No-op; layout injects a lightweight reporter script to avoid adding a dependency.
+}

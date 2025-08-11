@@ -47,6 +47,22 @@ export interface FileMetadata {
 export class BackblazeService {
   private static bucketName = process.env.B2_BUCKET_NAME || 'cubsdocs';
   
+  private static normalizeCompanyFolderName(companyName: string): string {
+    if (!companyName) return 'Unknown';
+    const trimmed = companyName.trim();
+    // Map display names to canonical Backblaze prefixes used historically
+    const map: Record<string, string> = {
+      // Canonicalize to the '&' variant for all future uploads
+      'AL HANA TOURS & TRAVELS': 'AL HANA TOURS & TRAVELS',
+      'AL HANA TOURS AND TRAVELS': 'AL HANA TOURS & TRAVELS',
+      'AL HANA TOURS and TRAVELS': 'AL HANA TOURS & TRAVELS',
+      'GOLDEN CUBS': 'GOLDEN_CUBS',
+      'FLUID ENGINEERING': 'FLUID_ENGINEERING',
+      'CUBS TECH': 'CUBS',
+    };
+    return map[trimmed] || trimmed;
+  }
+  
   // Debug method to check configuration
   static getConfig() {
     const config = {
@@ -99,10 +115,13 @@ export class BackblazeService {
     metadata: FileMetadata
   ): Promise<UploadResult> {
     try {
+      // Normalize company folder name to match existing Backblaze prefixes
+      const normalizedCompany = this.normalizeCompanyFolderName(metadata.companyName);
+
       // Generate user-friendly file key with original filename
       const fileKey = metadata.employeeName 
-        ? `${metadata.companyName}/${metadata.employeeName}/${file.name}`
-        : `${metadata.companyName}/${file.name}`;
+        ? `${normalizedCompany}/${metadata.employeeName}/${file.name}`
+        : `${normalizedCompany}/${file.name}`;
 
       // Convert File to Buffer
       const arrayBuffer = await file.arrayBuffer();

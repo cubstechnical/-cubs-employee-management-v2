@@ -60,6 +60,18 @@ export default function RootLayout({
       <body className={inter.className}>
         <link rel="manifest" href="/manifest.webmanifest" />
         <meta name="theme-color" content="#111827" />
+        {/* Web-vitals to Sentry (if Sentry is present) */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          (function(){
+            try {
+              function send(metric){
+                var S = (window).Sentry; if (!S || !S.captureMessage) return;
+                S.captureMessage('web-vital', { level: 'info', tags: { metric: metric.name }, extra: metric });
+              }
+              var w = window; w.__onWebVitals = send;
+            } catch(e) {}
+          })();
+        `}} />
         <ThemeProvider>
           <AuthProvider>
             {children}

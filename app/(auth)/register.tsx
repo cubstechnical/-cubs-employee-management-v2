@@ -20,6 +20,10 @@ import { AuthService } from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 
 export default function Register() {
+  // Hard-disable public signup; redirect to login
+  if (typeof window !== 'undefined') {
+    window.location.replace('/login');
+  }
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

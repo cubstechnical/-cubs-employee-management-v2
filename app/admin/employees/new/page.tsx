@@ -78,7 +78,24 @@ function NewEmployeeContent() {
   const loadCompanies = async () => {
     try {
       const { companies: companyList } = await EmployeeService.getFilterOptions();
-      setCompanies(companyList.filter(company => company !== 'Company Documents'));
+      
+      // Filter out only unwanted companies, keep all active companies including CUBS
+      const filteredCompanies = companyList.filter(company => {
+        // Remove Company Documents (not a real company)
+        if (company === 'Company Documents') return false;
+        
+        // Remove duplicate Fluid Engineering variations (keep only FLUID ENGINEERING)
+        if (company === 'FLUID ENGINEERING SERVICES') return false;
+        if (company === 'FLUID') return false;
+        
+        // Keep all other companies including CUBS, CUBS CONTRACTING, CUBS TECH, etc.
+        return true;
+      });
+      
+      // Remove any remaining duplicates
+      const uniqueCompanies = [...new Set(filteredCompanies)];
+      
+      setCompanies(uniqueCompanies);
       setLoadingCompanies(false);
     } catch (error) {
       console.error('Error loading companies:', error);

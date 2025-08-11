@@ -11,6 +11,23 @@ const baseConfig = {
   images: {
     domains: ['s3.us-east-005.backblazeb2.com'],
   },
+  headers: async () => ([
+    {
+      source: '/(.*)',
+      headers: [
+        { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+        { key: 'X-Content-Type-Options', value: 'nosniff' },
+        { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+      ],
+    },
+    {
+      source: '/manifest.webmanifest',
+      headers: [
+        { key: 'Cache-Control', value: 'public, max-age=3600, immutable' },
+      ],
+    },
+  ]),
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,

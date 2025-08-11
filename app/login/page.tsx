@@ -179,13 +179,7 @@ export default function LoginPage() {
 
               <div className="mt-6 text-center">
                 <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Don't have an account?{' '}
-                  <Link
-                    href="/signup"
-                    className="text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
-                  >
-                    Sign up
-                  </Link>
+                  New accounts are provisioned by an administrator.
                 </p>
               </div>
             </>
@@ -245,7 +239,7 @@ export default function LoginPage() {
           <p className="text-xs text-gray-500 dark:text-gray-400">
             Developed by{' '}
             <a
-              href="https://chocosoft.dev"
+              href="https://chocosoftdev.com/"
               target="_blank"
               rel="noopener noreferrer"
               className="underline hover:text-gray-700 dark:hover:text-gray-300"

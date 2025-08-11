@@ -4,12 +4,12 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { Upload, Search, Folder, File, ChevronRight, Download, Eye, Trash2, MoreVertical, FileText, Image, FileImage, FileVideo, FileAudio, Archive } from 'lucide-react';
-import JSZip from 'jszip';
+import { Upload, Search, Folder, File, ChevronRight, Download, Eye, Trash2, FileText, Image, FileVideo, FileAudio, Archive } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { DocumentService } from '@/lib/services/documents';
 import UploadModal from '@/components/documents/UploadModal';
 import toast from 'react-hot-toast';
+import { VirtualGrid } from '@/components/ui/VirtualGrid';
 
 interface Document {
   id: string;
@@ -46,10 +46,27 @@ export default function Documents() {
   const [loadingDocumentId, setLoadingDocumentId] = useState<string | null>(null);
   const viewerRef = useRef<Window | null>(null);
   const shouldRefreshOnFocusRef = useRef(false);
+  const shouldBypassCacheRef = useRef(false);
   const latestRequestIdRef = useRef(0);
   const localCacheTTLms = 5 * 60 * 1000; // 5 minutes
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
+  const [docTypeFilter, setDocTypeFilter] = useState<string>('');
+  const [fromDate, setFromDate] = useState<string>('');
+  const [toDate, setToDate] = useState<string>('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [containerWidth, setContainerWidth] = useState<number>(1200);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const hasClearedCacheRef = useRef(false);
+
+  // Clear cache on initial load to ensure fresh employee names
+  useEffect(() => {
+    if (!hasClearedCacheRef.current) {
+      DocumentService.clearCache();
+      hasClearedCacheRef.current = true;
+      console.log('🧹 Cleared document cache on initial load');
+    }
+  }, []);
 
   // Initial and path change load
   // (moved below) effects will run after loadItems is defined
@@ -65,7 +82,7 @@ export default function Documents() {
       if (currentPath === '/') {
         // Try local cache first for root folders
         const cacheKey = 'docs:root-folders';
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && !shouldBypassCacheRef.current) {
           const cached = window.localStorage.getItem(cacheKey);
           if (cached) {
             try {
@@ -77,6 +94,8 @@ export default function Documents() {
             } catch {}
           }
         }
+        // reset bypass after applying
+        if (shouldBypassCacheRef.current) shouldBypassCacheRef.current = false;
         if (showSpinner) setLoading(true);
         // Load company folders
         const { folders, error } = await DocumentService.getDocumentFolders();
@@ -130,7 +149,7 @@ export default function Documents() {
             // For other companies, show employee folders
             // Try per-company local cache first
             const cacheKey = `docs:company:${companyName}`;
-            if (typeof window !== 'undefined') {
+            if (typeof window !== 'undefined' && !shouldBypassCacheRef.current) {
               const cached = window.localStorage.getItem(cacheKey);
               if (cached) {
                 try {
@@ -142,6 +161,7 @@ export default function Documents() {
                 } catch {}
               }
             }
+            if (shouldBypassCacheRef.current) shouldBypassCacheRef.current = false;
             if (showSpinner) setLoading(true);
 
             const { folders, error } = await DocumentService.getEmployeeFolders(companyName);
@@ -202,6 +222,15 @@ export default function Documents() {
 
   const handleItemClick = (item: FolderItem) => {
     if (item.type === 'folder') {
+      // Proactively close existing preview window to avoid blockers when switching folders
+      try {
+        if (viewerRef.current && !viewerRef.current.closed) {
+          viewerRef.current.close();
+        }
+      } catch {}
+      viewerRef.current = null;
+      shouldRefreshOnFocusRef.current = false;
+      shouldBypassCacheRef.current = true;
       setCurrentPath(item.path);
       // cancel inflight and clear selections
       latestRequestIdRef.current++;
@@ -223,20 +252,21 @@ export default function Documents() {
     if (selectedIds.size === 0) return;
     try {
       setIsBulkDownloading(true);
-      const zip = new JSZip();
-      const targets = items.filter(i => i.type === 'document' && i.document_id && selectedIds.has(i.document_id));
-      await Promise.all(targets.map(async (doc) => {
-        const { downloadUrl } = await DocumentService.downloadDocument(doc.document_id!);
-        const url = downloadUrl || doc.file_url;
-        if (!url) return;
-        const res = await fetch(url);
-        if (!res.ok) return;
-        const blob = await res.blob();
-        zip.file(doc.name, blob);
-      }));
-      const content = await zip.generateAsync({ type: 'blob' });
-      saveAs(content, 'documents.zip');
+      const ids = Array.from(selectedIds);
+      const res = await fetch('/api/documents/bulk-zip', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids })
+      });
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || 'Failed to prepare zip');
+      }
+      const blob = await res.blob();
+      saveAs(blob, 'documents.zip');
       toast.success('Download started');
+      // Ensure next navigation bypasses cache to avoid stale folder lists
+      shouldBypassCacheRef.current = true;
     } catch (e) {
       console.error('Bulk download error', e);
       toast.error('Failed to prepare zip');
@@ -244,6 +274,60 @@ export default function Documents() {
       setIsBulkDownloading(false);
     }
   };
+
+  const selectAllInView = () => {
+    const next = new Set<string>();
+    items.forEach(i => { if (i.type === 'document' && i.document_id) next.add(i.document_id); });
+    setSelectedIds(next);
+  };
+  const clearSelection = () => setSelectedIds(new Set());
+
+  // measure container width for virtualization
+  useEffect(() => {
+    const handleResize = () => {
+      if (!containerRef.current) return;
+      setContainerWidth(containerRef.current.clientWidth);
+    };
+    handleResize();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
+  }, []);
+
+  const executeSearch = useCallback(async () => {
+    try {
+      setIsSearching(true);
+      const company = currentPath.split('/').filter(Boolean)[0] || '';
+      const query = new URLSearchParams();
+      if (searchTerm) query.set('q', searchTerm);
+      if (docTypeFilter) query.set('type', docTypeFilter);
+      if (fromDate) query.set('from', new Date(fromDate).toISOString());
+      if (toDate) query.set('to', new Date(toDate).toISOString());
+      if (company && company !== 'Company Documents') query.set('company', company);
+      const res = await fetch(`/api/documents/search?${query.toString()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error('Search failed');
+      const json = await res.json();
+      const documentItems: FolderItem[] = (json.results || []).map((doc: any) => ({
+        name: doc.file_name,
+        type: 'document',
+        path: doc.file_path,
+        file_size: doc.file_size,
+        file_url: doc.file_url,
+        document_id: doc.id,
+        file_type: doc.file_type
+      }));
+      setItems(documentItems);
+    } catch (e) {
+      toast.error('Search failed');
+    } finally {
+      setIsSearching(false);
+    }
+  }, [searchTerm, docTypeFilter, fromDate, toDate, currentPath]);
 
   // Initial and path change load (after loadItems is declared)
   useEffect(() => {
@@ -311,15 +395,37 @@ export default function Documents() {
                 }
               } else if (url) {
                 console.log('✅ Opening presigned URL:', url);
-                if (target && !target.closed) target.location.href = url; else window.open(url, 'docview');
+                if (target && !target.closed) {
+                  try {
+                    target.location.href = url;
+                  } catch (navErr) {
+                    // Some browsers may block cross-origin navigation on a reused handle; fallback
+                    window.open(url, '_blank');
+                  }
+                } else {
+                  // Open named window to keep gesture for subsequent navigations
+                  const w = window.open(url, 'docview');
+                  if (!w) {
+                    // Pop-up blocked: fallback to same-tab navigation
+                    window.location.href = url;
+                  } else {
+                    viewerRef.current = w;
+                  }
+                }
               } else {
                 console.error('❌ No presigned URL returned');
-                if (item.file_url) {
-                  console.log('🔄 Using fallback file_url:', item.file_url);
-                  if (target && !target.closed) target.location.href = item.file_url; else window.open(item.file_url, 'docview');
+                // Only allow fallback if stored url is already signed
+                if (item.file_url && item.file_url.includes('Authorization=')) {
+                  console.log('🔄 Using signed file_url fallback');
+                  if (target && !target.closed) {
+                    try { target.location.href = item.file_url; } catch { window.open(item.file_url, '_blank'); }
+                  } else {
+                    const w = window.open(item.file_url, 'docview');
+                    if (w) viewerRef.current = w; else window.location.href = item.file_url;
+                  }
                 } else {
                   if (target && !target.closed) target.close();
-                  toast.error('Document URL not available');
+                  toast.error('Failed to open document');
                 }
               }
             } catch (err) {
@@ -357,6 +463,8 @@ export default function Documents() {
               document.body.appendChild(link);
               link.click();
               document.body.removeChild(link);
+              // Invalidate caches after a download to avoid stale states
+              shouldBypassCacheRef.current = true;
             } else {
               console.error('❌ No download URL returned');
               // Fallback to stored file_url
@@ -401,9 +509,13 @@ export default function Documents() {
     if (pathParts.length > 1) {
       // Go back to company level
       setCurrentPath(`/${pathParts[0]}`);
+      shouldBypassCacheRef.current = true;
+      setSelectedIds(new Set());
     } else if (pathParts.length === 1) {
       // Go back to root
       setCurrentPath('/');
+      shouldBypassCacheRef.current = true;
+      setSelectedIds(new Set());
     }
   };
 
@@ -503,7 +615,7 @@ export default function Documents() {
             ) : (
               getFileIcon(item.name, item.file_type)
             )}
-            <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate w-full">
+            <h3 className="font-medium text-gray-900 dark:text-white text-sm w-full break-words">
               {item.name}
               </h3>
             {item.type === 'document' && (
@@ -595,7 +707,7 @@ export default function Documents() {
             getFileIcon(item.name, item.file_type, 'sm')
           )}
           <div className="flex-1">
-            <h3 className="font-medium text-gray-900 dark:text-white">
+            <h3 className="font-medium text-gray-900 dark:text-white break-words">
               {item.name}
             </h3>
             {item.type === 'document' && (
@@ -709,7 +821,7 @@ export default function Documents() {
               </div>
             </div>
             
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center flex-wrap gap-2 md:space-x-4">
               <div className="flex border border-gray-300 dark:border-gray-600 rounded-lg">
                 <button
                   onClick={() => setViewMode('grid')}
@@ -749,6 +861,23 @@ export default function Documents() {
                 <Upload className="w-4 h-4" />
                 <span>Upload</span>
               </Button>
+              {currentPath !== '/' && items.some(i => i.type === 'document') && (
+                <>
+                  <Button
+                    onClick={selectAllInView}
+                    className="flex items-center space-x-2"
+                  >
+                    <span>Select All</span>
+                  </Button>
+                  <Button
+                    onClick={clearSelection}
+                    className="flex items-center space-x-2"
+                    variant="outline"
+                  >
+                    <span>Clear</span>
+                  </Button>
+                </>
+              )}
               {currentPath !== '/' && items.some(i => i.type === 'document') && (
                 <Button
                   onClick={downloadSelectedAsZip}

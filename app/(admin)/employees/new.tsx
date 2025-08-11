@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,11 +33,9 @@ const employeeSchema = z.object({
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
 
-// Company options based on actual companies in the system
-const companyOptions = [
-  { value: 'CUBS Technical', label: 'CUBS Technical' },
-  { value: 'GOLDEN CUBS', label: 'GOLDEN CUBS' },
-];
+// Company options will be loaded dynamically from the database
+// This ensures we only show active, correct company names
+const companyOptions: { value: string; label: string }[] = [];
 
 // Status options
 const statusOptions = [
@@ -49,6 +47,8 @@ const statusOptions = [
 export default function NewEmployee() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [companies, setCompanies] = useState<{ value: string; label: string }[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState(true);
 
   const {
     register,
@@ -65,6 +65,29 @@ export default function NewEmployee() {
 
   // Watch form values for conditional rendering
   const watchedValues = watch();
+
+  // Load companies from database
+  useEffect(() => {
+    const loadCompanies = async () => {
+      try {
+        const { companies: companyList } = await EmployeeService.getFilterOptions();
+        
+        // Convert to select options format
+        const companyOptions = companyList.map(company => ({
+          value: company,
+          label: company
+        }));
+        
+        setCompanies(companyOptions);
+        setLoadingCompanies(false);
+      } catch (error) {
+        console.error('Error loading companies:', error);
+        setLoadingCompanies(false);
+      }
+    };
+
+    loadCompanies();
+  }, []);
 
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
@@ -193,12 +216,13 @@ export default function NewEmployee() {
               <div className="space-y-6">
                 <Select
                   label="Company"
-                  placeholder="Select company"
+                  placeholder={loadingCompanies ? "Loading companies..." : "Select company"}
                   error={errors.company_id?.message}
                   required
-                  options={companyOptions}
+                  options={companies}
                   value={watchedValues.company_id}
                   onChange={(e) => setValue('company_id', e.target.value)}
+                  disabled={loadingCompanies}
                 />
 
                 <Select

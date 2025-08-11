@@ -61,6 +61,9 @@ export class DocumentService {
   private static employeeDocsInflight: Map<string, Promise<{ documents: Document[]; error: string | null }>> = new Map();
   private static readonly CACHE_DURATION = 10 * 60 * 1000; // 10 minutes (increased to reduce API calls)
   private static readonly SUPABASE_PAGE_SIZE = 1000; // Supabase hard page limit
+  // Fast-path caching for presigned URLs to avoid repeated edge calls
+  private static presignedUrlCache: Map<string, { url: string; expiresAt: number }> = new Map();
+  private static presignedUrlInflight: Map<string, Promise<{ url: string | null; error: string | null }>> = new Map();
   
   // Prevent multiple concurrent fetches
   private static isCurrentlyFetching = false;
@@ -76,16 +79,28 @@ export class DocumentService {
     this.companyDocsInflight.clear();
     this.employeeDocsCache.clear();
     this.employeeDocsInflight.clear();
-    this.isCurrentlyFetching = false;
-    this.fetchPromise = null;
-    console.log('🗑️ Document folders and company documents cache cleared');
+    this.presignedUrlCache.clear();
+    this.presignedUrlInflight.clear();
+    console.log('🧹 All document service caches cleared');
   }
 
-  // Force refresh method to clear cache and rebuild folders
+  // Clear all caches and force refresh
   static async forceRefresh(): Promise<{ folders: DocumentFolder[]; error: string | null }> {
-    console.log('🔄 Force refreshing document folders...');
     this.clearCache();
-    return await this.getDocumentFolders();
+    return this.getDocumentFolders();
+  }
+
+  // Clear employee folder cache for a specific company
+  static clearEmployeeFolderCache(companyName?: string): void {
+    if (companyName) {
+      this.employeeFoldersCache.delete(companyName);
+      this.employeeFoldersInflight.delete(companyName);
+      console.log(`🧹 Cleared employee folder cache for: ${companyName}`);
+    } else {
+      this.employeeFoldersCache.clear();
+      this.employeeFoldersInflight.clear();
+      console.log('🧹 Cleared all employee folder caches');
+    }
   }
 
   // Fetch ALL documents using pagination to bypass Supabase 1000 record limit
@@ -153,7 +168,14 @@ export class DocumentService {
           .range(fromIdx, toIdx);
 
         if (companyName === 'AL HANA TOURS & TRAVELS' || companyName === 'AL HANA TOURS and TRAVELS') {
-          q = q.or(`file_path.like.EMP_ALHT/%,file_path.like.AL HANA TOURS and TRAVELS/%`);
+          // Support all historical and canonical prefixes
+          q = q.or(
+            [
+              'file_path.like.EMP_ALHT/%',
+              'file_path.like.AL HANA TOURS and TRAVELS/%',
+              'file_path.like.AL HANA TOURS & TRAVELS/%'
+            ].join(',')
+          );
         } else {
           q = q.like('file_path', `${companyName}/%`);
         }
@@ -421,11 +443,12 @@ export class DocumentService {
               });
             });
 
-            if (folders.length > 0) {
+            if (folders.length > 1) {
               this.foldersCache = { folders, timestamp: Date.now() };
               if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for company folders (deduped)');
               return { folders, error: null };
             }
+            if (process.env.NODE_ENV !== 'production') console.log('⚠️  MV returned too few folders; falling back to direct scan');
           }
         } catch (e) {
           // View not available or RLS blocked – silently fallback
@@ -495,13 +518,14 @@ export class DocumentService {
       const displayNameMapping: { [key: string]: string } = {
         // Legacy folder mappings (for existing documents)
         'AL_ASHBAL_AJMAN': 'AL ASHBAL AJMAN',
-        'CUBS': 'CUBS CONTRACTING',
+        'CUBS': 'CUBS',
+        'CUBS CONTRACTING': 'CUBS CONTRACTING',
+        'CUBS TECH': 'CUBS',
         'ASHBAL_AL_KHALEEJ': 'ASHBAL AL KHALEEJ',
         'FLUID_ENGINEERING': 'FLUID',
         'RUKIN_AL_ASHBAL': 'RUKIN',
         'GOLDEN_CUBS': 'GOLDEN CUBS',
         'AL MACEN': 'AL MACEN',
-        'CUBS_TECH': 'CUBS TECH',
         'EMP_ALHT': 'AL HANA TOURS & TRAVELS',
         'EMP_COMPANY_DOCS': 'Company Documents',
         // New user-friendly folder mappings (for new uploads)
@@ -696,18 +720,21 @@ export class DocumentService {
       
       // Create mapping from display names to file path company names
       const companyNameMapping: { [key: string]: string } = {
-        'AL ASHBAL AJMAN': 'AL_ASHBAL_AJMAN',
-        'CUBS CONTRACTING': 'CUBS',
+        'AL ASHBAL AJMAN': 'AL ASHBAL AJMAN',
+        'CUBS': 'CUBS',
+        'CUBS CONTRACTING': 'CUBS CONTRACTING',
+        'CUBS TECH': 'CUBS',
         'ASHBAL AL KHALEEJ': 'ASHBAL_AL_KHALEEJ',
         'FLUID': 'FLUID_ENGINEERING',
         'RUKIN': 'RUKIN_AL_ASHBAL',
         'GOLDEN CUBS': 'GOLDEN_CUBS',
         'AL MACEN': 'AL MACEN',
-        'CUBS TECH': 'CUBS_TECH',
-        'AL HANA TOURS & TRAVELS': 'AL HANA TOURS and TRAVELS',
+        // Canonicalize to '&' variant for uploads
+        'AL HANA TOURS & TRAVELS': 'AL HANA TOURS & TRAVELS',
+        // Legacy mapping
         'Company Documents': 'EMP_COMPANY_DOCS',
         // New user-friendly paths
-        'AL HANA TOURS and TRAVELS': 'AL HANA TOURS and TRAVELS'
+        'AL HANA TOURS and TRAVELS': 'AL HANA TOURS & TRAVELS'
       };
       
       // Get the corresponding file path company name
@@ -741,11 +768,11 @@ export class DocumentService {
               .filter(r => r.employee_id)
               .map(r => ({
                 id: `emp-${r.employee_id}`,
-                name: (r.employee_name as string) || (r.employee_id as string),
+                name: this.resolveEmployeeDisplayName(r.employee_id as string, r.employee_name as string),
                 type: 'employee' as const,
                 companyName,
                 employeeId: r.employee_id as string,
-                employeeName: (r.employee_name as string) || (r.employee_id as string),
+                employeeName: this.resolveEmployeeDisplayName(r.employee_id as string, r.employee_name as string),
                 documentCount: Number(r.document_count) || 0,
                 lastModified: r.last_modified ? new Date(r.last_modified as string).toISOString() : new Date().toISOString(),
                 path: `${companyName}/${r.employee_id}`
@@ -816,15 +843,33 @@ export class DocumentService {
          // Group documents by employee and create folders
          const employeeFolders = new Map<string, { count: number; lastModified: string; name: string }>();
 
+        // Build a derived name map from file_path second segment as fallback
+        const derivedNameFromPath = new Map<string, string>();
+        for (const row of companyDocs || []) {
+          const id = row.employee_id as string | null | undefined;
+          const fp = (row.file_path as string) || '';
+          if (!id || !fp) continue;
+          const seg = fp.split('/')[1] || '';
+          if (seg) {
+            const candidate = seg.replace(/_/g, ' ').trim();
+            if (!derivedNameFromPath.has(id)) {
+              derivedNameFromPath.set(id, candidate);
+            }
+          }
+        }
+
         // Count documents per employee (fast path, lastModified approximated)
         const counts = new Map<string, number>();
-         for (const row of companyDocs || []) {
-           const id = row.employee_id as string | null | undefined;
-           if (!id) continue;
-           counts.set(id, (counts.get(id) || 0) + 1);
-         }
+        for (const row of companyDocs || []) {
+          const id = row.employee_id as string | null | undefined;
+          if (!id) continue;
+          counts.set(id, (counts.get(id) || 0) + 1);
+        }
+        
         counts.forEach((count, employeeId) => {
-          const employeeName = employeeMap.get(employeeId) || employeeId;
+          const dbName = employeeMap.get(employeeId);
+          const pathName = derivedNameFromPath.get(employeeId);
+          const employeeName = this.resolveEmployeeDisplayName(employeeId, dbName, pathName);
           employeeFolders.set(employeeId, {
             count,
             lastModified: Date.now().toString(),
@@ -835,11 +880,11 @@ export class DocumentService {
         // Convert to DocumentFolder array
          const folders: DocumentFolder[] = Array.from(employeeFolders.entries()).map(([employeeId, data]) => ({
           id: `emp-${employeeId}`,
-           name: data.name && data.name.trim().length > 0 ? data.name : employeeId,
+          name: data.name,
           type: 'employee' as const,
           companyName: companyName,
           employeeId: employeeId,
-           employeeName: data.name && data.name.trim().length > 0 ? data.name : employeeId,
+          employeeName: data.name,
           documentCount: data.count,
           lastModified: data.lastModified,
           path: `${companyName}/${employeeId}`
@@ -860,6 +905,155 @@ export class DocumentService {
     }
   }
 
+  // Enhanced employee name resolution with proper mapping
+  private static resolveEmployeeDisplayName(employeeId: string, dbName?: string, pathName?: string): string {
+    // 1. Try database lookup first
+    if (dbName && dbName.trim().length > 0) {
+      return dbName.trim();
+    }
+
+    // 2. Try path-derived name
+    if (pathName && pathName.trim().length > 0) {
+      return pathName.trim();
+    }
+
+    // 3. Enhanced ID to name conversion for specific patterns
+    const resolvedName = this.convertEmployeeIdToName(employeeId);
+    if (resolvedName !== employeeId) {
+      return resolvedName;
+    }
+
+    // 4. Format the employee ID to be more readable as final fallback
+    return this.formatEmployeeId(employeeId);
+  }
+
+  // Convert employee IDs to proper names based on patterns
+  private static convertEmployeeIdToName(employeeId: string): string {
+    // Handle specific company patterns
+    if (employeeId.startsWith('AL_ASHBAL') || employeeId.startsWith('AL ASHBAL')) {
+      // Extract number and map to known employees
+      const number = employeeId
+        .replace('AL_ASHBAL', '')
+        .replace('AL ASHBAL', '')
+        .replace(/[^0-9]/g, '')
+        .trim();
+      const employeeMap: { [key: string]: string } = {
+        '001': 'MUFAD TALIKDER',
+        '004': 'ABDUR ROHIM',
+        '005': 'MANIK JAMDER',
+        '006': 'MD SOMED MIAH',
+        '007': 'MD SULAIMAN MD SHAHJAHAN',
+        '008': 'PEAR HUSSAIN',
+        '009': 'MD KAMALUDDIN',
+        '010': 'MD MASUM',
+        '011': 'MD JUNAYED MIA',
+        '012': 'MD NASIR UDDIN',
+        '013': 'SHARIF DEWAN',
+        '014': 'MONGAL BADSHA',
+        '015': 'SIRAZUL ISLAM',
+        '016': 'SAJI CHANDRAN',
+        '017': 'ALLEN PRAKASH',
+        '018': 'SHAMSH ALAM',
+        '019': 'SHYAM BABU',
+        '020': 'ANARUDH SAH',
+        '021': 'SUNIL KUMAR',
+        '022': 'THAMEEM ANSARI',
+        '023': 'AHSANUL KARIM',
+        '024': 'BABLU KUMAR',
+        '025': 'ANCIL XAVIER',
+        '026': 'ASGAR HUSSAIN',
+        '027': 'BIJU KUMAR VIJAYAN GANGADHARAN',
+        '028': 'VINOD KUMAR GUPTA',
+        '029': 'BIJU SIVANANDAN',
+        '030': 'DHANAPAL KALIYAN',
+        '031': 'ABDUR SATTAR GAZI',
+        '032': 'ISMAIL KHAN',
+        '033': 'ALI AHMED',
+        '034': 'JAY NARAYAN',
+        '035': 'MD KAMALUDDIN',
+        '036': 'MD MASUM',
+        '037': 'MISHAN RAI',
+        '038': 'NASIR ULLAH',
+        '039': 'PRINCE VARGHESE',
+        '040': 'RAM EKBAL',
+        '041': 'LIJO DASAN',
+        '042': 'RAN BAHADUR',
+        '043': 'RINJO JOSE M',
+        '044': 'SHALALUDDIN',
+        '045': 'ABU BAKKAR',
+        '046': 'AYYAKANNU',
+        '047': 'CHANDAN DAS',
+        '048': 'GINI SREENIVAS',
+        '049': 'MOHAMMAD EKRAMUL',
+        '050': 'MOHAMMED SAHADAT',
+        '051': 'MURUGANADHAM',
+        '052': 'NUR HOSSAIN',
+        '053': 'RAHUL KUMAR',
+        '054': 'RANJIT KUMAR',
+        '055': 'SABEESH BABU',
+        '056': 'SABU THANKACHAN',
+        '057': 'SONY ARATTUKULAM',
+        '058': 'SUBHASH GOPALAN',
+        '059': 'SUDHEESH SURENDRAN',
+        '060': 'VINOD KUMAR BAHADUR',
+        '061': 'VISHAVANATHAN',
+        '062': 'BAKTA BAHADUR',
+        '063': 'BENESHA'
+      };
+      
+      if (employeeMap[number]) {
+        return employeeMap[number];
+      }
+    }
+
+    // Handle GOLDEN_CUBS patterns
+    if (employeeId.startsWith('GOLDEN_CUBS_') || employeeId.startsWith('GOLDEN CUBS ')) {
+      const name = employeeId
+        .replace('GOLDEN_CUBS_', '')
+        .replace('GOLDEN CUBS ', '')
+        .trim();
+      if (name) {
+        return name.replace(/_/g, ' ');
+      }
+    }
+
+    // Handle FLUID_ENGINEERING patterns
+    if (employeeId.startsWith('FLUID_ENGINEERING_') || employeeId.startsWith('FLUID ENGINEERING ')) {
+      const name = employeeId
+        .replace('FLUID_ENGINEERING_', '')
+        .replace('FLUID ENGINEERING ', '')
+        .trim();
+      if (name) {
+        return name.replace(/_/g, ' ');
+      }
+    }
+
+    // Return original ID if no pattern matches
+    return employeeId;
+  }
+
+  // Format employee ID to be more readable
+  private static formatEmployeeId(employeeId: string): string {
+    // Remove common prefixes (underscore or space variants) and format
+    let formatted = employeeId
+      .replace(/^((AL[ _]ASHBAL)|(GOLDEN[ _]CUBS)|(FLUID[ _]ENGINEERING)|(CUBS)|(ASHBAL[ _]AL[ _]KHALEEJ)|(RUKIN[ _]AL[ _]ASHBAL)|(CUBS[ _]TECH)|(AL[ _]MACEN)|(AL[ _]HANA[ _]TOURS(?:[ _]AND)?[ _]TRAVELS))[ _]/i, '')
+      .replace(/_/g, ' ')
+      .trim();
+
+    // If it's still just the ID, try to make it look like a name
+    if (formatted === employeeId) {
+      // Split by common separators and capitalize
+      const parts = employeeId.split(/[ _-]/);
+      if (parts.length > 1) {
+        return parts.map(part => 
+          part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
+        ).join(' ');
+      }
+    }
+
+    return formatted;
+  }
+
   // Upload a new document
   static async uploadDocument(
     file: File,
@@ -871,7 +1065,11 @@ export class DocumentService {
 
       // Extract company and employee names from file path for better organization
       const pathParts = uploadData.file_path.split('/');
-      const companyName = pathParts[0] || 'Unknown';
+      // For AL HANA TOURS, force canonical display name to '&' variant for consistency
+      let companyName = pathParts[0] || 'Unknown';
+      if (companyName === 'AL HANA TOURS and TRAVELS' || companyName === 'AL HANA TOURS AND TRAVELS') {
+        companyName = 'AL HANA TOURS & TRAVELS';
+      }
       const employeeName = pathParts[1] || 'Unknown';
 
       // Upload file to Backblaze B2
@@ -901,7 +1099,7 @@ export class DocumentService {
         return { document: null, error: 'File upload verification failed' };
       }
 
-      // Save document metadata to Supabase
+      // Save document metadata to Supabase using the actual fileKey returned by Backblaze
       const { data: document, error: dbError } = await supabase
         .from('employee_documents')
         .insert({
@@ -910,7 +1108,7 @@ export class DocumentService {
           file_name: uploadData.file_name,
           file_url: uploadResult.fileUrl || '',
           file_size: uploadData.file_size,
-          file_path: uploadData.file_path,
+          file_path: uploadResult.fileKey || uploadData.file_path,
           file_type: uploadData.file_type,
           mime_type: file.type,
           notes: uploadData.notes,
@@ -960,7 +1158,8 @@ export class DocumentService {
           await BackblazeService.deleteFile(document.file_path);
         } catch (backblazeError) {
           console.error('Failed to delete from Backblaze:', backblazeError);
-          // Continue with Supabase deletion even if Backblaze fails
+          // If B2 delete fails, abort to avoid orphaning metadata inconsistency
+          return { error: 'Failed to delete file from Backblaze' };
         }
       }
 
@@ -1243,47 +1442,69 @@ export class DocumentService {
   static async getDocumentPresignedUrl(documentId: string): Promise<{ url: string | null; error: string | null }> {
     try {
       console.log(`🔍 Getting presigned URL for document: ${documentId}`);
-      
-      const { data: document, error } = await supabase
-        .from('employee_documents')
-        .select('file_path, file_url, file_name')
-        .eq('id', documentId)
-        .single();
-
-      if (error) {
-        console.error('❌ Error fetching document:', error);
-        return { url: null, error: error.message };
+      // 1) Cache hit
+      const cached = this.presignedUrlCache.get(documentId);
+      if (cached && Date.now() < cached.expiresAt) {
+        return { url: cached.url, error: null };
       }
 
-      if (!document) {
-        console.error('❌ Document not found');
-        return { url: null, error: 'Document not found' };
-      }
+      // 2) Inflight de-duplication
+      const inflight = this.presignedUrlInflight.get(documentId);
+      if (inflight) return inflight;
 
-      // Try Edge Function first
-      try {
-        const { data: edgeResult, error: edgeError } = await supabase.functions.invoke('doc-manager', {
-          body: {
-            action: 'getSignedUrl',
-            directFilePath: document.file_path as string,
-            fileName: document.file_name as string
-          }
-        });
+      const promise = (async (): Promise<{ url: string | null; error: string | null }> => {
+        const { data: document, error } = await supabase
+          .from('employee_documents')
+          .select('file_path, file_url, file_name')
+          .eq('id', documentId)
+          .single();
 
-        if (!edgeError && edgeResult?.success && edgeResult?.signedUrl) {
-          console.log('✅ Document presigned URL generated via Edge Function');
-          return { url: edgeResult.signedUrl, error: null };
+        if (error) {
+          console.error('❌ Error fetching document:', error);
+          return { url: null, error: error.message };
         }
-      } catch (edgeError) {
-        console.error('❌ Edge Function error:', edgeError);
-      }
 
-      // Fallback to direct Backblaze URL construction
-      console.log('🔄 Falling back to direct Backblaze URL');
-      const directUrl = `https://f005.backblazeb2.com/file/cubsdocs/${encodeURIComponent(document.file_path as string)}`;
-      console.log('🔗 Direct URL:', directUrl);
-      return { url: directUrl, error: null };
-      
+        if (!document) {
+          console.error('❌ Document not found');
+          return { url: null, error: 'Document not found' };
+        }
+
+        // 3) Fast path: only trust stored file_url if it is already signed
+        if (document.file_url && String(document.file_url).includes('Authorization=')) {
+          const url = document.file_url as string;
+          this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + this.CACHE_DURATION });
+          return { url, error: null };
+        }
+
+        // 4) Edge Function for signed URL
+        try {
+          const { data: edgeResult, error: edgeError } = await supabase.functions.invoke('doc-manager', {
+            body: {
+              action: 'getSignedUrl',
+              directFilePath: document.file_path as string,
+              fileName: document.file_name as string
+            }
+          });
+
+          if (!edgeError && edgeResult?.success && edgeResult?.signedUrl) {
+            const url = edgeResult.signedUrl as string;
+            // Cache for a short period (Edge typically returns 1h expiry, we keep 10m)
+            this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + this.CACHE_DURATION });
+            console.log('✅ Document presigned URL generated via Edge Function');
+            return { url, error: null };
+          }
+        } catch (edgeError) {
+          console.error('❌ Edge Function error:', edgeError);
+        }
+
+        // 5) Final: do NOT return an unsigned URL for private buckets
+        console.error('❌ Failed to generate signed URL');
+        return { url: null, error: 'Failed to generate signed URL' };
+      })();
+
+      this.presignedUrlInflight.set(documentId, promise);
+      const result = await promise.finally(() => this.presignedUrlInflight.delete(documentId));
+      return result;
     } catch (error) {
       console.error('❌ Exception in getDocumentPresignedUrl:', error);
       return { url: null, error: 'Failed to get presigned URL' };

@@ -160,18 +160,10 @@ export class EmployeeService {
     }));
   }
 
-  // Generate unique employee ID based on company and employee name
+  // Generate unique employee ID based on company and existing IDs for that company
   static async generateEmployeeId(companyName: string, employeeName: string): Promise<string> {
     try {
-      // Special handling for AL ASHBAL AJMAN
-      if (companyName === 'AL ASHBAL AJMAN') {
-        return await this.generateAshbalEmployeeId();
-      }
-      
-      // Generate company prefix
-      const companyPrefix = this.generateCompanyPrefix(companyName);
-      
-      // Get existing employees for this company to find the highest number
+      // Get existing employees for this company
       const { data: existingEmployees, error } = await supabase
         .from('employee_table')
         .select('employee_id')
@@ -179,34 +171,52 @@ export class EmployeeService {
 
       if (error) {
         console.error('Error getting existing employees:', error);
-        // Fallback to timestamp-based ID
-        return `${companyPrefix}${Date.now().toString().slice(-4)}`;
+        // Fallback to static prefix map if query fails
+        const fallbackPrefix = this.generateCompanyPrefix(companyName);
+        return `${fallbackPrefix}${Date.now().toString().slice(-4)}`;
       }
 
-      // Find the highest employee number for this company
-      let maxNumber = 0;
+      // If there are existing employees, infer the prefix and padding dynamically
       if (existingEmployees && existingEmployees.length > 0) {
-        existingEmployees.forEach(emp => {
-          const employeeId = emp.employee_id as string;
-          if (employeeId && employeeId.startsWith(companyPrefix)) {
-            // Extract the number part after the prefix
-            const numberPart = employeeId.substring(companyPrefix.length);
-            const number = parseInt(numberPart);
-            if (!isNaN(number) && number > maxNumber) {
-              maxNumber = number;
-            }
+        type PrefixStats = { prefix: string; maxNum: number; padLen: number };
+        const statsByPrefix = new Map<string, PrefixStats>();
+
+        for (const row of existingEmployees) {
+          const id = (row.employee_id as string) || '';
+          // Match any non-digit prefix (including spaces/underscores) followed by digits
+          const m = id.match(/^([^0-9]*?)(\d+)$/);
+          if (!m) continue;
+          const prefix = m[1];
+          const numStr = m[2];
+          const num = parseInt(numStr, 10);
+          if (!statsByPrefix.has(prefix)) {
+            statsByPrefix.set(prefix, { prefix, maxNum: isNaN(num) ? 0 : num, padLen: numStr.length });
+          } else {
+            const s = statsByPrefix.get(prefix)!;
+            if (!isNaN(num) && num > s.maxNum) s.maxNum = num;
+            // Keep the longest observed numeric width
+            if (numStr.length > s.padLen) s.padLen = numStr.length;
           }
-        });
+        }
+
+        // Choose the most frequent or first observed prefix; fall back to static map
+        let chosen: PrefixStats | null = null;
+        for (const s of statsByPrefix.values()) { chosen = s; break; }
+        const dynamicPrefix = chosen?.prefix ?? this.generateCompanyPrefix(companyName);
+        const nextNumber = (chosen?.maxNum ?? 0) + 1;
+        const padLen = chosen?.padLen ?? 3;
+        const paddedNumber = nextNumber.toString().padStart(padLen, '0');
+        return `${dynamicPrefix}${paddedNumber}`;
       }
 
-      const nextNumber = maxNumber + 1;
-      const paddedNumber = nextNumber.toString().padStart(3, '0');
-      
-      return `${companyPrefix}${paddedNumber}`;
+      // No existing employees: use static prefix map
+      const companyPrefix = this.generateCompanyPrefix(companyName);
+      const defaultPad = companyPrefix === 'ALHT' ? 4 : 3; // known 4-digit series for AL HANA
+      return `${companyPrefix}${(1).toString().padStart(defaultPad, '0')}`;
     } catch (error) {
       console.error('Error generating employee ID:', error);
-      const companyPrefix = this.generateCompanyPrefix(companyName);
-      return `${companyPrefix}${Date.now().toString().slice(-4)}`;
+      const fallbackPrefix = this.generateCompanyPrefix(companyName);
+      return `${fallbackPrefix}${Date.now().toString().slice(-4)}`;
     }
   }
 
@@ -254,19 +264,17 @@ export class EmployeeService {
     const prefixMap: { [key: string]: string } = {
       'AL HANA TOURS & TRAVELS': 'ALHT',
       'AL HANA TOURS': 'ALHT',
-      'ALHT': 'ALHT',
-      'EMP_ALHT': 'ALHT',
       'COMPANY_DOCS': 'COMP',
+      'Company Documents': 'COMP',
       'AL ASHBAL AJMAN': 'AL ASHBAL',
       'ASHBAL AL KHALEEJ': 'AAK',
-      'CUBS CONTRACTING': 'CUBC',
-      'CUBS CONTRACTING & SERVICES W L L': 'CUBC',
-      'FLUID': 'FES',
-      'RUKIN': 'RUKIN',
+      'CUBS CONTRACTING': 'CCS',
+      'CUBS CONTRACTING & SERVICES W L L': 'CCS',
+      'FLUID ENGINEERING': 'FE',
       'GOLDEN CUBS': 'GCGC',
-      'AL MACEN': 'ALMAC',
-      'CUBS': 'CUB',
-      'CUBS TECH': 'CTECH'
+      'AL MACEN': 'ALM',
+      'RUKIN AL ASHBAL': 'RAA',
+      'CUBS': 'CUB'
     };
 
     // Check for exact match first
@@ -336,7 +344,7 @@ export class EmployeeService {
         .insert({
           employee_id: employeeData.employee_id,
           name: employeeData.name,
-          date_of_birth: employeeData.dob,
+          date_of_birth: employeeData.dob || null,
           trade: employeeData.trade,
           nationality: employeeData.nationality,
           joining_date: employeeData.joining_date,
@@ -345,7 +353,7 @@ export class EmployeeService {
           labourcard_no: employeeData.labourcard_no || null,
           labourcard_expiry: employeeData.labourcard_expiry || null,
           visastamping_date: employeeData.visastamping_date || null,
-          visa_expiry_date: employeeData.visa_expiry_date,
+          visa_expiry_date: employeeData.visa_expiry_date || null,
           eid: employeeData.eid || null,
           wcc: employeeData.wcc || null,
           lulu_wps_card: employeeData.lulu_wps_card || null,
@@ -690,8 +698,27 @@ export class EmployeeService {
         .select('visa_status')
         .not('visa_status', 'is', null);
 
+      // Get all companies and clean them up
+      const allCompanies = Array.from(new Set(companies?.map(c => c.company_name as string) || [])).sort();
+      
+      // Filter out only unwanted companies, keep all active companies
+      const cleanCompanies = allCompanies.filter(company => {
+        // Remove Company Documents (not a real company)
+        if (company === 'Company Documents') return false;
+        
+        // Remove duplicate Fluid Engineering variations (keep only FLUID ENGINEERING)
+        if (company === 'FLUID ENGINEERING SERVICES') return false;
+        if (company === 'FLUID') return false;
+        
+        // Keep all other companies including:
+        // - CUBS, GOLDEN CUBS, CUBS CONTRACTING (as you confirmed)
+        // - FLUID ENGINEERING (after consolidation)
+        // - All other active companies
+        return true;
+      });
+      
       return {
-        companies: Array.from(new Set(companies?.map(c => c.company_name as string) || [])).sort().filter(company => company !== 'Company Documents'),
+        companies: cleanCompanies,
         trades: Array.from(new Set(trades?.map(t => t.trade as string) || [])).sort(),
         nationalities: Array.from(new Set(nationalities?.map(n => n.nationality as string) || [])).sort(),
         statuses: ['active', 'inactive', 'pending', 'suspended'], // Use standard status values

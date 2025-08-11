@@ -330,7 +330,7 @@ export default function SettingsPage() {
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Developed by{' '}
               <a 
-                href="https://chocosoft.dev" 
+                href="https://chocosoftdev.com/" 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"

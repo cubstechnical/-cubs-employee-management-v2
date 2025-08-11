@@ -581,7 +581,7 @@ export default function AdminDashboard() {
                   {/* Top N list */}
                   <div className="space-y-3">
                     {visaAlerts.slice(0, 8).map((alert) => (
-                      <EnhancedVisaAlertCard key={alert.employee_id} alert={alert} />
+                  <EnhancedVisaAlertCard key={alert.employee_id} alert={alert} />
                     ))}
                   </div>
                 </div>
@@ -589,12 +589,12 @@ export default function AdminDashboard() {
                 <div className="text-center py-8">
                   <div className="w-12 h-12 bg-green-100 dark:bg-green-900/20 rounded-xl flex items-center justify-center mx-auto mb-4">
                     <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
-                  </div>
+          </div>
                   <p className="text-gray-600 dark:text-gray-400 font-medium">No visas expiring soon</p>
                   <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">All employee visas are up to date</p>
                 </div>
               )}
-            </EnhancedChartCard>
+          </EnhancedChartCard>
           </div>
         </div>
       </div>

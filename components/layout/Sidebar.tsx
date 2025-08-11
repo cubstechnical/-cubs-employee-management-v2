@@ -139,7 +139,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
         <div className="text-xs text-gray-500 dark:text-gray-400">
           Developed by{' '}
           <a
-            href="https://chocosoft.dev"
+            href="https://chocosoftdev.com/"
             target="_blank"
             rel="noopener noreferrer"
             className="underline hover:text-gray-700 dark:hover:text-gray-300"
