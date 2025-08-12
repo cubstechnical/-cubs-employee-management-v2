@@ -4,6 +4,27 @@ const withPWA = require('next-pwa')({
   register: true,
   skipWaiting: true,
   buildExcludes: [/middleware-manifest\.json$/],
+  runtimeCaching: [
+    // Cache Backblaze public endpoints with Range support
+    {
+      urlPattern: /^https:\/\/f005\.backblazeb2\.com\/file\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'b2-public',
+        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
+        rangeRequests: true,
+      },
+    },
+    {
+      urlPattern: /^https:\/\/s3\.us-east-005\.backblazeb2\.com\/.*/i,
+      handler: 'CacheFirst',
+      options: {
+        cacheName: 'b2-s3',
+        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
+        rangeRequests: true,
+      },
+    },
+  ],
 });
 
 /** @type {import('next').NextConfig} */
@@ -25,6 +46,8 @@ const baseConfig = {
         { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
         { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         { key: 'Cache-Control', value: 'public, max-age=60, s-maxage=300, stale-while-revalidate=600' },
+        // Basic CSP; tighten further if needed
+        { key: 'Content-Security-Policy', value: "default-src 'self'; img-src 'self' https: data: blob:; media-src 'self' https: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; font-src 'self' https: data:; connect-src 'self' https: wss:; frame-src 'self' https:;" },
       ],
     },
     {
