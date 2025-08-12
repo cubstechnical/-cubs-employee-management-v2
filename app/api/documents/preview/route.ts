@@ -2,17 +2,34 @@ import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from '@/lib/api/middleware';
 import { BackblazeService } from '@/lib/services/backblaze';
 
-// POST /api/documents/preview - Get document preview URL
+export const runtime = 'edge';
+
+// POST /api/documents/preview - Get document preview URL (single or batch)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { filePath } = body;
+    const { filePath, filePaths } = body as { filePath?: string; filePaths?: string[] };
 
-    if (!filePath) {
+    if (!filePath && !filePaths) {
       return NextResponse.json(
-        { error: 'File path is required' },
+        { error: 'filePath or filePaths is required' },
         { status: 400 }
       );
+    }
+
+    // Batch mode
+    if (Array.isArray(filePaths) && filePaths.length > 0) {
+      const expiresIn = 3600;
+      const unique = Array.from(new Set(filePaths.filter(Boolean)));
+      const results = await Promise.all(unique.map(async (fp) => {
+        try {
+          const url = await BackblazeService.getPresignedUrl(fp, expiresIn);
+          return { filePath: fp, previewUrl: url, error: null };
+        } catch (e: any) {
+          return { filePath: fp, previewUrl: null as string | null, error: e?.message || 'Failed to sign' };
+        }
+      }));
+      return NextResponse.json({ success: true, data: { results, expiresIn } });
     }
 
     console.log('🔍 Generating preview URL for file path:', filePath);
@@ -41,13 +58,7 @@ export async function POST(request: NextRequest) {
 
     console.log('✅ Preview URL ready:', previewUrl.substring(0, 100) + '...');
     
-    return NextResponse.json({
-      success: true,
-      data: {
-        previewUrl,
-        expiresIn: 3600
-      }
-    });
+    return NextResponse.json({ success: true, data: { previewUrl, expiresIn: 3600 } });
   } catch (error) {
     console.error('Document preview error:', error);
     return handleApiError(error);

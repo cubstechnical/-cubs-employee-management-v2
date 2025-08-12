@@ -207,6 +207,17 @@ export default function Documents() {
           }));
           if (latestRequestIdRef.current === requestId) {
             setItems(documentItems);
+            // Prefetch presigned URLs in background for faster first open
+            try {
+              const filePaths = documents.map(d => d.file_path).filter(Boolean).slice(0, 50);
+              if (filePaths.length > 0) {
+                fetch('/api/documents/preview', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ filePaths })
+                }).catch(() => {});
+              }
+            } catch {}
           }
         }
       }

@@ -64,6 +64,8 @@ export class DocumentService {
   // Fast-path caching for presigned URLs to avoid repeated edge calls
   private static presignedUrlCache: Map<string, { url: string; expiresAt: number }> = new Map();
   private static presignedUrlInflight: Map<string, Promise<{ url: string | null; error: string | null }>> = new Map();
+  // Lightweight cache from file_path -> signed url for batch prefetch
+  private static presignedByPathCache: Map<string, { url: string; expiresAt: number }> = new Map();
   
   // Prevent multiple concurrent fetches
   private static isCurrentlyFetching = false;
@@ -1469,7 +1471,16 @@ export class DocumentService {
           return { url: null, error: 'Document not found' };
         }
 
-        // 3) Fast path: only trust stored file_url if it is already signed
+        // 3a) If we have a path-level cache from batch prefetch, use it
+        if (document.file_path) {
+          const byPath = this.presignedByPathCache.get(document.file_path as string);
+          if (byPath && Date.now() < byPath.expiresAt) {
+            this.presignedUrlCache.set(documentId, { url: byPath.url, expiresAt: byPath.expiresAt });
+            return { url: byPath.url, error: null };
+          }
+        }
+
+        // 3b) Fast path: only trust stored file_url if it is already signed
         if (document.file_url && String(document.file_url).includes('Authorization=')) {
           const url = document.file_url as string;
           this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + this.CACHE_DURATION });
