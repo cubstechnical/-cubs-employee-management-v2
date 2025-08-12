@@ -1508,7 +1508,28 @@ export class DocumentService {
           console.error('❌ Edge Function error:', edgeError);
         }
 
-        // 5) Final: do NOT return an unsigned URL for private buckets
+        // 5) Fallback to local API route signing on Vercel
+        try {
+          const resp = await fetch('/api/documents/preview', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ filePath: document.file_path })
+          });
+          if (resp.ok) {
+            const json = await resp.json();
+            const url = json?.data?.previewUrl as string | undefined;
+            if (url) {
+              this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + this.CACHE_DURATION });
+              return { url, error: null };
+            }
+          } else {
+            console.error('❌ Preview API route failed:', resp.status, resp.statusText);
+          }
+        } catch (apiErr) {
+          console.error('❌ Preview API route exception:', apiErr);
+        }
+
+        // 6) Final: do NOT return an unsigned URL for private buckets
         console.error('❌ Failed to generate signed URL');
         return { url: null, error: 'Failed to generate signed URL' };
       })();

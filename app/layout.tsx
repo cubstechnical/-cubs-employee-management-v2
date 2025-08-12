@@ -62,6 +62,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://s3.us-east-005.backblazeb2.com" crossOrigin="anonymous" />
         <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="icon" href="/assets/favicon.png" sizes="32x32" />
         <meta name="theme-color" content="#111827" />
         {/* Web-vitals to Sentry (if Sentry is present) */}
         <script dangerouslySetInnerHTML={{ __html: `
