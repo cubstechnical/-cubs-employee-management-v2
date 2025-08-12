@@ -216,6 +216,13 @@ export default function Documents() {
                   headers: { 'Content-Type': 'application/json' },
                   body: JSON.stringify({ filePaths })
                 }).catch(() => {});
+                // Also request a prefix token for this employee to enable fast streaming
+                const folderPrefix = `EMP_${employeeId}/`;
+                fetch('/api/documents/preview', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ filePath: folderPrefix })
+                }).catch(() => {});
               }
             } catch {}
           }
@@ -410,14 +417,11 @@ export default function Documents() {
                   try {
                     target.location.href = url;
                   } catch (navErr) {
-                    // Some browsers may block cross-origin navigation on a reused handle; fallback
                     window.open(url, '_blank');
                   }
                 } else {
-                  // Open named window to keep gesture for subsequent navigations
                   const w = window.open(url, 'docview');
                   if (!w) {
-                    // Pop-up blocked: fallback to same-tab navigation
                     window.location.href = url;
                   } else {
                     viewerRef.current = w;
@@ -425,16 +429,16 @@ export default function Documents() {
                 }
               } else {
                 console.error('❌ No presigned URL returned');
-                // Only allow fallback if stored url is already signed
-                if (item.file_url && item.file_url.includes('Authorization=')) {
-                  console.log('🔄 Using signed file_url fallback');
-                  if (target && !target.closed) {
-                    try { target.location.href = item.file_url; } catch { window.open(item.file_url, '_blank'); }
-                  } else {
-                    const w = window.open(item.file_url, 'docview');
-                    if (w) viewerRef.current = w; else window.location.href = item.file_url;
-                  }
-                } else {
+                // Try prefix token stream if available
+                try {
+                  const folderPrefix = `EMP_${item.path.split('/')[1]}/`;
+                  const params = new URLSearchParams();
+                  params.set('path', item.path);
+                  // We do not have direct access to token cache here; rely on edge to reject gracefully if missing
+                  // In a future step we can expose a helper to read prefixAuthCache via a service call
+                  const streamUrl = `/api/documents/stream?${params.toString()}`;
+                  if (target && !target.closed) target.location.href = streamUrl; else window.open(streamUrl, 'docview');
+                } catch {
                   if (target && !target.closed) target.close();
                   toast.error('Failed to open document');
                 }

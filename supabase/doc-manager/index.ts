@@ -468,6 +468,65 @@ serve(async (req)=>{
       }
     }
 
+    // Handle getPrefixAuth action to obtain a reusable token for a folder/prefix
+    if (action === 'getPrefixAuth') {
+      try {
+        // Determine prefix from provided path or components
+        let filePath = explicitFilePath || directFilePath || '';
+        if (!filePath) {
+          // Fallback to base construction similar to getSignedUrl
+          const safeBase = (targetType === 'company')
+            ? `COMP_${(companyName || actualEmpId || '').toString().trim().replace(/^\/+/g, '').replace(/\/+$/g, '')}`
+            : `EMP_${actualEmpId}`;
+          filePath = folderName ? `${safeBase}/${folderName}/` : `${safeBase}/`;
+        }
+        // Ensure prefix ends with '/'
+        const lastSlash = filePath.lastIndexOf('/');
+        const prefix = lastSlash >= 0 ? filePath.substring(0, lastSlash + 1) : (filePath.endsWith('/') ? filePath : `${filePath}/`);
+
+        // Generate download authorization for the prefix
+        const downloadAuthData = await retryWithBackoff(async () => {
+          const downloadAuthResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_download_authorization`, {
+            method: 'POST',
+            headers: {
+              'Authorization': authData.authorizationToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              bucketId,
+              fileNamePrefix: prefix,
+              validDurationInSeconds: 3600
+            })
+          });
+
+          if (!downloadAuthResponse.ok) {
+            const errorText = await downloadAuthResponse.text();
+            throw new Error(`Failed to get download authorization: ${downloadAuthResponse.status} ${errorText}`);
+          }
+
+          return await downloadAuthResponse.json();
+        });
+
+        const payload = {
+          success: true,
+          prefix,
+          authorizationToken: downloadAuthData.authorizationToken,
+          downloadUrl: authData.downloadUrl,
+          expiresIn: 3600
+        };
+
+        return new Response(JSON.stringify(payload), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        return new Response(JSON.stringify({ success: false, error: error?.message || 'Failed to get prefix auth' }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Handle getSignedUrl action for downloads
     if (action === 'getSignedUrl') {
       try {

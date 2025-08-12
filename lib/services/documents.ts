@@ -66,6 +66,8 @@ export class DocumentService {
   private static presignedUrlInflight: Map<string, Promise<{ url: string | null; error: string | null }>> = new Map();
   // Lightweight cache from file_path -> signed url for batch prefetch
   private static presignedByPathCache: Map<string, { url: string; expiresAt: number }> = new Map();
+  // Prefix auth cache to allow composing stream URLs without per-file sign
+  private static prefixAuthCache: Map<string, { prefix: string; token: string; downloadBase: string; expiresAt: number }> = new Map();
   
   // Prevent multiple concurrent fetches
   private static isCurrentlyFetching = false;
@@ -335,6 +337,25 @@ export class DocumentService {
         const documents = results as unknown as Document[];
         if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${documents.length} documents for employee ${employeeId}`);
         this.employeeDocsCache.set(employeeId, { documents, timestamp: Date.now() });
+        // Request a prefix token once for this employee folder for faster streaming
+        try {
+          const folderPrefix = `EMP_${employeeId}/`;
+          const cached = DocumentService.prefixAuthCache.get(folderPrefix);
+          const now = Date.now();
+          if (!cached || now >= cached.expiresAt) {
+            const { data: edgeResult, error } = await supabase.functions.invoke('doc-manager', {
+              body: { action: 'getPrefixAuth', empId: employeeId, filePath: folderPrefix }
+            });
+            if (!error && edgeResult?.success && edgeResult?.authorizationToken && edgeResult?.downloadUrl) {
+              DocumentService.prefixAuthCache.set(folderPrefix, {
+                prefix: edgeResult.prefix,
+                token: edgeResult.authorizationToken,
+                downloadBase: edgeResult.downloadUrl,
+                expiresAt: now + 55 * 60 * 1000
+              });
+            }
+          }
+        } catch {}
         return { documents, error: null };
       };
       const promise = run().finally(() => {
