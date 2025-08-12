@@ -25,6 +25,7 @@
     "aws-sdk": "^2.1692.0",
     "backblaze-b2": "^1.7.1",
     "clsx": "^2.1.1",
+    "critters": "^0.0.23",
     "csv-parse": "^6.1.0",
     "date-fns": "^2.30.0",
     "dotenv": "^17.2.1",
