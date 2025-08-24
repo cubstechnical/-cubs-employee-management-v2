@@ -41,6 +41,7 @@ workflows:
       - android/app/build/outputs/bundle/release/*.aab
     publishing:
       google_play:
+        credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
         submit_to_internal_testing: true
         submit_to_internal_testing_notes: "CUBS Visa Management - Internal Testing Build"
@@ -87,9 +88,8 @@ workflows:
       - android/app/build/outputs/bundle/release/*.aab
     publishing:
       google_play:
+        credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS
         track: production
-        submit_to_internal_testing: false
-        submit_to_internal_testing_notes: "CUBS Visa Management - Production Release"
       email:
         recipients:
           - info@cubstechnical.com
