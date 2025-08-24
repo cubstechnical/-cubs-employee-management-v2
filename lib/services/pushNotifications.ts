@@ -1,5 +1,16 @@
-import { PushNotifications } from '@capacitor/push-notifications';
 import { supabase } from '../supabase/client';
+
+// Dynamically import Capacitor to avoid SSR issues
+let PushNotifications: any = null;
+
+// Only import Capacitor on client side
+if (typeof window !== 'undefined') {
+  try {
+    PushNotifications = require('@capacitor/push-notifications').PushNotifications;
+  } catch (error) {
+    console.log('Capacitor Push Notifications not available:', error);
+  }
+}
 
 export interface PushNotificationData {
   title: string;
@@ -17,6 +28,12 @@ export class PushNotificationService {
   // Initialize push notifications
   static async initialize(): Promise<void> {
     if (this.isInitialized) return;
+
+    // Check if PushNotifications is available (client-side only)
+    if (!PushNotifications || typeof window === 'undefined') {
+      console.log('Push notifications not available in this environment');
+      return;
+    }
 
     try {
       // Request permission
@@ -41,6 +58,11 @@ export class PushNotificationService {
 
   // Set up push notification listeners
   private static setupListeners(): void {
+    if (!PushNotifications) {
+      console.log('PushNotifications not available for listeners');
+      return;
+    }
+
     // Registration success
     PushNotifications.addListener('registration', (token) => {
       this.deviceToken = token.value;
@@ -146,7 +168,9 @@ export class PushNotificationService {
 
       // Send to each device
       const results = await Promise.all(
-        tokens.map(token => this.sendToDevice(token.device_token, notification))
+        tokens.map((token: { device_token: string; platform: string }) => 
+          this.sendToDevice(token.device_token, notification)
+        )
       );
 
       return results.some(result => result);
@@ -224,6 +248,6 @@ export class PushNotificationService {
 
   // Check if push notifications are available
   static isAvailable(): boolean {
-    return this.isInitialized && this.deviceToken !== null;
+    return this.isInitialized && this.deviceToken !== null && PushNotifications !== null;
   }
 }
