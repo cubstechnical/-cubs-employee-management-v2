@@ -43,6 +43,3 @@ dependencies {
 }
 
 apply from: 'capacitor.build.gradle'
-
-// Firebase setup
-apply plugin: 'com.google.gms.google-services'
