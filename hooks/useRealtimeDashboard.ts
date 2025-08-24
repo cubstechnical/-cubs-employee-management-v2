@@ -50,23 +50,19 @@ export function useRealtimeDashboard({
   }, [onDataChange]);
 
   const handleEmployeeChanges = useCallback(() => {
-    console.log('🔄 Employee data changed - refreshing dashboard');
     scheduleRefresh(onEmployeeChange);
   }, [onEmployeeChange, scheduleRefresh]);
 
   const handleDocumentChanges = useCallback(() => {
-    console.log('📄 Document data changed - refreshing dashboard');
     scheduleRefresh(onDocumentChange);
   }, [onDocumentChange, scheduleRefresh]);
 
   const handleNotificationChanges = useCallback(() => {
-    console.log('🔔 Notification data changed - refreshing dashboard');
     scheduleRefresh(onNotificationChange);
   }, [onNotificationChange, scheduleRefresh]);
 
   useEffect(() => {
     if (!enabled) {
-    if (process.env.NODE_ENV !== 'production') console.log('📡 Realtime dashboard subscriptions disabled');
       return;
     }
 
@@ -90,7 +86,6 @@ export function useRealtimeDashboard({
           table: 'employee_table'
         },
         (payload) => {
-          if (process.env.NODE_ENV !== 'production') console.log('Employee change detected:', payload);
           handleEmployeeChanges();
         }
       )
@@ -107,7 +102,6 @@ export function useRealtimeDashboard({
           table: 'employee_documents'
         },
         (payload) => {
-          if (process.env.NODE_ENV !== 'production') console.log('Document change detected:', payload);
           handleDocumentChanges();
         }
       )
@@ -124,17 +118,13 @@ export function useRealtimeDashboard({
           table: 'notifications'
         },
         (payload) => {
-          if (process.env.NODE_ENV !== 'production') console.log('Notification change detected:', payload);
           handleNotificationChanges();
         }
       )
       .subscribe();
 
-    if (process.env.NODE_ENV !== 'production') console.log('📡 Realtime dashboard subscriptions established');
-
     // Cleanup subscriptions
     return () => {
-      if (process.env.NODE_ENV !== 'production') console.log('🔌 Cleaning up realtime dashboard subscriptions');
       supabase.removeChannel(employeeSubscription);
       supabase.removeChannel(documentSubscription);
       supabase.removeChannel(notificationSubscription);

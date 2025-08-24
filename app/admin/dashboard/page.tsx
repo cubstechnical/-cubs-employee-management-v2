@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { 
-  Users, 
-  FileText, 
-  AlertTriangle, 
+import {
+  Users,
+  FileText,
+  AlertTriangle,
   Calendar,
   CheckCircle,
   Clock,
@@ -19,7 +20,8 @@ import {
   Play,
   Pause,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  UserCheck
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
 import { cn } from '@/utils/cn';
@@ -27,6 +29,8 @@ import Logo from '@/components/ui/Logo';
 import { EmployeeService, DashboardStats, ExpiringVisa, DashboardFilters, CompanyDistribution } from '@/lib/services/employees';
 import { useRealtimeDashboard } from '@/hooks/useRealtimeDashboard';
 import PerformanceDashboard from '@/components/admin/PerformanceDashboard';
+import { AuthService } from '@/lib/services/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import toast from 'react-hot-toast';
 
 // Apple-inspired color palette
@@ -318,11 +322,14 @@ function EnhancedVisaAlertCard({ alert }: { alert: ExpiringVisa }) {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [showPerformance, setShowPerformance] = useState(false);
+  const [pendingApprovals, setPendingApprovals] = useState<any[]>([]);
+  const [isRefreshingApprovals, setIsRefreshingApprovals] = useState(false);
   // Auto refresh disabled per requirements
-  
+
   // Dashboard data state
   const [stats, setStats] = useState<DashboardStats>({
     totalEmployees: 0,
@@ -339,6 +346,82 @@ export default function AdminDashboard() {
   const [filters, setFilters] = useState<DashboardFilters>({
     dateRange: '30d'
   });
+
+  // Load pending approvals
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      // Initial load
+      loadPendingApprovals();
+
+      // Set up periodic refresh for pending approvals (every 10 seconds for more responsiveness)
+      const interval = setInterval(() => {
+        loadPendingApprovals();
+      }, 10000);
+
+      // Listen for approval/rejection events from admin approvals page
+      const handleStorageChange = (e: StorageEvent) => {
+        if (e.key === 'adminDashboardRefresh' && e.newValue) {
+          // Force immediate refresh with no delay
+          setTimeout(() => {
+            loadPendingApprovals(true);
+            // Clear the flag
+            localStorage.removeItem('adminDashboardRefresh');
+          }, 100); // Small delay to ensure the database operation is complete
+        }
+      };
+
+      // Also listen for localStorage changes in the same tab
+      const handleLocalStorageChange = () => {
+        const refreshFlag = localStorage.getItem('adminDashboardRefresh');
+        if (refreshFlag) {
+          setTimeout(() => {
+            loadPendingApprovals(true);
+            localStorage.removeItem('adminDashboardRefresh');
+          }, 100); // Small delay to ensure the database operation is complete
+        }
+      };
+
+      window.addEventListener('storage', handleStorageChange);
+
+      // Check for refresh flag on component mount
+      handleLocalStorageChange();
+
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('storage', handleStorageChange);
+      };
+    }
+  }, [user]);
+
+  const loadPendingApprovals = async (showToast = false) => {
+    setIsRefreshingApprovals(true);
+    try {
+      const { users, error } = await AuthService.getPendingApprovals();
+      if (!error) {
+        const previousCount = pendingApprovals.length;
+
+        setPendingApprovals(users);
+
+        // Show toast if count changed and showToast is true
+        if (showToast && previousCount !== users.length) {
+          if (users.length === 0) {
+            toast.success('All pending approvals have been processed!');
+          } else if (users.length < previousCount) {
+            toast.success('Pending approvals updated!');
+          }
+        }
+      }
+    } catch (error) {
+      // Silent error handling for background polling
+    } finally {
+      setIsRefreshingApprovals(false);
+    }
+  };
+
+  // Function to refresh pending approvals (can be called from child components)
+  const refreshPendingApprovals = () => {
+    loadPendingApprovals();
+  };
 
   // Real-time updates (throttled inside hook); enable only when page is visible
   const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
@@ -361,9 +444,7 @@ export default function AdminDashboard() {
       setCompanyData(companyDist);
       setVisaAlerts(visaData);
 
-      console.log('✅ Dashboard data refreshed successfully');
     } catch (error) {
-      console.error('❌ Error fetching dashboard data:', error);
       toast.error('Failed to load dashboard data');
     } finally {
       setIsRefreshing(false);
@@ -464,7 +545,18 @@ export default function AdminDashboard() {
               </div>
             </div>
             <div className="flex space-x-3">
-              <button 
+              <Link href="/admin/approvals">
+                <button className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors relative">
+                  <UserCheck className="w-4 h-4 mr-2 inline" />
+                  User Approvals
+                  {pendingApprovals.length > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {pendingApprovals.length > 9 ? '9+' : pendingApprovals.length}
+                    </span>
+                  )}
+                </button>
+              </Link>
+              <button
                 onClick={handleManualRefresh}
                 disabled={isRefreshing}
                 className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -472,7 +564,7 @@ export default function AdminDashboard() {
                 <RefreshCw className={`w-4 h-4 mr-2 inline ${isRefreshing ? 'animate-spin' : ''}`} />
                 Refresh
               </button>
-              <button 
+              <button
                 onClick={() => setShowPerformance(!showPerformance)}
                 className="px-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
               >
@@ -481,6 +573,43 @@ export default function AdminDashboard() {
               </button>
             </div>
           </div>
+
+          {/* Pending Approvals Alert */}
+          {pendingApprovals.length > 0 && (
+            <div className="bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 rounded-xl p-4 border border-orange-200 dark:border-orange-800">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-orange-100 dark:bg-orange-900/40 rounded-lg flex items-center justify-center">
+                    <UserCheck className="w-5 h-5 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-medium text-orange-900 dark:text-orange-100">
+                      Pending User Approvals
+                    </h3>
+                    <p className="text-sm text-orange-700 dark:text-orange-200">
+                      {pendingApprovals.length} user{pendingApprovals.length > 1 ? 's' : ''} waiting for approval
+                    </p>
+                  </div>
+                </div>
+                <div className="flex space-x-2">
+                  <Button
+                    onClick={() => loadPendingApprovals(true)}
+                    variant="outline"
+                    size="sm"
+                    disabled={isRefreshingApprovals}
+                  >
+                    <RefreshCw className={`w-4 h-4 mr-2 ${isRefreshingApprovals ? 'animate-spin' : ''}`} />
+                    {isRefreshingApprovals ? 'Refreshing...' : 'Refresh'}
+                  </Button>
+                  <Link href="/admin/approvals">
+                    <Button className="bg-orange-600 hover:bg-orange-700 text-white">
+                      Review Now
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Compact Filters */}
           <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">

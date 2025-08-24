@@ -1,0 +1,68 @@
+# App Store Screenshots Guide
+
+## Google Play Store Requirements
+- At least 2 screenshots required
+- Maximum 8 screenshots allowed
+- PNG or JPEG format
+- 16:9 or 9:16 aspect ratio recommended
+- Minimum 320px width
+- Maximum 3840px width
+- File size limit: 15MB per image
+
+### Recommended Screenshots
+- Phone screenshots: 1080x1920px (9:16)
+- Tablet screenshots: 1200x1920px (5:8)
+- Feature screenshots: 1080x1920px
+- Include login screen, dashboard, key features
+
+## Apple App Store Requirements
+- At least 1 screenshot required
+- Maximum 10 screenshots allowed
+- PNG format only
+- 9:16 aspect ratio required
+- 1242x2688px (iPhone 6.5") or 1179x2556px (iPhone 5.5") recommended
+- File size limit: 30MB per image
+
+### Recommended Screenshots
+- Use iPhone 13 Pro or iPhone 14 dimensions
+- Include status bar in screenshots
+- Show app in use with realistic data
+- Highlight key features and workflows
+
+## Screenshot Checklist
+
+### Must Include:
+- [ ] Login/Authentication screen
+- [ ] Main dashboard/home screen
+- [ ] Key feature demonstration
+- [ ] Settings or profile screen
+- [ ] Any unique selling points
+
+### Best Practices:
+- [ ] Use real data (no lorem ipsum)
+- [ ] Show the app in use
+- [ ] Include different user flows
+- [ ] Use consistent styling
+- [ ] Ensure text is readable
+- [ ] Follow platform design guidelines
+
+## Tools for Screenshots
+
+### Android (Physical Device or Emulator):
+1. Enable Developer Options
+2. Use "Screenshot" feature
+3. Or use Android Studio's screen capture
+
+### iOS (Physical Device):
+1. Press Volume Up + Side Button simultaneously
+2. Use QuickTime Player with device connected
+3. Use Xcode's screenshot feature
+
+### Browser (Web App):
+1. Use browser dev tools responsive mode
+2. Set exact dimensions
+3. Take screenshot of viewport
+
+---
+
+*Tip: Take screenshots in portrait orientation for mobile apps*

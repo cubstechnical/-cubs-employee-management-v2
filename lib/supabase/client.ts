@@ -4,11 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://blbybcxkfcyxrwrlldtd.supabase.co';
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-if (process.env.NODE_ENV !== 'production') {
-  console.log('🔧 Supabase Configuration:');
-  console.log('URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-  console.log('Key:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
-}
+
 
 // Create Supabase client
 let supabase: ReturnType<typeof createClient>;
@@ -26,9 +22,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
         detectSessionInUrl: true,
       },
     });
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('✅ Supabase client created successfully');
-    }
+
   } catch (error) {
     console.error('❌ Error creating Supabase client:', error);
     // Fallback to mock client

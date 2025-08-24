@@ -1,7 +1,10 @@
 import EmployeeDetail from '@/app/(admin)/employees/[id]/page';
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Generate static params for static export
+export async function generateStaticParams() {
+  // Return empty array since this is a server component with dynamic data
+  return [];
+}
 
 export default function EmployeeDetailPage() {
   return <EmployeeDetail />;

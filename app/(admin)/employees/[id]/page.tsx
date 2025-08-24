@@ -6,7 +6,7 @@ import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { 
+import {
   ArrowLeft,
   Edit,
   Trash2,

@@ -429,15 +429,15 @@ export default function Documents() {
                 }
               } else {
                 console.error('❌ No presigned URL returned');
-                // Try prefix token stream if available
+                // Try prefix token stream if available via service helper
                 try {
-                  const folderPrefix = `EMP_${item.path.split('/')[1]}/`;
-                  const params = new URLSearchParams();
-                  params.set('path', item.path);
-                  // We do not have direct access to token cache here; rely on edge to reject gracefully if missing
-                  // In a future step we can expose a helper to read prefixAuthCache via a service call
-                  const streamUrl = `/api/documents/stream?${params.toString()}`;
-                  if (target && !target.closed) target.location.href = streamUrl; else window.open(streamUrl, 'docview');
+                  const streamResp = await DocumentService.getStreamUrlByPath(item.path, item.path.split('/')[1]);
+                  if (streamResp) {
+                    if (target && !target.closed) target.location.href = streamResp; else window.open(streamResp, 'docview');
+                  } else {
+                    if (target && !target.closed) target.close();
+                    toast.error('Failed to open document');
+                  }
                 } catch {
                   if (target && !target.closed) target.close();
                   toast.error('Failed to open document');

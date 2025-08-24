@@ -1,0 +1,108 @@
+# 🚀 SIMPLE STEP-BY-STEP ANDROID BUILD GUIDE
+
+## IF THE AUTOMATED SCRIPT FAILS, USE THESE MANUAL STEPS:
+
+### Step 1: Verify Prerequisites
+```bash
+# Check Node.js
+node --version
+# Should show: v16.x.x or v18.x.x
+
+# Check npm
+npm --version
+# Should show: 8.x.x or higher
+```
+
+### Step 2: Install Dependencies
+```bash
+npm install
+```
+
+### Step 3: Build Web App
+```bash
+npm run build
+```
+
+### Step 4: Setup Capacitor (Manual)
+```bash
+# Check if android folder exists
+ls -la android
+
+# If it doesn't exist:
+npx cap add android
+
+# Sync with Capacitor
+npx cap sync android
+```
+
+### Step 5: Build APK (Manual)
+```bash
+# Navigate to android folder
+cd android
+
+# Clean project
+./gradlew clean
+
+# Build APK
+./gradlew assembleDebug
+
+# Or try with compatibility flags
+./gradlew assembleDebug --no-daemon --no-build-cache --no-parallel --max-workers=1
+
+# Go back
+cd ..
+```
+
+### Step 6: Find Your APK
+```bash
+# Check if APK was created
+ls -la android/app/build/outputs/apk/debug/
+
+# The APK file should be:
+# android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+### Step 7: Install on Device
+```bash
+# Copy APK to device and install manually, or use:
+adb install android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+---
+
+## ALTERNATIVE: USE ANDROID STUDIO
+
+If command line builds keep failing:
+
+1. **Open Android Studio**
+2. **File → Open** → Select the `android` folder in your project
+3. **Wait for Gradle sync to complete**
+4. **Run → Run 'app'** (or press Shift+F10)
+5. **Select your device/simulator**
+6. **The app will build and install automatically**
+
+---
+
+## IF ALL ELSE FAILS: QUICK FIX
+
+Try this minimal approach:
+
+```bash
+# 1. Clean everything
+rm -rf .next android node_modules
+npm install
+
+# 2. Simple build
+npm run build
+npx cap add android
+npx cap sync android
+
+# 3. Use Android Studio
+# Open android folder in Android Studio and build
+```
+
+---
+
+## DEMO CREDENTIALS
+- Email: info@cubstechnical.com
+- Password: Admin@123456

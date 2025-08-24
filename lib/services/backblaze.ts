@@ -1,6 +1,12 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
-import * as https from 'https';
+// Avoid importing Node https in edge/browser contexts. Use dynamic require in Node only.
+let httpsAgent: any = undefined;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // const https = require('https');
+  // httpsAgent = new https.Agent({ rejectUnauthorized: false });
+} catch {}
 
 // Configure AWS SDK for Backblaze B2
 const getBackblazeEndpoint = () => {
@@ -21,11 +27,9 @@ const s3Client = new S3Client({
   region: 'us-east-005', // Backblaze B2 region
   forcePathStyle: true,
   // Add SSL certificate handling for development
-  ...(process.env.NODE_ENV === 'development' && {
-    requestHandler: {
-      httpsAgent: new https.Agent({ rejectUnauthorized: false })
-    }
-  })
+  ...(process.env.NODE_ENV === 'development' && httpsAgent
+    ? { requestHandler: { httpsAgent } }
+    : {})
 });
 
 export interface UploadResult {

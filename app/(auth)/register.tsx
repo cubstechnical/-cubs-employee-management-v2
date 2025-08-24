@@ -6,24 +6,20 @@ import Link from 'next/link';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { 
-  User, 
-  Mail, 
-  Lock, 
-  Eye, 
+import {
+  User,
+  Mail,
+  Lock,
+  Eye,
   EyeOff,
-  Building2,
-  Phone,
-  CheckCircle
+  CheckCircle,
+  Building2
 } from 'lucide-react';
 import { AuthService } from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 
 export default function Register() {
-  // Hard-disable public signup; redirect to login
-  if (typeof window !== 'undefined') {
-    window.location.replace('/login');
-  }
+  // Enable registration but users will need admin approval
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -34,8 +30,6 @@ export default function Register() {
     email: '',
     password: '',
     confirmPassword: '',
-    company: '',
-    phone: '',
     role: 'admin' as 'admin' | 'user'
   });
 
@@ -66,8 +60,6 @@ export default function Register() {
         metadata: {
           first_name: formData.firstName,
           last_name: formData.lastName,
-          company: formData.company,
-          phone: formData.phone,
           role: formData.role
         }
       });
@@ -75,8 +67,8 @@ export default function Register() {
       if (error) {
         toast.error(error.message || 'Registration failed');
       } else {
-        toast.success('Registration successful! Please check your email to verify your account.');
-        router.push('/login');
+        toast.success('Registration successful! Your account is pending admin approval.');
+        router.push('/pending-approval');
       }
     } catch (error) {
       toast.error('Registration failed. Please try again.');
@@ -144,34 +136,7 @@ export default function Register() {
               />
             </div>
 
-            {/* Company */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Company Name
-              </label>
-              <Input
-                type="text"
-                placeholder="Your Company"
-                value={formData.company}
-                onChange={(e) => handleInputChange('company', e.target.value)}
-                icon={<Building2 className="w-4 h-4" />}
-                required
-              />
-            </div>
 
-            {/* Phone */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Phone Number
-              </label>
-              <Input
-                type="tel"
-                placeholder="+1 (555) 123-4567"
-                value={formData.phone}
-                onChange={(e) => handleInputChange('phone', e.target.value)}
-                icon={<Phone className="w-4 h-4" />}
-              />
-            </div>
 
             {/* Password */}
             <div>

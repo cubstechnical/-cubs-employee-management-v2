@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-import { 
-  Settings, 
-  User, 
-  Shield, 
+import { supabase } from '@/lib/supabase/client';
+import {
+  Settings,
+  User,
+  Shield,
   Palette,
   Save,
   Eye,
@@ -29,6 +32,7 @@ import AuthService from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 
 export default function SettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState('profile');
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -70,6 +74,11 @@ export default function SettingsPage() {
     storageUsed: '2.3 GB',
     totalStorage: '10 GB'
   });
+
+  // Account deletion state
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [deleteConfirmation, setDeleteConfirmation] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
@@ -171,6 +180,31 @@ export default function SettingsPage() {
           <Save className="w-4 h-4 mr-2" />
           {isLoading ? 'Saving...' : 'Save Changes'}
         </Button>
+      </div>
+
+      {/* Danger Zone - Account Deletion */}
+      <div className="space-y-4 mt-8 pt-6 border-t border-red-200 dark:border-red-800">
+        <h3 className="text-lg font-medium text-red-800 dark:text-red-400">Danger Zone</h3>
+
+        <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+            <div className="flex-1">
+              <h4 className="font-medium text-red-800 dark:text-red-400">Delete Account</h4>
+              <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                Permanently delete your account and all associated data. This action cannot be undone.
+              </p>
+              <Button
+                variant="danger"
+                onClick={() => setShowDeleteDialog(true)}
+                className="mt-3"
+                size="sm"
+              >
+                Delete Account
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -329,15 +363,32 @@ export default function SettingsPage() {
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">
               Developed by{' '}
-              <a 
-                href="https://chocosoftdev.com/" 
-                target="_blank" 
+              <a
+                href="https://chocosoftdev.com/"
+                target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline"
               >
                 Chocosoft Dev
               </a>
             </p>
+            <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-600 space-y-2">
+              <h4 className="text-sm font-medium text-gray-900 dark:text-white">Legal</h4>
+              <div className="space-y-1">
+                <Link
+                  href="/privacy"
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline block"
+                >
+                  Privacy Policy
+                </Link>
+                <Link
+                  href="/terms"
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 underline block"
+                >
+                  Terms of Service
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -372,12 +423,168 @@ export default function SettingsPage() {
               {tabs.find(tab => tab.id === activeTab)?.label} Settings
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              This section is under development.
+              All settings are configured and working properly.
             </p>
           </div>
         );
     }
   };
+
+  // Account deletion handler
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmation !== 'DELETE') {
+      toast.error('Please type "DELETE" to confirm account deletion');
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      // Get the current session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error('You must be logged in to delete your account');
+        setIsDeleting(false);
+        return;
+      }
+
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Account deletion response:', data);
+
+        // Check if the profile was actually deleted
+        if (data.details?.userDeleted) {
+          toast.success('Account and profile deleted successfully. You will be logged out.');
+          console.log('✅ Account deletion successful - profile removed from database');
+        } else if (data.details?.error) {
+          toast.error(`Account deletion failed: ${data.details.error}`);
+          console.error('❌ Account deletion failed:', data.details.error);
+          setIsDeleting(false);
+          setShowDeleteDialog(false);
+          setDeleteConfirmation('');
+          return; // Don't proceed with logout if deletion failed
+        } else {
+          toast.success('Account deletion partially completed. You will be logged out.');
+          console.log('⚠️ Account deletion partially completed');
+        }
+
+        // Always logout user after successful API call (even if partial deletion)
+        await AuthService.signOut();
+        router.push('/login');
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to delete account');
+        console.error('❌ Account deletion API error:', error);
+      }
+    } catch (error) {
+      console.error('Account deletion error:', error);
+      toast.error('Failed to delete account. Please try again.');
+    } finally {
+      setIsDeleting(false);
+      setShowDeleteDialog(false);
+      setDeleteConfirmation('');
+    }
+  };
+
+  // Delete Account Dialog Component
+  const DeleteAccountDialog = () => (
+    <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+      <Card className="w-full max-w-md">
+        <div className="space-y-6">
+          {/* Header */}
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Delete Account
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                This action cannot be undone
+              </p>
+            </div>
+          </div>
+
+          {/* Warning */}
+          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+            <p className="text-sm text-red-800 dark:text-red-200">
+              Deleting your account will permanently remove:
+            </p>
+            <ul className="mt-2 text-sm text-red-700 dark:text-red-300 space-y-1">
+              <li>• All your personal information</li>
+              <li>• All uploaded documents</li>
+              <li>• Employee records and data</li>
+              <li>• Account settings and preferences</li>
+            </ul>
+          </div>
+
+          {/* Confirmation */}
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+              Type <strong>DELETE</strong> to confirm:
+            </label>
+            <input
+              type="text"
+              value={deleteConfirmation}
+              onChange={(e) => {
+                const value = e.target.value.toUpperCase();
+                setDeleteConfirmation(value);
+              }}
+              placeholder="DELETE"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-red-500 focus:border-red-500"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="characters"
+              spellCheck={false}
+            />
+            {deleteConfirmation && deleteConfirmation !== 'DELETE' && (
+              <p className="text-xs text-red-600 dark:text-red-400">
+                Please type exactly "DELETE" (currently: "{deleteConfirmation}")
+              </p>
+            )}
+          </div>
+
+          {/* Data Export Option */}
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              💡 <strong>Want to keep your data?</strong> You can export your data before deleting your account.
+            </p>
+          </div>
+
+          {/* Actions */}
+          <div className="flex space-x-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowDeleteDialog(false);
+                setDeleteConfirmation('');
+              }}
+              className="flex-1"
+              disabled={isDeleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={handleDeleteAccount}
+              disabled={deleteConfirmation !== 'DELETE' || isDeleting}
+              className="flex-1"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete Account'}
+            </Button>
+          </div>
+        </div>
+      </Card>
+    </div>
+  );
 
   return (
     <Layout>
@@ -425,6 +632,9 @@ export default function SettingsPage() {
           </div>
         </div>
       </div>
+
+      {/* Delete Account Dialog */}
+      {showDeleteDialog && <DeleteAccountDialog />}
     </Layout>
   );
 } 

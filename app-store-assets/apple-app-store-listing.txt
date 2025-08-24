@@ -1,0 +1,39 @@
+# Apple App Store Listing
+
+## App Information
+
+**App Name:** CUBS Technical Admin
+**Subtitle:** Employee Management Portal
+
+## Description
+
+Streamline your workforce management with our comprehensive employee administration platform. Manage employee records, track visa statuses, organize documents, and maintain compliance - all from your mobile device.
+
+Key Features:
+• Complete Employee Database Management
+• Document Upload & Organization
+• Visa & Permit Tracking
+• Real-time Notifications
+• Offline Functionality
+• Secure Data Storage
+• Multi-language Support
+• Role-based Access Control
+
+Perfect for HR managers, administrators, and business owners who need efficient employee management tools. Works seamlessly online and offline, ensuring you always have access to critical employee information.
+
+Privacy & Security:
+Our app is designed with your privacy in mind. All data is encrypted and stored securely. We comply with GDPR and other international privacy regulations.
+
+## Keywords (100 characters max)
+employee,management,HR,portal,document,visa,tracking,workforce,business,admin
+
+## URLs
+- Support URL: https://cubsgroups.com/support
+- Marketing URL: https://cubsgroups.com
+
+## Promotional Text (170 characters max)
+Streamline employee management with offline support, document organization, and visa tracking. Perfect for HR managers and business administrators.
+
+---
+
+*Note: Subtitle and promotional text are optional but recommended*

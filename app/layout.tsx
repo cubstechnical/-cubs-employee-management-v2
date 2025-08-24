@@ -1,9 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
-import { ThemeProvider } from '@/lib/theme'
-import { AuthProvider } from '@/lib/contexts/AuthContext'
-import { Toaster } from 'react-hot-toast'
+import { ClientLayout } from '@/components/layout/ClientLayout'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -13,7 +11,7 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://cubsgroups.com'),
   title: 'CUBS Technical - Employee Management',
   description: 'Comprehensive employee database and document management system for CUBS Technical',
   keywords: 'employee management, visa tracking, document management, CUBS Technical',
@@ -76,22 +74,9 @@ export default function RootLayout({
             } catch(e) {}
           })();
         `}} />
-        <ThemeProvider>
-          <AuthProvider>
-            {children}
-            <Toaster
-              position="top-right"
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  background: 'var(--toast-bg)',
-                  color: 'var(--toast-color)',
-                  border: '1px solid var(--toast-border)',
-                },
-              }}
-            />
-          </AuthProvider>
-        </ThemeProvider>
+        <ClientLayout>
+          {children}
+        </ClientLayout>
       </body>
     </html>
   )

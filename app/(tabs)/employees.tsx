@@ -581,7 +581,7 @@ function EmployeesContent() {
                       <td className="px-3 py-3 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
                               <Button
-                            onClick={() => router.push(`/employees/${employee.employee_id}`)}
+                            onClick={() => router.push(`/admin/employees/${employee.employee_id}`)}
                                 variant="ghost"
                                 size="sm"
                             className="text-blue-600 hover:text-blue-800"
@@ -589,7 +589,7 @@ function EmployeesContent() {
                               <Eye className="w-4 h-4" />
                               </Button>
                               <Button
-                            onClick={() => router.push(`/employees/${employee.employee_id}/edit`)}
+                            onClick={() => router.push(`/admin/employees/${employee.employee_id}`)}
                                 variant="ghost"
                                 size="sm"
                             className="text-gray-600 hover:text-gray-800"

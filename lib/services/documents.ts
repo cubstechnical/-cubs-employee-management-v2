@@ -68,6 +68,51 @@ export class DocumentService {
   private static presignedByPathCache: Map<string, { url: string; expiresAt: number }> = new Map();
   // Prefix auth cache to allow composing stream URLs without per-file sign
   private static prefixAuthCache: Map<string, { prefix: string; token: string; downloadBase: string; expiresAt: number }> = new Map();
+
+  // Build a same-origin streaming URL for a given file path. Ensures prefix token exists.
+  static async getStreamUrlByPath(filePath: string, employeeId?: string): Promise<string | null> {
+    try {
+      if (!filePath) return null;
+      // Determine a likely prefix from the filePath when employeeId not provided
+      let prefix: string | null = null;
+      if (filePath.includes('/')) {
+        const parts = filePath.split('/');
+        // e.g., EMP_EMP001/foo.pdf -> EMP_EMP001/
+        prefix = parts.slice(0, 1).join('/') + '/';
+      }
+      if (employeeId) {
+        prefix = `EMP_${employeeId}/`;
+      }
+      if (!prefix) return null;
+
+      const now = Date.now();
+      let cached = DocumentService.prefixAuthCache.get(prefix);
+      if (!cached || now >= cached.expiresAt) {
+        const { data: edgeResult, error } = await supabase.functions.invoke('doc-manager', {
+          body: { action: 'getPrefixAuth', empId: employeeId, filePath: prefix }
+        });
+        if (error || !edgeResult?.success || !edgeResult?.authorizationToken || !edgeResult?.downloadUrl) {
+          return null;
+        }
+        cached = {
+          prefix: edgeResult.prefix,
+          token: edgeResult.authorizationToken,
+          downloadBase: edgeResult.downloadUrl,
+          expiresAt: now + 55 * 60 * 1000,
+        };
+        DocumentService.prefixAuthCache.set(prefix, cached);
+      }
+
+      const params = new URLSearchParams();
+      params.set('path', filePath);
+      params.set('prefix', cached.prefix);
+      params.set('token', cached.token);
+      params.set('base', cached.downloadBase);
+      return `/api/documents/stream?${params.toString()}`;
+    } catch (e) {
+      return null;
+    }
+  }
   
   // Prevent multiple concurrent fetches
   private static isCurrentlyFetching = false;

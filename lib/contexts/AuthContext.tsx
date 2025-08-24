@@ -8,11 +8,13 @@ interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   loading: boolean;
+  isApproved: boolean;
   signIn: (email: string, password: string) => Promise<{ user: AuthUser | null; error: { message: string } | null }>;
   signUp: (email: string, password: string, name: string) => Promise<{ user: AuthUser | null; error: { message: string } | null }>;
   signOut: () => Promise<{ error: { message: string } | null }>;
   resetPassword: (email: string) => Promise<{ error: { message: string } | null }>;
   hasPermission: (permission: string) => Promise<boolean>;
+  checkApproval: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -21,6 +23,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isApproved, setIsApproved] = useState(false);
 
   useEffect(() => {
     // Get initial session
@@ -32,6 +35,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (sessionData.session) {
           const user = await AuthService.getCurrentUser();
           setUser(user);
+          // Check approval status
+          if (user) {
+            const approved = await AuthService.isApproved();
+            setIsApproved(approved);
+          }
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -50,8 +58,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session) {
           const user = await AuthService.getCurrentUser();
           setUser(user);
+          // Check approval status
+          if (user) {
+            const approved = await AuthService.isApproved();
+            setIsApproved(approved);
+          }
         } else {
           setUser(null);
+          setIsApproved(false);
         }
         
         setLoading(false);
@@ -65,6 +79,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const result = await AuthService.signIn({ email, password });
     if (result.user) {
       setUser(result.user);
+      // Check approval status after login
+      const approved = await AuthService.isApproved();
+      setIsApproved(approved);
     }
     return result;
   };
@@ -94,15 +111,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return await AuthService.hasPermission(permission);
   };
 
+  const checkApproval = async () => {
+    const approved = await AuthService.isApproved();
+    setIsApproved(approved);
+    return approved;
+  };
+
   const value = {
     user,
     session,
     loading,
+    isApproved,
     signIn,
     signUp,
     signOut,
     resetPassword,
     hasPermission,
+    checkApproval,
   };
 
   return (

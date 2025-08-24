@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">CUBS Visa Management</string>
+    <string name="title_activity_main">CUBS Visa Management</string>
+    <string name="package_name">com.cubstechnical.admin</string>
+    <string name="custom_url_scheme">com.cubstechnical.admin</string>
+</resources>

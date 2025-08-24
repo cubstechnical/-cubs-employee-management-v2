@@ -16,14 +16,18 @@ export default function ProtectedRoute({
   requiredPermission,
   fallback 
 }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
+  const { user, loading, isApproved } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
+    if (!loading) {
+      if (!user) {
+        router.push('/login');
+      } else if (!isApproved) {
+        router.push('/pending-approval');
+      }
     }
-  }, [user, loading, router]);
+  }, [user, loading, isApproved, router]);
 
   // Show loading spinner while checking authentication
   if (loading) {
@@ -37,8 +41,8 @@ export default function ProtectedRoute({
     );
   }
 
-  // Redirect to login if not authenticated
-  if (!user) {
+  // Redirect to login if not authenticated or to pending approval if not approved
+  if (!user || !isApproved) {
     return null; // Will redirect in useEffect
   }
 

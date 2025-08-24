@@ -6,7 +6,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type'
 };
 
-const NOTIFICATION_INTERVALS = [90, 60, 30, 15, 7]; // days
+const NOTIFICATION_INTERVALS = [60, 30, 15, 7, 1]; // days
 const FROM_EMAIL = 'technicalcubs@gmail.com';
 const TO_EMAIL = 'info@cubstechnical.com';
 
@@ -25,6 +25,7 @@ interface VisaRecord {
 }
 
 function getUrgencyLevel(days: number): string {
+  if (days <= 1) return 'critical';
   if (days <= 7) return 'critical';
   if (days <= 15) return 'urgent';
   if (days <= 30) return 'warning';

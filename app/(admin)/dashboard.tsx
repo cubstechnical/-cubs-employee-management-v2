@@ -1,44 +1,46 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
-import { 
-  Users, 
-  FileText, 
-  AlertTriangle, 
-  TrendingUp, 
+import {
+  Users,
+  FileText,
+  AlertTriangle,
+  TrendingUp,
   Calendar,
   CheckCircle,
   Clock,
   Building2,
   BarChart3,
   Download,
-  Eye
+  Eye,
+  ShieldX
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
+import { useAuth } from '@/lib/contexts/AuthContext';
+import { AuthService } from '@/lib/services/auth';
+import toast from 'react-hot-toast';
 
-// Mock data
-const stats = [
-  { label: 'Total Employees', value: '1,247', change: '+12%', icon: Users, color: 'text-blue-600 dark:text-blue-400' },
-  { label: 'Active Documents', value: '3,891', change: '+8%', icon: FileText, color: 'text-green-600 dark:text-green-400' },
-  { label: 'Pending Approvals', value: '23', change: '-5%', icon: Clock, color: 'text-orange-600 dark:text-orange-400' },
-  { label: 'Departments', value: '12', change: '+2%', icon: Building2, color: 'text-purple-600 dark:text-purple-400' },
-];
+interface PendingUser {
+  id: string;
+  email: string;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  role: string;
+  created_at: string;
+  approved_by?: string;
+}
 
+// Mock data for non-approval stats (will be replaced with real data later)
 const departmentStats = [
   { name: 'Engineering', employees: 45, growth: '+15%', color: 'bg-blue-500' },
   { name: 'Sales', employees: 32, growth: '+8%', color: 'bg-green-500' },
   { name: 'Marketing', employees: 28, growth: '+12%', color: 'bg-purple-500' },
   { name: 'HR', employees: 15, growth: '+5%', color: 'bg-orange-500' },
   { name: 'Finance', employees: 12, growth: '+3%', color: 'bg-red-500' },
-];
-
-const recentApprovals = [
-  { id: 1, employee: 'Sarah Johnson', type: 'Visa Extension', status: 'pending', date: '2024-01-15' },
-  { id: 2, employee: 'Michael Chen', type: 'Document Upload', status: 'approved', date: '2024-01-14' },
-  { id: 3, employee: 'Emily Davis', type: 'New Employee', status: 'pending', date: '2024-01-13' },
-  { id: 4, employee: 'David Wilson', type: 'Department Transfer', status: 'rejected', date: '2024-01-12' },
 ];
 
 const visaAlerts = [
@@ -136,6 +138,66 @@ function VisaAlertCard({ alert }: { alert: any }) {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  const [pendingUsers, setPendingUsers] = useState<PendingUser[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Check if user is main admin (info@cubstechnical.com)
+  const isMainAdmin = user?.email === 'info@cubstechnical.com';
+
+  // Load pending users data
+  const loadPendingUsers = async () => {
+    if (!isMainAdmin) return;
+
+    try {
+      setLoading(true);
+      const { users, error } = await AuthService.getPendingApprovals();
+
+      if (error) {
+        console.error('Failed to load pending approvals:', error);
+        // Don't show error toast for background updates
+      } else {
+        setPendingUsers(users || []);
+      }
+    } catch (error) {
+      console.error('Failed to load pending approvals:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isMainAdmin) {
+      loadPendingUsers();
+    } else {
+      setLoading(false);
+    }
+
+    // Listen for dashboard refresh events from approvals page
+    const handleDashboardRefresh = (event: StorageEvent) => {
+      if (event.key === 'adminDashboardRefresh' && event.newValue) {
+        console.log('📊 Dashboard: Received refresh signal from approvals page');
+        loadPendingUsers();
+      }
+    };
+
+    // Listen for localStorage changes
+    window.addEventListener('storage', handleDashboardRefresh);
+
+    // Also listen for custom events (for same-tab updates)
+    const handleCustomRefresh = () => {
+      console.log('📊 Dashboard: Received custom refresh event');
+      loadPendingUsers();
+    };
+
+    window.addEventListener('adminDashboardRefresh', handleCustomRefresh);
+
+    return () => {
+      window.removeEventListener('storage', handleDashboardRefresh);
+      window.removeEventListener('adminDashboardRefresh', handleCustomRefresh);
+    };
+  }, [isMainAdmin, user]);
+
   return (
     <Layout>
       <div className="space-y-6">
@@ -159,9 +221,43 @@ export default function AdminDashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {stats.map((stat, index) => (
-            <StatCard key={index} {...stat} />
-          ))}
+          {/* Total Employees */}
+          <StatCard
+            label="Total Employees"
+            value="1,247"
+            change="+12%"
+            icon={Users}
+            color="text-blue-600 dark:text-blue-400"
+          />
+
+          {/* Active Documents */}
+          <StatCard
+            label="Active Documents"
+            value="3,891"
+            change="+8%"
+            icon={FileText}
+            color="text-green-600 dark:text-green-400"
+          />
+
+          {/* Pending Approvals - Only show for main admin with real data */}
+          {isMainAdmin && (
+            <StatCard
+              label="Pending Approvals"
+              value={loading ? "..." : pendingUsers.length.toString()}
+              change={loading ? "Loading..." : `Updated ${new Date().toLocaleTimeString()}`}
+              icon={Clock}
+              color="text-orange-600 dark:text-orange-400"
+            />
+          )}
+
+          {/* Departments */}
+          <StatCard
+            label="Departments"
+            value="12"
+            change="+2%"
+            icon={Building2}
+            color="text-purple-600 dark:text-purple-400"
+          />
         </div>
 
         {/* Main Content Grid */}
@@ -196,13 +292,55 @@ export default function AdminDashboard() {
 
           {/* Recent Approvals */}
           <div>
-            <ChartCard title="Recent Approvals">
-              <div className="space-y-3">
-                {recentApprovals.map((approval) => (
-                  <ApprovalCard key={approval.id} approval={approval} />
-                ))}
-              </div>
-            </ChartCard>
+            {isMainAdmin ? (
+              <ChartCard title="Recent Approvals">
+                <div className="space-y-3">
+                  {loading ? (
+                    <div className="text-center py-6">
+                      <p className="text-gray-600 dark:text-gray-400">Loading approvals...</p>
+                    </div>
+                  ) : pendingUsers.length === 0 ? (
+                    <div className="text-center py-6">
+                      <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
+                      <p className="text-gray-600 dark:text-gray-400">No pending approvals</p>
+                    </div>
+                  ) : (
+                    pendingUsers.slice(0, 4).map((user) => (
+                      <div key={user.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">
+                            {user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'}
+                          </p>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">New User Registration</p>
+                        </div>
+                        <div className="text-right">
+                          <div className="flex items-center gap-1 text-orange-600 dark:text-orange-400">
+                            <Clock className="w-4 h-4" />
+                            <span className="text-sm font-medium">Pending</span>
+                          </div>
+                          <p className="text-xs text-gray-500 dark:text-gray-500">{timeAgo(user.created_at)}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ChartCard>
+            ) : (
+              <Card>
+                <div className="text-center py-8">
+                  <ShieldX className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                    Approval Access Restricted
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 mb-4">
+                    Only the main administrator can view and manage approvals.
+                  </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-500">
+                    Contact info@cubstechnical.com for access.
+                  </p>
+                </div>
+              </Card>
+            )}
           </div>
         </div>
 
@@ -227,9 +365,20 @@ export default function AdminDashboard() {
               <Button variant="outline" icon={<FileText className="w-4 h-4" />} className="w-full justify-start">
                 Review Documents
               </Button>
-              <Button variant="outline" icon={<CheckCircle className="w-4 h-4" />} className="w-full justify-start">
-                Process Approvals
-              </Button>
+              {isMainAdmin ? (
+                <Button variant="outline" icon={<CheckCircle className="w-4 h-4" />} className="w-full justify-start">
+                  Process Approvals
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  icon={<ShieldX className="w-4 h-4" />}
+                  className="w-full justify-start opacity-50 cursor-not-allowed"
+                  disabled
+                >
+                  Process Approvals (Restricted)
+                </Button>
+              )}
               <Button variant="outline" icon={<Building2 className="w-4 h-4" />} className="w-full justify-start">
                 Department Settings
               </Button>

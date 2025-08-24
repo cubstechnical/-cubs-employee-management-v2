@@ -11,44 +11,46 @@ curl -X POST https://<your-domain>/api/docs/refresh-views
 
 3. Ensure the service role key is available in the environment for the API route.
 
-# CUBS Employee Management System
+# CUBS Technical Admin Portal
 
-A modern, secure, and performant employee management system built with Next.js, Supabase, and Backblaze B2.
+A comprehensive admin portal for managing employees, documents, and company operations with mobile app support.
 
-## 🚀 Features
+## Features
 
-- **Secure Authentication**: Supabase Auth with role-based access control
-- **Document Management**: Upload, preview, and manage employee documents
-- **Employee Database**: Comprehensive employee information management
-- **Visa Tracking**: Automated visa expiry notifications
-- **Performance Optimized**: Caching, lazy loading, and optimized queries
-- **Type Safety**: Full TypeScript implementation with strict checking
-- **Automated Quality Control**: Pre-commit hooks prevent broken code
+- **Dashboard**: Analytics and overview of company operations
+- **Employee Management**: Complete CRUD operations for employee records
+- **Document Management**: File upload, organization, and sharing
+- **Authentication**: Secure login with Supabase Auth
+- **Mobile App**: Native iOS and Android apps via Capacitor
+- **PWA Support**: Progressive Web App capabilities
+- **Real-time Updates**: Live data synchronization
+- **Offline Support**: Cached data and pending operations queue
 
-## 🛠️ Tech Stack
+## Tech Stack
 
-- **Frontend**: Next.js 14, React 18, TypeScript
-- **Backend**: Supabase (PostgreSQL, Auth, Edge Functions)
-- **Storage**: Backblaze B2 (S3-compatible)
-- **Styling**: Tailwind CSS, Lucide React Icons
-- **Forms**: React Hook Form + Zod validation
-- **Notifications**: React Hot Toast, SendGrid Email
-- **Quality**: ESLint, Prettier, Husky pre-commit hooks
+- **Frontend**: Next.js 13+ with App Router, TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
+- **Storage**: Backblaze B2 for document storage
+- **Mobile**: Capacitor for native iOS/Android apps
+- **Email**: SendGrid for notifications
+- **Deployment**: Vercel (web), GitHub Actions (mobile builds)
 
-## 📋 Prerequisites
+## Quick Start
 
-- Node.js 18+ 
+### Prerequisites
+
+- Node.js 18+
 - npm or yarn
 - Supabase account
 - Backblaze B2 account
-- SendGrid account (for email notifications)
+- SendGrid account
 
-## 🚀 Quick Start
+### Installation
 
 1. **Clone the repository**
    ```bash
-   git clone <your-repo-url>
-   cd cubs-employee-management
+   git clone <repository-url>
+   cd cubs-admin
    ```
 
 2. **Install dependencies**
@@ -58,15 +60,9 @@ A modern, secure, and performant employee management system built with Next.js, 
 
 3. **Set up environment variables**
    ```bash
-   cp env.example .env.local
+   cp env.example .env
+   # Edit .env with your actual values
    ```
-   Fill in your environment variables:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `BACKBLAZE_ACCESS_KEY_ID`
-   - `BACKBLAZE_SECRET_ACCESS_KEY`
-   - `SENDGRID_API_KEY`
 
 4. **Run the development server**
    ```bash
@@ -74,97 +70,171 @@ A modern, secure, and performant employee management system built with Next.js, 
    ```
 
 5. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
+   Navigate to [http://localhost:3002](http://localhost:3002)
 
-## 🔧 Development
+## Mobile App Development
 
-### Available Scripts
+### Setup Mobile Environment
 
+**Windows (PowerShell):**
+```powershell
+.\scripts\setup-mobile.ps1
+```
+
+**macOS/Linux (Bash):**
+```bash
+./scripts/setup-mobile.sh
+```
+
+### Build Mobile Apps
+
+**Local Development:**
+```bash
+# Build for mobile
+npm run build:mobile
+
+# Open in Android Studio
+npm run cap:open:android
+
+# Open in Xcode (macOS only)
+npm run cap:open:ios
+```
+
+**Cloud Builds:**
+- Push to `main` branch to trigger automated builds
+- Download artifacts from GitHub Actions
+- Manual builds via workflow dispatch
+
+### Mobile App Features
+
+- Native iOS and Android apps
+- Offline data caching
+- Push notifications (configurable)
+- Biometric authentication
+- Native file picker
+- Status bar customization
+- Keyboard management
+
+## Environment Variables
+
+Create a `.env` file with the following variables:
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
+
+# SendGrid
+SENDGRID_API_KEY=your_sendgrid_key
+SENDGRID_FROM_EMAIL=your_from_email
+
+# Backblaze B2
+B2_APPLICATION_KEY_ID=your_b2_key_id
+B2_APPLICATION_KEY=your_b2_application_key
+B2_BUCKET_NAME=your_bucket_name
+B2_ENDPOINT=your_b2_endpoint
+B2_BUCKET_ID=your_bucket_id
+```
+
+## Available Scripts
+
+### Web Development
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
-- `npm run type-check` - Run TypeScript type checking
+- `npm run type-check` - Run TypeScript checks
 
-### Pre-commit Hooks
+### Mobile Development
+- `npm run build:mobile` - Build for mobile platforms
+- `npm run cap:init` - Initialize Capacitor
+- `npm run cap:add:android` - Add Android platform
+- `npm run cap:add:ios` - Add iOS platform
+- `npm run cap:sync` - Sync web assets to native platforms
+- `npm run cap:open:android` - Open in Android Studio
+- `npm run cap:open:ios` - Open in Xcode
 
-This project uses Husky and lint-staged to ensure code quality:
-
-- **TypeScript checking**: All `.ts` and `.tsx` files are type-checked before commit
-- **Automatic blocking**: Commits with TypeScript errors are automatically blocked
-
-### Performance Optimizations
-
-- **Caching**: 5-minute cache for document folders
-- **Lazy Loading**: Components and data loaded on demand
-- **Query Optimization**: Reduced database queries with efficient aggregation
-- **Debounced Search**: 50ms debounce for instant search response
-
-## 📁 Project Structure
+## Project Structure
 
 ```
-├── app/                    # Next.js App Router
-│   ├── (admin)/           # Admin-only routes
+├── app/                    # Next.js App Router pages
+│   ├── (admin)/           # Admin routes
 │   ├── (auth)/            # Authentication routes
-│   ├── (tabs)/            # Main application tabs
-│   ├── api/               # API routes
-│   └── globals.css        # Global styles
-├── components/            # Reusable UI components
+│   ├── dashboard/         # Dashboard page
+│   ├── employees/         # Employee management
+│   ├── documents/         # Document management
+│   └── settings/          # Settings page
+├── components/            # Reusable React components
 ├── lib/                   # Utility libraries
-│   ├── services/          # Business logic services
-│   ├── supabase/          # Supabase configuration
-│   └── contexts/          # React contexts
+├── hooks/                 # Custom React hooks
 ├── types/                 # TypeScript type definitions
-├── utils/                 # Utility functions
-└── supabase/              # Supabase Edge Functions
+├── public/                # Static assets
+├── android/               # Android native project (Capacitor)
+├── ios/                   # iOS native project (Capacitor)
+├── docs/                  # Documentation
+└── scripts/               # Build and setup scripts
 ```
 
-## 🔐 Security Features
+## Deployment
 
-- **Row Level Security (RLS)**: Database-level access control
-- **Environment Variables**: Secure configuration management
-- **Input Validation**: Zod schema validation
-- **Type Safety**: TypeScript prevents runtime errors
-- **Pre-commit Hooks**: Automated code quality checks
+### Web App (Vercel)
 
-## 📊 Database Schema
-
-The system uses the following main tables:
-- `profiles` - User profiles and authentication
-- `employee_table` - Employee information
-- `employee_documents` - Document metadata and storage paths
-- `admin_users` - Admin user management
-
-## 🚀 Deployment
-
-### Vercel (Recommended)
-
-1. Connect your GitHub repository to Vercel
-2. Set environment variables in Vercel dashboard
+1. Connect your repository to Vercel
+2. Configure environment variables in Vercel dashboard
 3. Deploy automatically on push to main branch
 
-### Manual Deployment
+### Mobile Apps
 
-1. Build the application: `npm run build`
-2. Start the production server: `npm run start`
+#### Android
+1. Build release AAB: `./gradlew bundleRelease`
+2. Upload to Google Play Console
+3. Complete store listing and review process
 
-## 🤝 Contributing
+#### iOS
+1. Build release IPA with proper signing
+2. Upload to App Store Connect
+3. Complete review process
+
+### Cloud Builds
+
+The GitHub Actions workflow automatically builds both platforms:
+- **Android**: APK (debug) and AAB (release)
+- **iOS**: IPA (development build)
+
+## Testing
+
+### Web App
+```bash
+npm run test:e2e    # Run Playwright tests
+npm run test:unit   # Run unit tests (if configured)
+```
+
+### Mobile App
+- Test on physical devices
+- Use Android Studio emulator
+- Use Xcode simulator (macOS)
+
+## Contributing
 
 1. Fork the repository
-2. Create a feature branch: `git checkout -b feature-name`
+2. Create a feature branch
 3. Make your changes
-4. Commit your changes: `git commit -m 'feat: Add feature'`
-5. Push to the branch: `git push origin feature-name`
-6. Submit a pull request
+4. Add tests if applicable
+5. Submit a pull request
 
-## 📝 License
+## Documentation
 
-This project is proprietary software. All rights reserved.
+- [Mobile Deployment Guide](docs/mobile-deployment.md)
+- [API Documentation](docs/api.md)
+- [Database Schema](docs/database.md)
 
-## 🆘 Support
+## Support
 
-For support and questions, please contact the development team.
+For issues and questions:
+- Check the documentation
+- Review GitHub Issues
+- Contact the development team
 
----
+## License
 
-**Built with ❤️ for CUBS Technical** 
+This project is proprietary software. All rights reserved. 

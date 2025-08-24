@@ -774,8 +774,11 @@ export class EmployeeService {
         .select('*', { count: 'exact', head: true })
         .gte('created_at', dateFilter);
 
-      // Get pending approvals (mock for now - replace with actual approvals table)
-      const pendingApprovals = 0; // TODO: Implement when approvals table exists
+      // Get pending approvals from profiles table
+      const { count: pendingApprovals, error: approvalsError } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .is('approved_by', null);
 
       // Get visas expiring soon (within 90 days)
       const { count: visasExpiringSoon, error: visaError } = await supabase
@@ -792,8 +795,8 @@ export class EmployeeService {
 
       const uniqueDepartments = new Set(departments?.map(d => d.trade) || []).size;
 
-      if (employeesError || activeError || docsError || visaError || deptError) {
-        console.error('Error fetching dashboard stats:', { employeesError, activeError, docsError, visaError, deptError });
+      if (employeesError || activeError || docsError || approvalsError || visaError || deptError) {
+        console.error('Error fetching dashboard stats:', { employeesError, activeError, docsError, approvalsError, visaError, deptError });
         throw new Error('Failed to fetch dashboard statistics');
       }
 
@@ -801,7 +804,7 @@ export class EmployeeService {
         totalEmployees: totalEmployees || 0,
         activeEmployees: activeEmployees || 0,
         totalDocuments: totalDocuments || 0,
-        pendingApprovals,
+        pendingApprovals: pendingApprovals || 0,
         visasExpiringSoon: visasExpiringSoon || 0,
         departments: uniqueDepartments
       };

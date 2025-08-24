@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/client';
 import { EmailService, VisaExpiryData } from './email';
+import { PushNotificationService } from './pushNotifications';
 
 export interface VisaExpiryRecord {
   id: string;
@@ -9,11 +10,11 @@ export interface VisaExpiryRecord {
   visa_expiry_date: string;
   visa_type: string;
   company_name: string;
-  notification_sent_90: boolean;
   notification_sent_60: boolean;
   notification_sent_30: boolean;
   notification_sent_15: boolean;
   notification_sent_7: boolean;
+  notification_sent_1: boolean;
   last_notification_date?: string;
   daysRemaining?: number;
 }
@@ -34,11 +35,11 @@ export class VisaNotificationService {
           visa_expiry_date,
           visa_type,
           company_name,
-          notification_sent_90,
           notification_sent_60,
           notification_sent_30,
           notification_sent_15,
           notification_sent_7,
+          notification_sent_1,
           last_notification_date
         `)
         .not('visa_expiry_date', 'is', null)
@@ -82,6 +83,9 @@ export class VisaNotificationService {
             notificationsSent++;
             
             console.log(`Visa expiry notification sent to ${employee.name} (${daysUntilExpiry} days remaining)`);
+            
+            // Send push notification to admin users
+            await this.sendPushNotificationsToAdmins(employee.name as string, daysUntilExpiry);
           }
         }
       }
@@ -99,9 +103,6 @@ export class VisaNotificationService {
     }
 
     // Check specific day intervals
-    if (daysUntilExpiry === 90 && !employee.notification_sent_90) {
-      return true;
-    }
     if (daysUntilExpiry === 60 && !employee.notification_sent_60) {
       return true;
     }
@@ -112,6 +113,9 @@ export class VisaNotificationService {
       return true;
     }
     if (daysUntilExpiry === 7 && !employee.notification_sent_7) {
+      return true;
+    }
+    if (daysUntilExpiry === 1 && !employee.notification_sent_1) {
       return true;
     }
 
@@ -125,9 +129,6 @@ export class VisaNotificationService {
 
     // Set the appropriate notification flag
     switch (daysUntilExpiry) {
-      case 90:
-        updateData.notification_sent_90 = true;
-        break;
       case 60:
         updateData.notification_sent_60 = true;
         break;
@@ -140,6 +141,9 @@ export class VisaNotificationService {
       case 7:
         updateData.notification_sent_7 = true;
         break;
+      case 1:
+        updateData.notification_sent_1 = true;
+        break;
     }
 
     const { error } = await supabase
@@ -149,6 +153,36 @@ export class VisaNotificationService {
 
     if (error) {
       console.error('Error updating notification flags:', error);
+    }
+  }
+
+  // Send push notifications to all admin users
+  private static async sendPushNotificationsToAdmins(employeeName: string, daysUntilExpiry: number): Promise<void> {
+    try {
+      // Get all admin users
+      const { data: admins, error } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('role', 'admin')
+        .not('approved_by', 'is', null);
+
+      if (error || !admins) {
+        console.error('Error fetching admin users for push notifications:', error);
+        return;
+      }
+
+      // Send push notification to each admin
+      for (const admin of admins) {
+        await PushNotificationService.sendVisaExpiryNotification(
+          admin.id,
+          employeeName,
+          daysUntilExpiry
+        );
+      }
+
+      console.log(`Push notifications sent to ${admins.length} admin users`);
+    } catch (error) {
+      console.error('Error sending push notifications to admins:', error);
     }
   }
 
@@ -167,11 +201,11 @@ export class VisaNotificationService {
           visa_expiry_date,
           visa_type,
           company_name,
-          notification_sent_90,
           notification_sent_60,
           notification_sent_30,
           notification_sent_15,
           notification_sent_7,
+          notification_sent_1,
           last_notification_date
         `)
         .not('visa_expiry_date', 'is', null)

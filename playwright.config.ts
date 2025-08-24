@@ -5,7 +5,7 @@ export default defineConfig({
   testDir: 'e2e/definitive',
   globalSetup: require.resolve('./e2e/definitive/global.setup.ts'),
   use: {
-    baseURL: 'http://localhost:3002',
+    baseURL: process.env.BASE_URL || 'http://localhost:3002',
     storageState: 'e2e/.auth/user.json',
     trace: 'on-first-retry',
   },
@@ -17,7 +17,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev -w . -s',
-    url: 'http://localhost:3002',
+    url: process.env.BASE_URL || 'http://localhost:3002',
     reuseExistingServer: true,
     timeout: 120_000,
   },
