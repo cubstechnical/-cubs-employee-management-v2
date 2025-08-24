@@ -64,7 +64,7 @@ export class PushNotificationService {
     }
 
     // Registration success
-    PushNotifications.addListener('registration', (token) => {
+    PushNotifications.addListener('registration', (token: { value: string }) => {
       this.deviceToken = token.value;
       console.log('Push registration success:', token.value);
       
@@ -73,12 +73,12 @@ export class PushNotificationService {
     });
 
     // Registration error
-    PushNotifications.addListener('registrationError', (error) => {
+    PushNotifications.addListener('registrationError', (error: { error: string }) => {
       console.error('Push registration failed:', error.error);
     });
 
     // Push notification received
-    PushNotifications.addListener('pushNotificationReceived', (notification) => {
+    PushNotifications.addListener('pushNotificationReceived', (notification: any) => {
       console.log('Push notification received:', notification);
       
       // Handle notification when app is in foreground
@@ -86,7 +86,7 @@ export class PushNotificationService {
     });
 
     // Push notification action clicked
-    PushNotifications.addListener('pushNotificationActionPerformed', (notification) => {
+    PushNotifications.addListener('pushNotificationActionPerformed', (notification: any) => {
       console.log('Push notification action performed:', notification);
       
       // Handle notification tap
@@ -139,7 +139,7 @@ export class PushNotificationService {
   }
 
   // Handle notification action (user tapped notification)
-  private static handleNotificationAction(notification: any): void {
+  private static handleNotificationAction(notification: { notification: { data?: any } }): void {
     const data = notification.notification.data;
     
     // Navigate based on notification type
