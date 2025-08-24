@@ -6,61 +6,38 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     url: 'https://cubsgroups.com',
-    cleartext: false,
-    androidScheme: 'https'
+    cleartext: false
   },
-  android: {
-    buildOptions: {
-      keystorePath: undefined,
-      keystoreAlias: undefined,
-      keystorePassword: undefined,
-      keystoreAliasPassword: undefined,
-      releaseType: 'APK'
+  plugins: {
+    SplashScreen: {
+      launchShowDuration: 3000,
+      backgroundColor: "#111827",
+      showSpinner: true,
+      spinnerColor: "#ffffff"
+    },
+    StatusBar: {
+      style: 'dark',
+      backgroundColor: '#111827'
+    },
+    Keyboard: {
+      resize: 'body',
+      style: 'dark'
+    },
+    App: {
+      backButtonDefaultHref: 'exit'
     }
   },
   ios: {
-    contentInset: 'automatic',
-    scheme: 'CUBS Visa Management',
+    scheme: 'cubsvisamanagement',
     webContentsDebuggingEnabled: false,
     scrollEnabled: true,
     allowsLinkPreview: false,
-    overrideUserAgent: 'CUBSAdmin/1.0 Mobile Safari'
+    overrideUserAgent: 'CUBS-Visa-Management-App'
   },
-  plugins: {
-    App: {
-      handleDeepLinksAutomatically: true,
-      hardwareBackButtonNavigation: true
-    },
-    SplashScreen: {
-      launchShowDuration: 2000,
-      launchAutoHide: true,
-      launchFadeOutDuration: 300,
-      backgroundColor: '#111827',
-      androidSplashResourceName: 'splash',
-      androidScaleType: 'CENTER_CROP',
-      showSpinner: false,
-      androidSpinnerStyle: 'large',
-      iosSpinnerStyle: 'small',
-      spinnerColor: '#ffffff',
-      splashFullScreen: true,
-      splashImmersive: true,
-      layoutName: 'launch_screen',
-      useDialog: false
-    },
-    StatusBar: {
-      overlaysWebView: false,
-      style: 'dark',
-      backgroundColor: '#111827',
-      animated: true
-    },
-    Keyboard: {
-      resize: 'native',
-      style: 'dark',
-      resizeOnFullScreen: true
-    },
-    PushNotifications: {
-      presentationOptions: ['badge', 'sound', 'alert']
-    }
+  android: {
+    allowMixedContent: true,
+    captureInput: true,
+    webContentsDebuggingEnabled: false
   }
 };
 

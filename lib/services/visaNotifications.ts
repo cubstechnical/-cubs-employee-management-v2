@@ -1,335 +1,252 @@
 import { supabase } from '../supabase/client';
-import { EmailService, VisaExpiryData } from './email';
-import { PushNotificationService } from './pushNotifications';
+import { sendEmail } from '../sendgrid';
 
 export interface VisaExpiryRecord {
   id: string;
-  employee_id: string;
-  name: string;
-  email_id: string;
+  employee_name: string;
   visa_expiry_date: string;
-  visa_type: string;
-  company_name: string;
+  email: string;
   notification_sent_60: boolean;
   notification_sent_30: boolean;
   notification_sent_15: boolean;
   notification_sent_7: boolean;
   notification_sent_1: boolean;
-  last_notification_date?: string;
-  daysRemaining?: number;
 }
 
-export class VisaNotificationService {
-  static async checkAndSendVisaExpiryNotifications(): Promise<void> {
-    try {
-      console.log('Starting visa expiry notification check...');
+const NOTIFICATION_INTERVALS = [60, 30, 15, 7, 1];
+
+export async function checkAndSendVisaExpiryNotifications(): Promise<void> {
+  try {
+    console.log('Checking for visa expiry notifications...');
+    
+    const today = new Date();
+    const records = await getVisaExpiryRecords();
+    
+    for (const record of records) {
+      const daysUntilExpiry = calculateDaysUntilExpiry(record.visa_expiry_date);
       
-      // Get all employees with visa expiry dates
-      const { data: employees, error } = await supabase
-        .from('employee_table')
-        .select(`
-          id,
-          employee_id,
-          name,
-          email_id,
-          visa_expiry_date,
-          visa_type,
-          company_name,
-          notification_sent_60,
-          notification_sent_30,
-          notification_sent_15,
-          notification_sent_7,
-          notification_sent_1,
-          last_notification_date
-        `)
-        .not('visa_expiry_date', 'is', null)
-        .not('email_id', 'is', null);
-
-      if (error) {
-        console.error('Error fetching employees for visa notifications:', error);
-        return;
+      if (shouldSendNotification(record, daysUntilExpiry)) {
+        await sendVisaExpiryEmail(record, daysUntilExpiry);
+        await updateNotificationFlags(record.id, daysUntilExpiry);
+        console.log(`Visa expiry notification sent for ${record.employee_name} (${daysUntilExpiry} days)`);
       }
-
-      if (!employees || employees.length === 0) {
-        console.log('No employees found with visa expiry dates');
-        return;
-      }
-
-      const today = new Date();
-      let notificationsSent = 0;
-
-      for (const employee of employees) {
-        const expiryDate = new Date(employee.visa_expiry_date as string);
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        // Check if notification should be sent based on days remaining
-        const shouldSendNotification = this.shouldSendNotification(employee as VisaExpiryRecord, daysUntilExpiry);
-
-        if (shouldSendNotification) {
-          const notification: VisaExpiryData = {
-            employeeName: employee.name as string,
-            employeeEmail: 'info@cubstechnical.com',
-            visaType: employee.visa_type as string,
-            expiryDate: employee.visa_expiry_date as string,
-            daysUntilExpiry: daysUntilExpiry,
-            companyName: employee.company_name as string,
-          };
-
-          const emailSent = await EmailService.sendVisaExpiryNotification(notification);
-
-          if (emailSent.success) {
-            // Update notification flags in database
-            await this.updateNotificationFlags(employee.id as string, daysUntilExpiry);
-            notificationsSent++;
-            
-            console.log(`Visa expiry notification sent to ${employee.name} (${daysUntilExpiry} days remaining)`);
-            
-            // Send push notification to admin users
-            await this.sendPushNotificationsToAdmins(employee.name as string, daysUntilExpiry);
-          }
-        }
-      }
-
-      console.log(`Visa expiry notification check completed. ${notificationsSent} notifications sent.`);
-    } catch (error) {
-      console.error('Error in visa expiry notification service:', error);
     }
+    
+    console.log('Visa expiry notification check completed');
+  } catch (error) {
+    console.error('Error checking visa expiry notifications:', error);
+  }
+}
+
+async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
+  const { data, error } = await supabase
+    .from('employees')
+    .select(`
+      id,
+      employee_name,
+      visa_expiry_date,
+      email,
+      notification_sent_60,
+      notification_sent_30,
+      notification_sent_15,
+      notification_sent_7,
+      notification_sent_1
+    `)
+    .not('visa_expiry_date', 'is', null)
+    .not('visa_expiry_date', 'eq', '');
+
+  if (error) {
+    console.error('Error fetching visa expiry records:', error);
+    return [];
   }
 
-  private static shouldSendNotification(employee: VisaExpiryRecord, daysUntilExpiry: number): boolean {
-    // Only send notifications for positive days (not expired)
-    if (daysUntilExpiry <= 0) {
+  return (data as VisaExpiryRecord[]) || [];
+}
+
+function calculateDaysUntilExpiry(visaExpiryDate: string): number {
+  const expiryDate = new Date(visaExpiryDate);
+  const today = new Date();
+  const diffTime = expiryDate.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays;
+}
+
+function shouldSendNotification(record: VisaExpiryRecord, daysUntilExpiry: number): boolean {
+  if (daysUntilExpiry < 0) {
+    return false; // Visa already expired
+  }
+
+  if (!NOTIFICATION_INTERVALS.includes(daysUntilExpiry)) {
+    return false; // Not at a notification interval
+  }
+
+  // Check if notification was already sent for this interval
+  switch (daysUntilExpiry) {
+    case 60:
+      return !record.notification_sent_60;
+    case 30:
+      return !record.notification_sent_30;
+    case 15:
+      return !record.notification_sent_15;
+    case 7:
+      return !record.notification_sent_7;
+    case 1:
+      return !record.notification_sent_1;
+    default:
       return false;
-    }
+  }
+}
 
-    // Check specific day intervals
-    if (daysUntilExpiry === 60 && !employee.notification_sent_60) {
-      return true;
-    }
-    if (daysUntilExpiry === 30 && !employee.notification_sent_30) {
-      return true;
-    }
-    if (daysUntilExpiry === 15 && !employee.notification_sent_15) {
-      return true;
-    }
-    if (daysUntilExpiry === 7 && !employee.notification_sent_7) {
-      return true;
-    }
-    if (daysUntilExpiry === 1 && !employee.notification_sent_1) {
-      return true;
-    }
+async function sendVisaExpiryEmail(record: VisaExpiryRecord, daysUntilExpiry: number): Promise<void> {
+  const urgency = getUrgencyLevel(daysUntilExpiry);
+  const subject = `🚨 VISA EXPIRY ${urgency}: ${record.employee_name}`;
+  
+  const emailContent = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #dc2626;">🚨 VISA EXPIRY NOTIFICATION</h2>
+      
+      <div style="background-color: #fef2f2; border-left: 4px solid #dc2626; padding: 16px; margin: 20px 0;">
+        <h3 style="margin: 0 0 10px 0; color: #dc2626;">${urgency} ALERT</h3>
+        <p style="margin: 0; font-size: 16px;">
+          <strong>${record.employee_name}</strong>'s visa expires in <strong>${daysUntilExpiry} day${daysUntilExpiry === 1 ? '' : 's'}</strong>.
+        </p>
+      </div>
+      
+      <div style="background-color: #f8fafc; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0;">Employee Details:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+          <li><strong>Name:</strong> ${record.employee_name}</li>
+          <li><strong>Email:</strong> ${record.email}</li>
+          <li><strong>Visa Expiry Date:</strong> ${new Date(record.visa_expiry_date).toLocaleDateString()}</li>
+          <li><strong>Days Remaining:</strong> ${daysUntilExpiry}</li>
+        </ul>
+      </div>
+      
+      <div style="background-color: #f0f9ff; padding: 16px; border-radius: 8px; margin: 20px 0;">
+        <h4 style="margin: 0 0 10px 0;">Required Actions:</h4>
+        <ul style="margin: 0; padding-left: 20px;">
+          <li>Review visa renewal requirements</li>
+          <li>Contact the employee for documentation</li>
+          <li>Initiate renewal process if applicable</li>
+          <li>Update employee records accordingly</li>
+        </ul>
+      </div>
+      
+      <p style="color: #6b7280; font-size: 14px; margin-top: 30px;">
+        This is an automated notification from the CUBS Visa Management System.
+        Please take immediate action to ensure compliance.
+      </p>
+    </div>
+  `;
 
-    return false;
+  try {
+    await sendEmail({
+      to: 'info@cubstechnical.com',
+      subject,
+      html: emailContent
+    });
+    
+    console.log(`Visa expiry email sent for ${record.employee_name} (${daysUntilExpiry} days)`);
+  } catch (error) {
+    console.error('Error sending visa expiry email:', error);
+  }
+}
+
+function getUrgencyLevel(daysUntilExpiry: number): string {
+  if (daysUntilExpiry <= 1) return 'CRITICAL';
+  if (daysUntilExpiry <= 7) return 'URGENT';
+  if (daysUntilExpiry <= 15) return 'HIGH';
+  if (daysUntilExpiry <= 30) return 'MEDIUM';
+  return 'LOW';
+}
+
+async function updateNotificationFlags(employeeId: string, daysUntilExpiry: number): Promise<void> {
+  const updateData: any = {};
+  
+  switch (daysUntilExpiry) {
+    case 60:
+      updateData.notification_sent_60 = true;
+      break;
+    case 30:
+      updateData.notification_sent_30 = true;
+      break;
+    case 15:
+      updateData.notification_sent_15 = true;
+      break;
+    case 7:
+      updateData.notification_sent_7 = true;
+      break;
+    case 1:
+      updateData.notification_sent_1 = true;
+      break;
   }
 
-  private static async updateNotificationFlags(employeeId: string, daysUntilExpiry: number): Promise<void> {
-    const updateData: any = {
-      last_notification_date: new Date().toISOString(),
-    };
+  const { error } = await supabase
+    .from('employees')
+    .update(updateData)
+    .eq('id', employeeId);
 
-    // Set the appropriate notification flag
-    switch (daysUntilExpiry) {
-      case 60:
-        updateData.notification_sent_60 = true;
-        break;
-      case 30:
-        updateData.notification_sent_30 = true;
-        break;
-      case 15:
-        updateData.notification_sent_15 = true;
-        break;
-      case 7:
-        updateData.notification_sent_7 = true;
-        break;
-      case 1:
-        updateData.notification_sent_1 = true;
-        break;
-    }
+  if (error) {
+    console.error('Error updating notification flags:', error);
+  }
+}
 
-    const { error } = await supabase
-      .from('employee_table')
-      .update(updateData)
-      .eq('id', employeeId);
+// Function to manually trigger visa expiry check
+export async function triggerVisaExpiryCheck(): Promise<void> {
+  console.log('Manually triggering visa expiry check...');
+  await checkAndSendVisaExpiryNotifications();
+}
+
+// Function to get visa expiry statistics
+export async function getVisaExpiryStats(): Promise<{
+  totalEmployees: number;
+  expiringSoon: number;
+  expired: number;
+  notificationsSent: number;
+}> {
+  try {
+    const { data: employees, error } = await supabase
+      .from('employees')
+      .select('visa_expiry_date, notification_sent_60, notification_sent_30, notification_sent_15, notification_sent_7, notification_sent_1')
+      .not('visa_expiry_date', 'is', null);
 
     if (error) {
-      console.error('Error updating notification flags:', error);
+      console.error('Error fetching visa expiry stats:', error);
+      return { totalEmployees: 0, expiringSoon: 0, expired: 0, notificationsSent: 0 };
     }
-  }
 
-  // Send push notifications to all admin users
-  private static async sendPushNotificationsToAdmins(employeeName: string, daysUntilExpiry: number): Promise<void> {
-    try {
-      // Get all admin users
-      const { data: admins, error } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('role', 'admin')
-        .not('approved_by', 'is', null);
+    const today = new Date();
+    let expiringSoon = 0;
+    let expired = 0;
+    let notificationsSent = 0;
 
-      if (error || !admins) {
-        console.error('Error fetching admin users for push notifications:', error);
-        return;
-      }
-
-      // Send push notification to each admin
-      for (const admin of admins) {
-        await PushNotificationService.sendVisaExpiryNotification(
-          admin.id as string,
-          employeeName,
-          daysUntilExpiry
-        );
-      }
-
-      console.log(`Push notifications sent to ${admins.length} admin users`);
-    } catch (error) {
-      console.error('Error sending push notifications to admins:', error);
-    }
-  }
-
-  static async getVisaExpiryAlerts(): Promise<VisaExpiryRecord[]> {
-    try {
-      const today = new Date();
-      const alerts: VisaExpiryRecord[] = [];
-
-      const { data: employees, error } = await supabase
-        .from('employee_table')
-        .select(`
-          id,
-          employee_id,
-          name,
-          email_id,
-          visa_expiry_date,
-          visa_type,
-          company_name,
-          notification_sent_60,
-          notification_sent_30,
-          notification_sent_15,
-          notification_sent_7,
-          notification_sent_1,
-          last_notification_date
-        `)
-        .not('visa_expiry_date', 'is', null)
-        .order('visa_expiry_date', { ascending: true });
-
-      if (error) {
-        console.error('Error fetching visa expiry alerts:', error);
-        return [];
-      }
-
-      if (!employees) {
-        return [];
-      }
-
-      for (const employee of employees) {
-        const expiryDate = new Date(employee.visa_expiry_date as string);
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        // Include employees with visas expiring within 90 days
-        if (daysUntilExpiry <= 90 && daysUntilExpiry > 0) {
-          alerts.push({
-            ...employee,
-            daysRemaining: daysUntilExpiry,
-          } as VisaExpiryRecord);
-        }
-      }
-
-      return alerts;
-    } catch (error) {
-      console.error('Error getting visa expiry alerts:', error);
-      return [];
-    }
-  }
-
-  static async resetNotificationFlags(employeeId: string): Promise<void> {
-    try {
-      const { error } = await supabase
-        .from('employee_table')
-        .update({
-          notification_sent_90: false,
-          notification_sent_60: false,
-          notification_sent_30: false,
-          notification_sent_15: false,
-          notification_sent_7: false,
-          last_notification_date: null,
-        })
-        .eq('id', employeeId);
-
-      if (error) {
-        console.error('Error resetting notification flags:', error);
-      }
-    } catch (error) {
-      console.error('Error resetting notification flags:', error);
-    }
-  }
-
-  static async getNotificationStats(): Promise<{
-    totalEmployees: number;
-    expiringIn90Days: number;
-    expiringIn60Days: number;
-    expiringIn30Days: number;
-    expiringIn15Days: number;
-    expiringIn7Days: number;
-    expired: number;
-  }> {
-    try {
-      const today = new Date();
-      const stats = {
-        totalEmployees: 0,
-        expiringIn90Days: 0,
-        expiringIn60Days: 0,
-        expiringIn30Days: 0,
-        expiringIn15Days: 0,
-        expiringIn7Days: 0,
-        expired: 0,
-      };
-
-      const { data: employees, error } = await supabase
-        .from('employee_table')
-        .select('visa_expiry_date')
-        .not('visa_expiry_date', 'is', null);
-
-      if (error) {
-        console.error('Error fetching notification stats:', error);
-        return stats;
-      }
-
-      if (!employees) {
-        return stats;
-      }
-
-      stats.totalEmployees = employees.length;
-
-      for (const employee of employees) {
-        const expiryDate = new Date(employee.visa_expiry_date as string);
-        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        if (daysUntilExpiry <= 0) {
-          stats.expired++;
-        } else if (daysUntilExpiry <= 7) {
-          stats.expiringIn7Days++;
-        } else if (daysUntilExpiry <= 15) {
-          stats.expiringIn15Days++;
+    employees?.forEach(employee => {
+      if (employee.visa_expiry_date && typeof employee.visa_expiry_date === 'string') {
+        const daysUntilExpiry = calculateDaysUntilExpiry(employee.visa_expiry_date);
+        
+        if (daysUntilExpiry < 0) {
+          expired++;
         } else if (daysUntilExpiry <= 30) {
-          stats.expiringIn30Days++;
-        } else if (daysUntilExpiry <= 60) {
-          stats.expiringIn60Days++;
-        } else if (daysUntilExpiry <= 90) {
-          stats.expiringIn90Days++;
+          expiringSoon++;
         }
-      }
 
-      return stats;
-    } catch (error) {
-      console.error('Error getting notification stats:', error);
-      return {
-        totalEmployees: 0,
-        expiringIn90Days: 0,
-        expiringIn60Days: 0,
-        expiringIn30Days: 0,
-        expiringIn15Days: 0,
-        expiringIn7Days: 0,
-        expired: 0,
-      };
-    }
+        // Count notifications sent
+        if (employee.notification_sent_60) notificationsSent++;
+        if (employee.notification_sent_30) notificationsSent++;
+        if (employee.notification_sent_15) notificationsSent++;
+        if (employee.notification_sent_7) notificationsSent++;
+        if (employee.notification_sent_1) notificationsSent++;
+      }
+    });
+
+    return {
+      totalEmployees: employees?.length || 0,
+      expiringSoon,
+      expired,
+      notificationsSent
+    };
+  } catch (error) {
+    console.error('Error getting visa expiry stats:', error);
+    return { totalEmployees: 0, expiringSoon: 0, expired: 0, notificationsSent: 0 };
   }
 } 

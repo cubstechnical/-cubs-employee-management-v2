@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { withAdminAuth, handleApiError } from '@/lib/api/middleware';
 import { EmployeeService } from '@/lib/services/employees';
 import { FileUploadService } from '@/lib/services/fileUpload';
-import { VisaNotificationService } from '@/lib/services/visaNotifications';
+import { getVisaExpiryStats } from '@/lib/services/visaNotifications';
 
 // GET /api/dashboard - Get dashboard analytics and statistics
 export async function GET(request: NextRequest) {
@@ -12,13 +12,11 @@ export async function GET(request: NextRequest) {
       const [
         employees,
         documentStats,
-        visaAlerts,
-        notificationStats
+        visaStats
       ] = await Promise.all([
         EmployeeService.getEmployees({ page: 1, pageSize: 1000 }, {}),
         FileUploadService.getDocumentStats(),
-        VisaNotificationService.getVisaExpiryAlerts(),
-        VisaNotificationService.getNotificationStats(),
+        getVisaExpiryStats(),
       ]);
 
       // Calculate employee statistics
@@ -76,11 +74,9 @@ export async function GET(request: NextRequest) {
         });
       }
 
-      // Calculate urgent alerts
-      const urgentAlerts = visaAlerts.filter(alert => (alert.daysRemaining || 0) <= 7).length;
-      const highPriorityAlerts = visaAlerts.filter(alert => 
-        (alert.daysRemaining || 0) > 7 && (alert.daysRemaining || 0) <= 15
-      ).length;
+      // Calculate urgent alerts from visa stats
+      const urgentAlerts = visaStats.expiringSoon;
+      const highPriorityAlerts = 0; // Will be calculated from employee data if needed
 
       const dashboardData = {
         overview: {
@@ -125,21 +121,22 @@ export async function GET(request: NextRequest) {
           formattedSize: FileUploadService.formatFileSize(documentStats.totalSize),
         },
         visaAlerts: {
-          total: visaAlerts.length,
+          total: visaStats.expiringSoon + visaStats.expired,
           urgent: urgentAlerts,
           highPriority: highPriorityAlerts,
-          mediumPriority: visaAlerts.filter(alert => 
-            (alert.daysRemaining || 0) > 15 && (alert.daysRemaining || 0) <= 30
-          ).length,
-          lowPriority: visaAlerts.filter(alert => 
-            (alert.daysRemaining || 0) > 30 && (alert.daysRemaining || 0) <= 90
-          ).length,
+          mediumPriority: 0,
+          lowPriority: 0,
         },
         growth: {
           monthly: monthlyGrowth,
           totalGrowth: monthlyGrowth.reduce((sum, month) => sum + month.count, 0),
         },
-        notifications: notificationStats,
+        notifications: {
+          totalEmployees: visaStats.totalEmployees,
+          expiringSoon: visaStats.expiringSoon,
+          expired: visaStats.expired,
+          notificationsSent: visaStats.notificationsSent,
+        },
       };
 
       return NextResponse.json({
