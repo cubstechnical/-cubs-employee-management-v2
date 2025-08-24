@@ -118,22 +118,12 @@ export default function PrivacyPolicy() {
                 You can request deletion of your account and all associated data at any time.
               </p>
               <div style={{ marginBottom: '8px' }}>
-                <a 
-                  href="/delete-account" 
-                  style={{
-                    display: 'inline-block',
-                    backgroundColor: '#2563eb',
-                    color: 'white',
-                    padding: '8px 16px',
-                    borderRadius: '6px',
-                    textDecoration: 'none',
-                    fontWeight: '500'
-                  }}
-                  onMouseOver="this.style.backgroundColor='#1d4ed8'"
-                  onMouseOut="this.style.backgroundColor='#2563eb'"
-                >
-                  Delete My Account
-                </a>
+                                 <a 
+                   href="/delete-account" 
+                   className="inline-block bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md no-underline font-medium transition-colors"
+                 >
+                   Delete My Account
+                 </a>
               </div>
               <p style={{ fontSize: '14px', color: '#1e40af' }}>
                 Or contact us at <a href="mailto:info@cubstechnical.com" style={{ textDecoration: 'underline' }}>info@cubstechnical.com</a>

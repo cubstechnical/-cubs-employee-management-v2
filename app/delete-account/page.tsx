@@ -1,13 +1,9 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Textarea } from '@/components/ui/Textarea';
-import { Badge } from '@/components/ui/Badge';
-import { Alert, AlertDescription } from '@/components/ui/Alert';
-import { Separator } from '@/components/ui/Separator';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { createClient } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
@@ -99,19 +95,18 @@ export default function DeleteAccountPage() {
         </div>
 
         <Card className="mb-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center gap-2">
               <span className="text-red-600">⚠️</span>
               Important Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Alert className="mb-4">
-              <AlertDescription>
+            </h2>
+            
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+              <p className="text-red-800">
                 <strong>This action is permanent and cannot be undone.</strong> 
                 All your data will be permanently deleted from our systems.
-              </AlertDescription>
-            </Alert>
+              </p>
+            </div>
 
             <div className="space-y-4">
               <div>
@@ -143,78 +138,80 @@ export default function DeleteAccountPage() {
                 </p>
               </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
 
         <Card>
-          <CardHeader>
-            <CardTitle>Account Deletion Request</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Email Address *
-              </label>
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="Enter your email address"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                This helps us verify your identity and process your request
-              </p>
-            </div>
+          <div className="mb-6">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Deletion Request</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Email Address *
+                </label>
+                <Input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email address"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  This helps us verify your identity and process your request
+                </p>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Reason for Deletion (Optional)
-              </label>
-              <Textarea
-                value={reason}
-                onChange={(e) => setReason(e.target.value)}
-                placeholder="Please let us know why you're leaving..."
-                rows={3}
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reason for Deletion (Optional)
+                </label>
+                <textarea
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Please let us know why you're leaving..."
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
 
-            <Separator />
+              <hr className="my-6 border-gray-200" />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Confirmation *
-              </label>
-              <Input
-                type="text"
-                value={confirmation}
-                onChange={(e) => setConfirmation(e.target.value)}
-                placeholder="Type: DELETE MY ACCOUNT"
-                className="font-mono"
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Type exactly: <code className="bg-gray-100 px-1 rounded">DELETE MY ACCOUNT</code>
-              </p>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirmation *
+                </label>
+                <Input
+                  type="text"
+                  value={confirmation}
+                  onChange={(e) => setConfirmation(e.target.value)}
+                  placeholder="Type: DELETE MY ACCOUNT"
+                  className="font-mono"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Type exactly: <code className="bg-gray-100 px-1 rounded">DELETE MY ACCOUNT</code>
+                </p>
+              </div>
 
-            <Button
-              onClick={handleDeleteAccount}
-              disabled={isDeleting || confirmation !== 'DELETE MY ACCOUNT' || !email.trim()}
-              className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400"
-            >
-              {isDeleting ? 'Deleting Account...' : 'Permanently Delete My Account'}
-            </Button>
-
-            <div className="text-center">
               <Button
-                variant="outline"
-                onClick={() => router.back()}
-                className="text-gray-600"
+                onClick={handleDeleteAccount}
+                disabled={isDeleting || confirmation !== 'DELETE MY ACCOUNT' || !email.trim()}
+                className="w-full bg-red-600 hover:bg-red-700 disabled:bg-gray-400"
               >
-                Cancel - Keep My Account
+                {isDeleting ? 'Deleting Account...' : 'Permanently Delete My Account'}
               </Button>
+
+              <div className="text-center">
+                <Button
+                  variant="outline"
+                  onClick={() => router.back()}
+                  className="text-gray-600"
+                >
+                  Cancel - Keep My Account
+                </Button>
+              </div>
             </div>
-          </CardContent>
+          </div>
         </Card>
 
         <div className="mt-6 text-center text-sm text-gray-500">
