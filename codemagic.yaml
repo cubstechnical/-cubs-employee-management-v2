@@ -95,11 +95,10 @@ workflows:
           success: true
           failure: true
 
-  ios-build:
-    name: iOS Build
+  ios-build-testing:
+    name: iOS Build (Testing Only)
     environment:
       groups:
-        - app_store_connect
         - cubs_environment
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
@@ -124,35 +123,37 @@ workflows:
           cd ios
           pod install
           cd ..
-      - name: Build iOS app
+      - name: Build iOS app for simulator
         script: |
-          echo "Building iOS app..."
+          echo "Building iOS app for simulator testing..."
           cd ios
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
             -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath App/build \
+            build
+          cd ..
+      - name: Create iOS archive (unsigned)
+        script: |
+          echo "Creating iOS archive for future signing..."
+          cd ios
+          xcodebuild -workspace App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath App/build/App.xcarchive \
             archive
           cd ..
-      - name: Export iOS IPA
+      - name: List build artifacts
         script: |
-          echo "Exporting iOS IPA..."
-          cd ios
-          xcodebuild -exportArchive \
-            -archivePath App/build/App.xcarchive \
-            -exportPath App/build/ipa \
-            -exportOptionsPlist exportOptions.plist
-          cd ..
+          echo "iOS build artifacts:"
+          find ios/App/build -name "*.app" -o -name "*.xcarchive" | head -10
     artifacts:
-      - ios/App/build/ipa/*.ipa
       - ios/App/build/App.xcarchive
+      - ios/App/build/Debug-iphonesimulator/App.app
+      - ios/App/build/Release-iphoneos/App.app
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
       email:
         recipients:
           - info@cubstechnical.com
@@ -160,11 +161,10 @@ workflows:
           success: true
           failure: true
 
-  ios-release:
-    name: iOS Release Build
+  ios-release-ready:
+    name: iOS Release Build (Ready for Publishing)
     environment:
       groups:
-        - app_store_connect
         - cubs_environment
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
@@ -200,24 +200,23 @@ workflows:
             -archivePath App/build/App.xcarchive \
             archive
           cd ..
-      - name: Export iOS IPA for release
+      - name: Export unsigned IPA
         script: |
-          echo "Exporting iOS IPA for release..."
+          echo "Exporting unsigned IPA (ready for manual signing)..."
           cd ios
           xcodebuild -exportArchive \
             -archivePath App/build/App.xcarchive \
             -exportPath App/build/ipa \
-            -exportOptionsPlist exportOptions.plist
+            -exportOptionsPlist exportOptions-unsigned.plist
           cd ..
+      - name: List release artifacts
+        script: |
+          echo "iOS release artifacts:"
+          find ios/App/build -name "*.ipa" -o -name "*.xcarchive" | head -10
     artifacts:
       - ios/App/build/ipa/*.ipa
       - ios/App/build/App.xcarchive
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
       email:
         recipients:
           - info@cubstechnical.com
