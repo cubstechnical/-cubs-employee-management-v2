@@ -1,0 +1,98 @@
+workflows:
+  android-build:
+    name: Android Build
+    environment:
+      groups:
+        - google_play
+        - cubs_environment
+      vars:
+        PACKAGE_NAME: "com.cubstechnical.admin"
+        BUILD_SCRIPT_NAME: "BUILD_ANDROID_FIXED.bat"
+    scripts:
+      - name: Set up environment
+        script: |
+          echo "Setting up Android build environment..."
+          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+          export ANDROID_HOME=$HOME/Android/Sdk
+          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+      - name: Install dependencies
+        script: |
+          echo "Installing Node.js dependencies..."
+          npm install
+      - name: Build Android APK
+        script: |
+          echo "Building Android APK..."
+          cd android
+          ./gradlew assembleDebug
+          cd ..
+      - name: Build Android Release APK
+        script: |
+          echo "Building Android Release APK..."
+          cd android
+          ./gradlew assembleRelease
+          cd ..
+      - name: List APK files
+        script: |
+          echo "Generated APK files:"
+          find android/app/build/outputs/apk -name "*.apk" -exec ls -la {} \;
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
+      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        track: internal
+        submit_to_internal_testing: true
+        submit_to_internal_testing_notes: "CUBS Visa Management - Internal Testing Build"
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
+
+  android-release:
+    name: Android Release Build
+    environment:
+      groups:
+        - google_play
+        - cubs_environment
+      vars:
+        PACKAGE_NAME: "com.cubstechnical.admin"
+    scripts:
+      - name: Set up environment
+        script: |
+          echo "Setting up Android release build environment..."
+          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+          export ANDROID_HOME=$HOME/Android/Sdk
+          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+      - name: Install dependencies
+        script: |
+          echo "Installing Node.js dependencies..."
+          npm install
+      - name: Build Release APK
+        script: |
+          echo "Building Android Release APK..."
+          cd android
+          ./gradlew assembleRelease
+          cd ..
+      - name: Build Release AAB
+        script: |
+          echo "Building Android App Bundle..."
+          cd android
+          ./gradlew bundleRelease
+          cd ..
+    artifacts:
+      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        track: production
+        submit_to_internal_testing: false
+        submit_to_internal_testing_notes: "CUBS Visa Management - Production Release"
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
