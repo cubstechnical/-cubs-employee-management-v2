@@ -40,6 +40,15 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo.
+echo 🎨 Generating app icons from assets/appicon.png...
+node scripts/generate-android-icons.js
+if %ERRORLEVEL% NEQ 0 (
+    echo ❌ Icon generation failed
+    pause
+    exit /b 1
+)
+
+echo.
 echo 📱 Setting up Capacitor for production deployment...
 REM Check if android platform already exists
 if exist "android" (
@@ -131,10 +140,12 @@ echo 3. Connect device via USB
 echo 4. Copy APK to device or use: adb install app-debug.apk
 echo.
 echo 📱 For iOS (requires macOS):
-echo 1. Run: npx cap add ios
-echo 2. Run: npx cap sync ios  
+echo 1. Run: chmod +x BUILD_iOS_PRODUCTION.sh
+echo 2. Run: ./BUILD_iOS_PRODUCTION.sh
 echo 3. Run: npx cap open ios
 echo 4. Build in Xcode
+echo.
+echo 📋 iOS Build Guide: IOS_BUILD_GUIDE.md
 echo.
 echo ✅ Your mobile apps are ready for deployment!
 echo.

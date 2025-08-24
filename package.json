@@ -22,7 +22,6 @@
     "android:build": "npm run cap:build && cd android && ./gradlew assembleDebug",
     "android:run": "npm run cap:build && cd android && ./gradlew runDebug",
     "ios:build": "npm run cap:build && cap open ios",
-
     "verify:app-store": "node scripts/verify-app-store-readiness.js",
     "verify:build": "node scripts/build-verification.js",
     "verify:final": "node scripts/final-verification.js",
@@ -37,7 +36,6 @@
     "@capacitor/core": "^5.0.0",
     "@capacitor/ios": "^5.0.0",
     "@capacitor/keyboard": "^5.0.0",
-
     "@capacitor/splash-screen": "^5.0.0",
     "@capacitor/status-bar": "^5.0.0",
     "@hookform/resolvers": "^5.2.1",
@@ -89,6 +87,6 @@
     "husky": "^8.0.3",
     "lint-staged": "^14.0.1",
     "prettier": "^3.0.3",
-    "sharp": "^0.33.2"
+    "sharp": "^0.33.5"
   }
 }
