@@ -112,6 +112,34 @@ export default function PrivacyPolicy() {
               <li>Export your data</li>
             </ul>
 
+            <div style={{ backgroundColor: '#eff6ff', border: '1px solid #3b82f6', borderRadius: '8px', padding: '16px', marginTop: '16px' }}>
+              <h3 style={{ color: '#1e40af', marginBottom: '8px', fontWeight: '600' }}>Account Deletion</h3>
+              <p style={{ color: '#1e40af', marginBottom: '12px' }}>
+                You can request deletion of your account and all associated data at any time.
+              </p>
+              <div style={{ marginBottom: '8px' }}>
+                <a 
+                  href="/delete-account" 
+                  style={{
+                    display: 'inline-block',
+                    backgroundColor: '#2563eb',
+                    color: 'white',
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    textDecoration: 'none',
+                    fontWeight: '500'
+                  }}
+                  onMouseOver="this.style.backgroundColor='#1d4ed8'"
+                  onMouseOut="this.style.backgroundColor='#2563eb'"
+                >
+                  Delete My Account
+                </a>
+              </div>
+              <p style={{ fontSize: '14px', color: '#1e40af' }}>
+                Or contact us at <a href="mailto:info@cubstechnical.com" style={{ textDecoration: 'underline' }}>info@cubstechnical.com</a>
+              </p>
+            </div>
+
             <h2>6. Data Retention</h2>
             <p>
               We retain your information for as long as necessary to provide our services 
