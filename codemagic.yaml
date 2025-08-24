@@ -43,8 +43,6 @@ workflows:
       google_play:
         credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS
         track: internal
-        submit_to_internal_testing: true
-        submit_to_internal_testing_notes: "CUBS Visa Management - Internal Testing Build"
       email:
         recipients:
           - info@cubstechnical.com
