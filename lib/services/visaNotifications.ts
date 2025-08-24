@@ -174,7 +174,7 @@ export class VisaNotificationService {
       // Send push notification to each admin
       for (const admin of admins) {
         await PushNotificationService.sendVisaExpiryNotification(
-          admin.id,
+          admin.id as string,
           employeeName,
           daysUntilExpiry
         );

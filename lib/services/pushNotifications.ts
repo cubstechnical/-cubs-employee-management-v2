@@ -21,6 +21,11 @@ export interface PushNotificationData {
   image?: string;
 }
 
+interface DeviceToken {
+  device_token: string;
+  platform: string;
+}
+
 export class PushNotificationService {
   private static isInitialized = false;
   private static deviceToken: string | null = null;
@@ -166,10 +171,10 @@ export class PushNotificationService {
         return false;
       }
 
-      // Send to each device
+      // Send to each device with proper type assertion
       const results = await Promise.all(
-        tokens.map((token: { device_token: string; platform: string }) => 
-          this.sendToDevice(token.device_token, notification)
+        tokens.map((token: any) => 
+          this.sendToDevice((token as DeviceToken).device_token, notification)
         )
       );
 
