@@ -201,9 +201,6 @@ workflows:
     name: iOS Build (With Publishing)
     max_build_duration: 120
     environment:
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: "com.cubstechnical.admin"
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -227,66 +224,36 @@ workflows:
           cd ios/App
           pod install
           cd ../..
-      - name: Build and archive iOS app
+      - name: Build iOS app (unsigned)
         script: |
-          echo "Building and archiving iOS app with automatic signing..."
+          echo "Building iOS app (unsigned for manual signing)..."
           cd ios
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath App/build/App.xcarchive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO \
             -allowProvisioningUpdates \
             archive
           cd ..
-      - name: Export signed IPA
+      - name: Prepare for manual upload
         script: |
-          echo "Exporting signed IPA for App Store Connect..."
+          echo "Preparing archive for manual upload to App Store Connect..."
           cd ios
-          # Create export options for app store
-          cat > exportOptions.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store-connect</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>compileBitcode</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
-          
-          xcodebuild -exportArchive \
-            -archivePath App/build/App.xcarchive \
-            -exportPath App/build/ipa \
-            -exportOptionsPlist exportOptions.plist \
-            -allowProvisioningUpdates
+          echo "✅ Archive created: App/build/App.xcarchive"
+          echo "📋 Manual upload steps:"
+          echo "1. Download this archive from Codemagic"
+          echo "2. Open Xcode → Window → Organizer"
+          echo "3. Import the .xcarchive file"
+          echo "4. Click 'Distribute App' → 'App Store Connect'"
+          echo "5. Follow the signing wizard"
           cd ..
-      - name: Verify IPA creation
-        script: |
-          echo "Verifying IPA creation..."
-          if [ -f "ios/App/build/ipa/App.ipa" ]; then
-            echo "✅ IPA created successfully:"
-            ls -la ios/App/build/ipa/
-          else
-            echo "❌ IPA not found. Available files:"
-            find ios/App/build -name "*.ipa" -o -name "*.xcarchive"
-            exit 1
-          fi
     artifacts:
-      - ios/App/build/ipa/*.ipa
       - ios/App/build/App.xcarchive
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
       email:
         recipients:
           - info@cubstechnical.com
