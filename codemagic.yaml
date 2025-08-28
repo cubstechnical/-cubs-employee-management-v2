@@ -4,7 +4,7 @@ workflows:
     environment:
       groups:
         - google_play
-        - cubs_environment
+
       vars:
         PACKAGE_NAME: "com.cubstechnical.admin"
         BUILD_SCRIPT_NAME: "BUILD_ANDROID_FIXED.bat"
@@ -55,7 +55,7 @@ workflows:
     environment:
       groups:
         - google_play
-        - cubs_environment
+
       vars:
         PACKAGE_NAME: "com.cubstechnical.admin"
     scripts:
@@ -99,7 +99,7 @@ workflows:
     name: iOS Build (Testing Only)
     environment:
       groups:
-        - cubs_environment
+
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -165,7 +165,7 @@ workflows:
     name: iOS Release Build (Ready for Publishing)
     environment:
       groups:
-        - cubs_environment
+
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -229,7 +229,7 @@ workflows:
     environment:
       groups:
         - app_store_connect
-        - cubs_environment
+
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -294,7 +294,7 @@ workflows:
     environment:
       groups:
         - app_store_connect
-        - cubs_environment
+
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
