@@ -152,7 +152,7 @@ jobs:
         pod --version
         gem list xcodeproj
 
-    - name: Clean and prepare iOS build environment
+    - name: Clean iOS build environment and prepare for direct build
       run: |
         # Clean Xcode derived data and caches
         rm -rf ~/Library/Developer/Xcode/DerivedData
@@ -165,14 +165,22 @@ jobs:
         rm -rf *.xcworkspace/xcuserdata
         rm -rf *.xcodeproj/xcuserdata
         rm -rf *.xcodeproj/project.xcworkspace
-        cd ../..
-        # Ensure clean Capacitor sync
-        npx cap sync ios --no-build
+        # Create minimal Podfile for direct build
+        cat > Podfile << 'EOF'
+platform :ios, '13.0'
+use_frameworks!
 
-    - name: Install iOS dependencies
-      run: |
-        cd ios/App
-        pod install --repo-update
+target 'App' do
+  # Minimal dependencies for direct build
+  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
+end
+EOF
+        cd ../..
+        # Copy Capacitor frameworks manually
+        mkdir -p ios/App/Frameworks
+        cp -r node_modules/@capacitor/ios/Capacitor.framework ios/App/Frameworks/
+        # Ensure clean Capacitor sync without CocoaPods
+        npx cap sync ios --no-build
 
     - name: Create export options plist
       run: |
@@ -203,12 +211,14 @@ jobs:
     - name: Build iOS app (Development)
       run: |
         cd ios/App
-        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build
+        # Build without CocoaPods workspace, using project directly
+        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build FRAMEWORK_SEARCH_PATHS="$(PWD)/Frameworks"
 
     - name: Build iOS app (Release Archive)
       run: |
         cd ios/App
-        xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive
+        # Archive without CocoaPods workspace, using project directly
+        xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive FRAMEWORK_SEARCH_PATHS="$(PWD)/Frameworks"
 
     - name: Export iOS IPA
       run: |
