@@ -267,26 +267,49 @@ jobs:
           ios/App/Podfile.lock
         retention-days: 30
 
-    - name: iOS Signing Instructions
+    - name: iOS Deployment Guide
       run: |
-        echo "## 📱 iOS App Signing Instructions" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 iOS App Deployment Options" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### For Development Testing:" >> $GITHUB_STEP_SUMMARY
-        echo "1. Download the \`ios-build\` artifact" >> $GITHUB_STEP_SUMMARY
-        echo "2. Open \`App.xcworkspace\` in Xcode" >> $GITHUB_STEP_SUMMARY
-        echo "3. Select your development team in Signing & Capabilities" >> $GITHUB_STEP_SUMMARY
-        echo "4. Build and run on device/simulator" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Prerequisites:" >> $GITHUB_STEP_SUMMARY
+        echo "- Apple Developer Program account (\$99/year)" >> $GITHUB_STEP_SUMMARY
+        echo "- Xcode installed on your Mac" >> $GITHUB_STEP_SUMMARY
+        echo "- Registered test devices (for Ad-hoc)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### For App Store Deployment:" >> $GITHUB_STEP_SUMMARY
-        echo "1. Set up Apple Developer account" >> $GITHUB_STEP_SUMMARY
-        echo "2. Create provisioning profiles" >> $GITHUB_STEP_SUMMARY
-        echo "3. Export signed IPA using Xcode Archive organizer" >> $GITHUB_STEP_SUMMARY
-        echo "4. Upload to App Store Connect or TestFlight" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Option 1: Development Testing (Free)" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download \`ios-build\` artifact from this run" >> $GITHUB_STEP_SUMMARY
+        echo "2. Extract and open \`App.xcworkspace\` in Xcode" >> $GITHUB_STEP_SUMMARY
+        echo "3. In Xcode: Product → Destination → Your Device" >> $GITHUB_STEP_SUMMARY
+        echo "4. Product → Run (⌘R)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
-        echo "### Archive Location:" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
-        echo "ios/App/App.xcarchive" >> $GITHUB_STEP_SUMMARY
-        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "### 🧪 Option 2: TestFlight Distribution" >> $GITHUB_STEP_SUMMARY
+        echo "1. Open \`App.xcworkspace\` in Xcode" >> $GITHUB_STEP_SUMMARY
+        echo "2. Product → Archive" >> $GITHUB_STEP_SUMMARY
+        echo "3. Window → Organizer → Distribute App" >> $GITHUB_STEP_SUMMARY
+        echo "4. Select 'TestFlight & App Store'" >> $GITHUB_STEP_SUMMARY
+        echo "5. Follow prompts to upload to App Store Connect" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📦 Option 3: Ad-hoc Distribution" >> $GITHUB_STEP_SUMMARY
+        echo "1. Register device UDIDs in Apple Developer portal" >> $GITHUB_STEP_SUMMARY
+        echo "2. Create Ad-hoc provisioning profile" >> $GITHUB_STEP_SUMMARY
+        echo "3. In Xcode Organizer: Distribute App → Ad Hoc" >> $GITHUB_STEP_SUMMARY
+        echo "4. Install IPA on registered devices" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🏢 Option 4: Enterprise Distribution" >> $GITHUB_STEP_SUMMARY
+        echo "1. Apple Developer Enterprise Program (\$299/year)" >> $GITHUB_STEP_SUMMARY
+        echo "2. Create In-House distribution certificate" >> $GITHUB_STEP_SUMMARY
+        echo "3. Host IPA on internal server" >> $GITHUB_STEP_SUMMARY
+        echo "4. Create manifest.plist for wireless installation" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📱 Files Provided:" >> $GITHUB_STEP_SUMMARY
+        echo "- \`App.xcarchive\` - Ready for Xcode Organizer" >> $GITHUB_STEP_SUMMARY
+        echo "- \`App.xcworkspace\` - Complete project with dependencies" >> $GITHUB_STEP_SUMMARY
+        echo "- \`exportOptions.plist\` - Export configuration" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🔗 Useful Links:" >> $GITHUB_STEP_SUMMARY
+        echo "- [App Store Connect](https://appstoreconnect.apple.com)" >> $GITHUB_STEP_SUMMARY
+        echo "- [Apple Developer Portal](https://developer.apple.com)" >> $GITHUB_STEP_SUMMARY
+        echo "- [TestFlight Guide](https://developer.apple.com/testflight/)" >> $GITHUB_STEP_SUMMARY
 
   deploy-preview:
     runs-on: ubuntu-latest
