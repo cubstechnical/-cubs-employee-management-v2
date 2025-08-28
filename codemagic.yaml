@@ -231,6 +231,10 @@ workflows:
         XCODE_PROJECT: "ios/App/App.xcodeproj"
         XCODE_SCHEME: "App"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        # TestFlight configuration
+        TESTFLIGHT_EMAIL: "info@cubstechnical.com"  # Your email
+        TESTFLIGHT_FIRST_NAME: "binoy"              # Your first name
+        TESTFLIGHT_LAST_NAME: "benjamin"            # Your last name
     scripts:
       - name: Set up iOS environment
         script: |
