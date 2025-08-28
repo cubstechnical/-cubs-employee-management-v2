@@ -253,7 +253,9 @@ workflows:
           npx cap add ios
           # Set development team in project
           cd ios/App
-          /usr/libexec/PlistBuddy -c "Set :objects:*:buildSettings:DEVELOPMENT_TEAM GQCYASP5XS" App.xcodeproj/project.pbxproj
+          # Find and set development team for all targets
+          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "GQCYASP5XS";/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/DEVELOPMENT_TEAM = "";/DEVELOPMENT_TEAM = "GQCYASP5XS";/g' App.xcodeproj/project.pbxproj
           cd ../..
       - name: Install iOS dependencies
         script: |
@@ -270,6 +272,10 @@ workflows:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath App/build/App.xcarchive \
+            DEVELOPMENT_TEAM=GQCYASP5XS \
+            CODE_SIGN_IDENTITY="iPhone Developer" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES \
             archive
           cd ..
       - name: Create Export Options
