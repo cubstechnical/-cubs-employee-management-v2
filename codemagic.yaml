@@ -244,9 +244,14 @@ workflows:
         script: |
           echo "Installing Node.js dependencies..."
           npm install
-      - name: Install iOS dependencies
+      - name: Set up iOS platform
         script: |
-          echo "Installing iOS dependencies..."
+          echo "Setting up iOS platform..."
+          # Remove existing iOS platform if it exists
+          rm -rf ios
+          # Add iOS platform
+          npx cap add ios
+          # Install dependencies
           cd ios
           pod install
           cd ..
