@@ -176,14 +176,10 @@ jobs:
         npx cap add ios
         # Copy web assets after platform addition
         npx cap copy ios
-        # Build the iOS project to generate frameworks (without code signing)
+        # Build the iOS project using workspace created by CocoaPods
         cd ios/App
-        # Use workspace if it exists (created by CocoaPods), otherwise use project
-        if [ -f "App.xcworkspace" ]; then
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-        else
-          xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-        fi
+        # CocoaPods should have created a workspace, use it
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
         cd ../..
         # Now copy the built framework
         mkdir -p ios/App/Frameworks
@@ -220,22 +216,14 @@ jobs:
     - name: Build iOS app (Development)
       run: |
         cd ios/App
-        # Build with Capacitor frameworks
-        if [ -f "App.xcworkspace" ]; then
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-        else
-          xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-        fi
+        # Build with Capacitor frameworks using workspace
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
     - name: Build iOS app (Release Archive)
       run: |
         cd ios/App
-        # Archive with Capacitor frameworks (without code signing)
-        if [ -f "App.xcworkspace" ]; then
-          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-        else
-          xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-        fi
+        # Archive with Capacitor frameworks using workspace
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
     - name: Export iOS IPA
       run: |
