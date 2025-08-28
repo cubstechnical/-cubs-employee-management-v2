@@ -272,10 +272,10 @@ workflows:
             -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath App/build/App.xcarchive \
-            DEVELOPMENT_TEAM=GQCYASP5XS \
-            CODE_SIGN_IDENTITY="iPhone Developer" \
-            CODE_SIGNING_REQUIRED=YES \
-            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO \
+            -allowProvisioningUpdates \
             archive
           cd ..
       - name: Create Export Options
@@ -306,7 +306,9 @@ workflows:
           xcodebuild -exportArchive \
             -archivePath App/build/App.xcarchive \
             -exportPath App/build/ipa \
-            -exportOptionsPlist exportOptions.plist
+            -exportOptionsPlist exportOptions.plist \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY=""
           cd ..
     artifacts:
       - ios/App/build/ipa/*.ipa
