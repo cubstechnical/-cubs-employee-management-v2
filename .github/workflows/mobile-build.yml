@@ -224,11 +224,31 @@ jobs:
         cd ios/App
         # Archive with Capacitor frameworks using workspace
         xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        # Verify archive was created
+        if [ -f "App.xcarchive/Info.plist" ]; then
+          echo "Archive created successfully"
+        else
+          echo "Archive creation failed"
+          exit 1
+        fi
 
     - name: Export iOS IPA
       run: |
         cd ios/App
-        xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        # Check if archive exists before exporting
+        if [ -f "App.xcarchive/Info.plist" ]; then
+          echo "Archive found, proceeding with export..."
+          mkdir -p build
+          xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+          # Check if IPA was created
+          if [ -f "build/*.ipa" ]; then
+            echo "IPA export successful!"
+          else
+            echo "IPA export completed but no IPA file found - this is normal for unsigned builds"
+          fi
+        else
+          echo "Archive not found, skipping IPA export"
+        fi
       continue-on-error: true
 
     - name: Upload iOS artifacts
@@ -238,6 +258,7 @@ jobs:
         path: |
           ios/App/build/
           ios/App/App.xcarchive/
+          ios/App/exportOptions.plist
         retention-days: 30
 
   deploy-preview:
