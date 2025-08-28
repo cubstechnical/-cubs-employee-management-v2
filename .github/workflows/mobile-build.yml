@@ -40,26 +40,28 @@ jobs:
         cp env.example .env
         echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
         echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
-        echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
-        echo "RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}" >> .env
-        echo "RESEND_FROM_NAME=${{ secrets.RESEND_FROM_NAME }}" >> .env
+        echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+        echo "GMAIL_USER=${{ secrets.GMAIL_USER }}" >> .env
+        echo "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}" >> .env
+        echo "GMAIL_FROM_NAME=${{ secrets.GMAIL_FROM_NAME }}" >> .env
         echo "B2_APPLICATION_KEY_ID=${{ secrets.B2_APPLICATION_KEY_ID }}" >> .env
         echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env
         echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env
         echo "B2_ENDPOINT=${{ secrets.B2_ENDPOINT }}" >> .env
         echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
+        echo "NODE_ENV=production" >> .env
 
     - name: Build Next.js static app
       run: npm run build
 
     - name: Initialize Capacitor
-      run: npm run cap:init
+      run: npx cap init
 
     - name: Add Android platform
-      run: npm run cap:add:android
+      run: npx cap add android
 
     - name: Sync Capacitor assets
-      run: npm run cap:sync
+      run: npx cap sync
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -101,42 +103,33 @@ jobs:
         cp env.example .env
         echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
         echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
-        echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
-        echo "RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}" >> .env
-        echo "RESEND_FROM_NAME=${{ secrets.RESEND_FROM_NAME }}" >> .env
+        echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
+        echo "GMAIL_USER=${{ secrets.GMAIL_USER }}" >> .env
+        echo "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}" >> .env
+        echo "GMAIL_FROM_NAME=${{ secrets.GMAIL_FROM_NAME }}" >> .env
         echo "B2_APPLICATION_KEY_ID=${{ secrets.B2_APPLICATION_KEY_ID }}" >> .env
         echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env
         echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env
         echo "B2_ENDPOINT=${{ secrets.B2_ENDPOINT }}" >> .env
         echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
+        echo "NODE_ENV=production" >> .env
 
     - name: Build Next.js static app
       run: npm run build
 
     - name: Initialize Capacitor
-      run: npm run cap:init
+      run: npx cap init
 
     - name: Add iOS platform
-      run: npm run cap:add:ios
+      run: npx cap add ios
 
     - name: Sync Capacitor assets
-      run: npm run cap:sync
+      run: npx cap sync
 
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
         xcode-version: 'latest-stable'
-
-    - name: Install iOS dependencies
-      run: |
-        cd ios/App
-        pod install
-
-    - name: Build iOS app
-      run: |
-        cd ios/App
-        xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive
-        xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist
 
     - name: Create export options plist
       run: |
@@ -152,9 +145,28 @@ jobs:
             <string>${{ secrets.APPLE_TEAM_ID }}</string>
             <key>signingStyle</key>
             <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <false/>
+            <key>compileBitcode</key>
+            <false/>
         </dict>
         </plist>
         EOF
+
+    - name: Install iOS dependencies
+      run: |
+        cd ios/App
+        pod install
+
+    - name: Build iOS app
+      run: |
+        cd ios/App
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive
+        xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist
 
     - name: Upload iOS artifacts
       uses: actions/upload-artifact@v4
@@ -195,4 +207,3 @@ jobs:
         echo "1. Download artifacts for testing" >> $GITHUB_STEP_SUMMARY
         echo "2. Test on physical devices" >> $GITHUB_STEP_SUMMARY
         echo "3. Submit to app stores when ready" >> $GITHUB_STEP_SUMMARY
-
