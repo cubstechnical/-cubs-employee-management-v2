@@ -131,9 +131,9 @@ jobs:
       run: |
         npm run build
         node scripts/prepare-capacitor.js
-        cap copy android
-        cap copy ios
-        cap sync android
+        npx cap copy android
+        npx cap copy ios
+        npx cap sync android
         # Skip iOS sync to avoid CocoaPods issues
 
     - name: Setup Xcode
