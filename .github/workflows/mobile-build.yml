@@ -232,34 +232,61 @@ jobs:
           exit 1
         fi
 
-    - name: Export iOS IPA
+    - name: Prepare iOS App for Distribution
       run: |
         cd ios/App
-        # Check if archive exists before exporting
+        echo "🎯 iOS Build Summary:"
+        echo "✅ Archive created successfully at: App.xcarchive"
+
+        # For CI builds without signing, we provide the archive
         if [ -f "App.xcarchive/Info.plist" ]; then
-          echo "Archive found, proceeding with export..."
-          mkdir -p build
-          xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
-          # Check if IPA was created
-          if [ -f "build/*.ipa" ]; then
-            echo "IPA export successful!"
-          else
-            echo "IPA export completed but no IPA file found - this is normal for unsigned builds"
-          fi
+          echo "📦 Archive Contents:"
+          ls -la App.xcarchive/
+          echo ""
+          echo "🚀 Deployment Options:"
+          echo "1. Use this archive for local testing with Xcode"
+          echo "2. Sign the archive locally for App Store/TestFlight"
+          echo "3. Use for development builds"
+          echo ""
+          echo "📋 Archive Info:"
+          plutil -p App.xcarchive/Info.plist | head -10
         else
-          echo "Archive not found, skipping IPA export"
+          echo "❌ Archive not found"
         fi
-      continue-on-error: true
 
     - name: Upload iOS artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ios-build
         path: |
-          ios/App/build/
           ios/App/App.xcarchive/
           ios/App/exportOptions.plist
+          ios/App/App.xcworkspace/
+          ios/App/App.xcodeproj/
+          ios/App/Podfile
+          ios/App/Podfile.lock
         retention-days: 30
+
+    - name: iOS Signing Instructions
+      run: |
+        echo "## 📱 iOS App Signing Instructions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### For Development Testing:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download the \`ios-build\` artifact" >> $GITHUB_STEP_SUMMARY
+        echo "2. Open \`App.xcworkspace\` in Xcode" >> $GITHUB_STEP_SUMMARY
+        echo "3. Select your development team in Signing & Capabilities" >> $GITHUB_STEP_SUMMARY
+        echo "4. Build and run on device/simulator" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### For App Store Deployment:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Set up Apple Developer account" >> $GITHUB_STEP_SUMMARY
+        echo "2. Create provisioning profiles" >> $GITHUB_STEP_SUMMARY
+        echo "3. Export signed IPA using Xcode Archive organizer" >> $GITHUB_STEP_SUMMARY
+        echo "4. Upload to App Store Connect or TestFlight" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Archive Location:" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "ios/App/App.xcarchive" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
 
   deploy-preview:
     runs-on: ubuntu-latest
