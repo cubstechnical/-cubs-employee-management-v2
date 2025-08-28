@@ -189,7 +189,7 @@ jobs:
         echo '    <key>method</key>' >> exportOptions.plist
         echo '    <string>development</string>' >> exportOptions.plist
         echo '    <key>teamID</key>' >> exportOptions.plist
-        echo '    <string>${{ secrets.APPLE_TEAM_ID || '\''DEVELOPMENT'\'' }}</string>' >> exportOptions.plist
+        echo "    <string>\${{ secrets.APPLE_TEAM_ID || 'DEVELOPMENT' }}</string>" >> exportOptions.plist
         echo '    <key>signingStyle</key>' >> exportOptions.plist
         echo '    <string>automatic</string>' >> exportOptions.plist
         echo '    <key>stripSwiftSymbols</key>' >> exportOptions.plist
