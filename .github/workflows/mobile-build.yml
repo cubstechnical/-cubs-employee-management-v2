@@ -57,14 +57,26 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Fix Gradle permissions
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Fix Gradle permissions and Java home
       run: |
         cd android
         chmod +x ./gradlew
+        # Clear any existing Java home settings
+        unset JAVA_HOME
+        unset GRADLE_OPTS
+        # Set proper Java home for Linux
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
 
     - name: Build Android APK
       run: |
         cd android
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
         ./gradlew assembleDebug
         ./gradlew bundleRelease
 
@@ -123,16 +135,20 @@ jobs:
         sudo gem install cocoapods
         pod --version
 
-    - name: Clean and regenerate iOS project
+    - name: Complete iOS project cleanup and regeneration
       run: |
-        cd ios/App
-        rm -rf Pods
-        rm -rf Podfile.lock
-        rm -rf build
-        rm -rf App.xcworkspace
-        rm -rf App.xcodeproj
-        cd ../..
-        npx cap add ios --force
+        # Remove entire iOS directory
+        rm -rf ios
+        # Remove Capacitor config to force fresh generation
+        rm -f capacitor.config.ts
+        # Regenerate Capacitor config
+        npx cap init "CUBS Employee Management" "com.cubs.employee-management" --web-dir=out
+        # Add iOS platform fresh
+        npx cap add ios
+        # Copy web assets
+        npx cap copy ios
+        # Sync plugins
+        npx cap sync ios
 
     - name: Install iOS dependencies
       run: |
