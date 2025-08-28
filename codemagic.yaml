@@ -230,9 +230,6 @@ workflows:
       - build/ios/ipa/*.ipa
       - build/ios/archive.xcarchive
     publishing:
-      app_store_connect:
-        # App Store Connect API key will be configured in Codemagic dashboard
-        submit_to_testflight: true
       email:
         recipients:
           - info@cubstechnical.com
@@ -240,7 +237,7 @@ workflows:
           success: true
           failure: true
 
-    ios-release-publishing:
+  ios-release-publishing:
     name: iOS Release Build (With Publishing)
     max_build_duration: 120
     environment:
