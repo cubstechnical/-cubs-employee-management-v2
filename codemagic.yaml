@@ -251,10 +251,16 @@ workflows:
           rm -rf ios
           # Add iOS platform
           npx cap add ios
-          # Install dependencies
-          cd ios
+          # Set development team in project
+          cd ios/App
+          /usr/libexec/PlistBuddy -c "Set :objects:*:buildSettings:DEVELOPMENT_TEAM GQCYASP5XS" App.xcodeproj/project.pbxproj
+          cd ../..
+      - name: Install iOS dependencies
+        script: |
+          echo "Installing iOS dependencies..."
+          cd ios/App
           pod install
-          cd ..
+          cd ../..
       - name: Build iOS app
         script: |
           echo "Building iOS app..."
