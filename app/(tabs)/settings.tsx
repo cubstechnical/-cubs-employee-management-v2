@@ -547,7 +547,7 @@ export default function SettingsPage() {
             />
             {deleteConfirmation && deleteConfirmation !== 'DELETE' && (
               <p className="text-xs text-red-600 dark:text-red-400">
-                Please type exactly "DELETE" (currently: "{deleteConfirmation}")
+                Please type exactly &quot;DELETE&quot; (currently: &quot;{deleteConfirmation}&quot;)
               </p>
             )}
           </div>

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'
 import { ClientLayout } from '@/components/layout/ClientLayout'
+import AppWrapper from '@/components/layout/AppWrapper'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -75,7 +76,9 @@ export default function RootLayout({
           })();
         `}} />
         <ClientLayout>
-          {children}
+          <AppWrapper>
+            {children}
+          </AppWrapper>
         </ClientLayout>
       </body>
     </html>

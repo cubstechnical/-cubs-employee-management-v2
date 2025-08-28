@@ -101,7 +101,7 @@ All requested features have been successfully implemented and the project is rea
 
 ### **Email Notifications**
 - **Recipient**: `info@cubstechnical.com`
-- **Service**: SendGrid integration
+- **Service**: Resend integration
 - **Intervals**: 60, 30, 15, 7, 1 days before expiry
 - **Content**: Employee details, expiry date, urgency level
 
@@ -326,7 +326,7 @@ npm test                 # Run tests
 - **Supabase** for backend services
 - **Capacitor** for mobile deployment
 - **Firebase** for push notifications
-- **SendGrid** for email notifications
+- **Resend** for email notifications
 
 ### **✅ Documentation & Support:**
 - **Comprehensive setup guides**

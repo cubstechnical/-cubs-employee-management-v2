@@ -83,7 +83,7 @@ export default function PrivacyPolicy() {
             <ul>
               <li><strong>Supabase:</strong> Database and authentication services</li>
               <li><strong>Backblaze B2:</strong> Document storage with encryption</li>
-              <li><strong>SendGrid:</strong> Email notifications</li>
+              <li><strong>Gmail SMTP:</strong> Email notifications</li>
             </ul>
             <p>
               We implement industry-standard security measures including encryption, 
@@ -144,7 +144,7 @@ export default function PrivacyPolicy() {
               with applicable data protection laws.
             </p>
 
-            <h2>8. Children's Privacy</h2>
+            <h2>8. Children&apos;s Privacy</h2>
             <p>
               This app is not intended for use by individuals under 18 years of age. 
               We do not knowingly collect personal information from children under 18.

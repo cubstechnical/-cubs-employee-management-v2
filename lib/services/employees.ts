@@ -115,7 +115,49 @@ export class EmployeeService {
   // In-memory cache and dedupe for employee lists
   private static employeesCache: Map<string, { data: PaginatedEmployeesResponse; timestamp: number }> = new Map();
   private static employeesInflight: Map<string, Promise<PaginatedEmployeesResponse>> = new Map();
-  private static readonly CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+  private static readonly CACHE_DURATION_MS = 10 * 60 * 1000; // Increased to 10 minutes
+  
+  // Individual employee cache for better performance
+  private static employeeCache: Map<string, { data: Employee; timestamp: number }> = new Map();
+  private static employeeInflight: Map<string, Promise<{ employee: Employee | null; error: string | null }>> = new Map();
+  private static readonly EMPLOYEE_CACHE_DURATION_MS = 15 * 60 * 1000; // Increased to 15 minutes
+
+  // Filter options cache to reduce repeated API calls
+  private static filterOptionsCache: { data: FilterOptions; timestamp: number } | null = null;
+  private static readonly FILTER_CACHE_DURATION_MS = 30 * 60 * 1000; // 30 minutes
+
+  // Dashboard stats cache
+  private static dashboardStatsCache: Map<string, { data: DashboardStats; timestamp: number }> = new Map();
+  private static readonly DASHBOARD_CACHE_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+
+  // Performance monitoring
+  private static performanceMetrics: Map<string, number[]> = new Map();
+
+  // Helper function to log performance metrics
+  private static logPerformance(operation: string, duration: number) {
+    if (!this.performanceMetrics.has(operation)) {
+      this.performanceMetrics.set(operation, []);
+    }
+    this.performanceMetrics.get(operation)!.push(duration);
+    
+    if (duration > 1000) {
+      console.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`);
+    } else if (duration > 500) {
+      console.log(`⚠️ Moderate operation: ${operation} took ${duration.toFixed(2)}ms`);
+    }
+  }
+
+  // Clear all caches (useful for testing or manual refresh)
+  static clearAllCaches() {
+    this.employeesCache.clear();
+    this.employeeCache.clear();
+    this.filterOptionsCache = null;
+    this.dashboardStatsCache.clear();
+    this.employeesInflight.clear();
+    this.employeeInflight.clear();
+    console.log('🧹 All employee service caches cleared');
+  }
+
   // Helper function to calculate visa status based on expiry dates
   static calculateVisaStatus(employee: any): string {
     if (!employee.visa_expiry_date) return 'unknown';
@@ -145,23 +187,50 @@ export class EmployeeService {
     return 'pending';
   }
 
-  // Helper function to enhance employees with calculated fields
+  // Optimized helper function to enhance employees with calculated fields
   static enhanceEmployeeData(employees: any[]): any[] {
-    return employees.map(employee => ({
-      ...employee,
-      visa_status: this.calculateVisaStatus(employee),
-      status: this.calculateEmployeeStatus(employee),
-      // Ensure visa_expiry_date is properly mapped
-      visa_expiry_date: employee.visa_expiry_date || employee.visa_expiry || null,
-      // Map other fields for consistency
-      mobile_number: employee.mobile_number || employee.phone || null,
-      email_id: employee.email_id || employee.email || null,
-      basic_salary: employee.basic_salary || employee.salary || null
-    }));
+    const today = new Date(); // Cache current date for performance
+    
+    return employees.map(employee => {
+      // Pre-calculate visa status to avoid repeated date calculations
+      let visaStatus = 'unknown';
+      if (employee.visa_expiry_date) {
+        const expiryDate = new Date(employee.visa_expiry_date);
+        const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+        
+        if (daysUntilExpiry < 0) visaStatus = 'expired';
+        else if (daysUntilExpiry <= 30) visaStatus = 'expiring_soon';
+        else if (daysUntilExpiry <= 90) visaStatus = 'expiring_soon';
+        else visaStatus = 'valid';
+      }
+
+      // Pre-calculate employee status
+      let status = 'pending';
+      if (employee.status && employee.status !== 'null' && employee.status !== '') {
+        status = employee.status.toLowerCase();
+      } else if (employee.is_active === false) {
+        status = 'inactive';
+      } else if (employee.is_active === true) {
+        status = 'active';
+      }
+
+      return {
+        ...employee,
+        visa_status: visaStatus,
+        status: status,
+        // Ensure visa_expiry_date is properly mapped
+        visa_expiry_date: employee.visa_expiry_date || employee.visa_expiry || null,
+        // Map other fields for consistency
+        mobile_number: employee.mobile_number || employee.phone || null,
+        email_id: employee.email_id || employee.email || null,
+        basic_salary: employee.basic_salary || employee.salary || null
+      };
+    });
   }
 
   // Generate unique employee ID based on company and existing IDs for that company
   static async generateEmployeeId(companyName: string, employeeName: string): Promise<string> {
+    console.log('🔄 Generating employee ID for:', { companyName, employeeName });
     try {
       // Get existing employees for this company
       const { data: existingEmployees, error } = await supabase
@@ -206,13 +275,17 @@ export class EmployeeService {
         const nextNumber = (chosen?.maxNum ?? 0) + 1;
         const padLen = chosen?.padLen ?? 3;
         const paddedNumber = nextNumber.toString().padStart(padLen, '0');
-        return `${dynamicPrefix}${paddedNumber}`;
+        const generatedId = `${dynamicPrefix}${paddedNumber}`;
+        console.log('✅ Generated employee ID (with existing employees):', generatedId, { dynamicPrefix, nextNumber, padLen });
+        return generatedId;
       }
 
       // No existing employees: use static prefix map
       const companyPrefix = this.generateCompanyPrefix(companyName);
       const defaultPad = companyPrefix === 'ALHT' ? 4 : 3; // known 4-digit series for AL HANA
-      return `${companyPrefix}${(1).toString().padStart(defaultPad, '0')}`;
+      const generatedId = `${companyPrefix}${(1).toString().padStart(defaultPad, '0')}`;
+      console.log('✅ Generated new employee ID (no existing employees):', generatedId);
+      return generatedId;
     } catch (error) {
       console.error('Error generating employee ID:', error);
       const fallbackPrefix = this.generateCompanyPrefix(companyName);
@@ -382,107 +455,160 @@ export class EmployeeService {
     }
   }
 
+
+
   static async getEmployees(
     pagination: PaginationParams,
     filters?: EmployeeFilters
   ): Promise<PaginatedEmployeesResponse> {
+    const startTime = performance.now();
+    
+    // Apply pagination with validation and defaults
+    const page = pagination.page || 1;
+    const pageSize = pagination.pageSize || 20;
+    
     try {
       const cacheKey = JSON.stringify({ p: pagination, f: filters || {} });
       const cached = this.employeesCache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION_MS) {
+      if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION_MS * 2) { // Extended cache duration
+        this.logPerformance('getEmployees-cache-hit', performance.now() - startTime);
         return cached.data;
       }
       const inflight = this.employeesInflight.get(cacheKey);
-      if (inflight) return inflight;
+      if (inflight) {
+        this.logPerformance('getEmployees-inflight-hit', performance.now() - startTime);
+        return inflight;
+      }
 
       const run = async (): Promise<PaginatedEmployeesResponse> => {
-      // Real Supabase query
-      let query = supabase
-        .from('employee_table')
-        .select('*');
+        const queryStartTime = performance.now();
+        
+        // Add timeout protection for the entire query
+        const timeoutPromise = new Promise<PaginatedEmployeesResponse>((_, reject) => 
+          setTimeout(() => reject(new Error('Employee query timeout')), 30000)
+        );
+        
+        // Apply pagination with validation and defaults
+        const page = pagination.page || 1;
+        const pageSize = pagination.pageSize || 20;
+        const from = (page - 1) * pageSize;
+        const to = from + pageSize - 1;
+        
+        // Build query with filters and search
+        let query = supabase
+          .from('employee_table')
+          .select('employee_id, name, company_name, trade, nationality, status, is_active, visa_expiry_date, created_at, updated_at');
 
-      // Apply filters
-      if (filters?.company_name && filters.company_name !== 'All') {
-        query = query.eq('company_name', filters.company_name);
-      }
-      if (filters?.status && filters.status !== 'All') {
-        query = query.eq('status', filters.status);
-      }
-      if (filters?.visa_status && filters.visa_status !== 'All') {
-        query = query.eq('visa_status', filters.visa_status);
-      }
-      if (filters?.trade && filters.trade !== 'All') {
-        query = query.eq('trade', filters.trade);
-      }
-      if (filters?.nationality && filters.nationality !== 'All') {
-        query = query.eq('nationality', filters.nationality);
-      }
-      if (filters?.search) {
-        query = query.or(`name.ilike.%${filters.search}%,employee_id.ilike.%${filters.search}%,trade.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%,nationality.ilike.%${filters.search}%`);
-      }
+        // Apply search filter
+        if (filters?.search && filters.search.trim()) {
+          const searchTerm = filters.search.trim();
+          console.log(`🔍 Applying search filter: "${searchTerm}"`);
+          query = query.or(`name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,trade.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`);
+        }
 
-      // Filter for temporary workers (employees with specific patterns in employee_id)
-      if (filters?.is_temporary) {
-        query = query.or('employee_id.ilike.%TEMP%,employee_id.ilike.%temp%,employee_id.ilike.%Temporary%,employee_id.ilike.%temporary%');
-      }
+        // Apply company filter
+        if (filters?.company_name && filters.company_name.trim()) {
+          console.log(`🏢 Applying company filter: "${filters.company_name}"`);
+          query = query.eq('company_name', filters.company_name);
+        }
 
-      // Apply pagination
-      const from = (pagination.page - 1) * pagination.pageSize;
-      const to = from + pagination.pageSize - 1;
-      query = query.range(from, to);
+        // Apply trade filter
+        if (filters?.trade && filters.trade.trim()) {
+          console.log(`🔧 Applying trade filter: "${filters.trade}"`);
+          query = query.eq('trade', filters.trade);
+        }
 
-      const { data: rawEmployees, error } = await query;
+        // Apply nationality filter
+        if (filters?.nationality && filters.nationality.trim()) {
+          console.log(`🌍 Applying nationality filter: "${filters.nationality}"`);
+          query = query.eq('nationality', filters.nationality);
+        }
 
-      if (error) {
-        throw new Error(error.message);
-      }
+        // Apply status filter
+        if (filters?.status && filters.status.trim()) {
+          console.log(`📊 Applying status filter: "${filters.status}"`);
+          query = query.eq('status', filters.status);
+        }
 
-      // Enhance employees with calculated status fields
-      const employees = this.enhanceEmployeeData(rawEmployees || []);
+        // Apply visa status filter
+        if (filters?.visa_status && filters.visa_status.trim()) {
+          console.log(`🛂 Applying visa status filter: "${filters.visa_status}"`);
+          // For visa status, we need to check the calculated field
+          // This will be handled after fetching the data
+        }
 
-      // Get total count with the same filters
-      let countQuery = supabase
-        .from('employee_table')
-        .select('*', { count: 'exact', head: true });
+        // Apply pagination
+        query = query.range(from, to);
 
-      // Apply the same filters to count query
-      if (filters?.company_name && filters.company_name !== 'All') {
-        countQuery = countQuery.eq('company_name', filters.company_name);
-      }
-      if (filters?.status && filters.status !== 'All') {
-        countQuery = countQuery.eq('status', filters.status);
-      }
-      if (filters?.visa_status && filters.visa_status !== 'All') {
-        countQuery = countQuery.eq('visa_status', filters.visa_status);
-      }
-      if (filters?.trade && filters.trade !== 'All') {
-        countQuery = countQuery.eq('trade', filters.trade);
-      }
-      if (filters?.nationality && filters.nationality !== 'All') {
-        countQuery = countQuery.eq('nationality', filters.nationality);
-      }
-      if (filters?.search) {
-        countQuery = countQuery.or(`name.ilike.%${filters.search}%,employee_id.ilike.%${filters.search}%,trade.ilike.%${filters.search}%,company_name.ilike.%${filters.search}%,nationality.ilike.%${filters.search}%`);
-      }
-      if (filters?.is_temporary) {
-        countQuery = countQuery.or('employee_id.ilike.%TEMP%,employee_id.ilike.%temp%,employee_id.ilike.%Temporary%,employee_id.ilike.%temporary%');
-      }
+        console.log(`🔍 Fetching employees: page ${page}, size ${pageSize}, range ${from}-${to}`);
 
-      const { count } = await countQuery;
-      const total = count || 0;
-      const totalPages = Math.ceil(total / pagination.pageSize);
+        // Execute the query with timeout
+        const { data: rawEmployees, error } = await Promise.race([
+          query,
+          timeoutPromise
+        ]) as any;
 
-      const response: PaginatedEmployeesResponse = {
-        employees: (employees || []) as unknown as Employee[],
-        total,
-        page: pagination.page,
-        pageSize: pagination.pageSize,
-        totalPages,
-        error: null
+        if (error) {
+          console.error('❌ Employee query error:', error);
+          throw new Error(error.message);
+        }
+
+        console.log(`✅ Found ${rawEmployees?.length || 0} employees`);
+
+        // Enhance employees with calculated status fields
+        let employees = this.enhanceEmployeeData(rawEmployees || []);
+
+        // Apply visa status filter after enhancing data (since it's calculated)
+        if (filters?.visa_status && filters.visa_status.trim()) {
+          console.log(`🛂 Applying visa status filter: "${filters.visa_status}"`);
+          employees = employees.filter(emp => emp.visa_status === filters.visa_status);
+        }
+
+        // Get total count with same filters
+        let countQuery = supabase
+          .from('employee_table')
+          .select('*', { count: 'exact', head: true });
+
+        // Apply same filters to count query
+        if (filters?.search && filters.search.trim()) {
+          const searchTerm = filters.search.trim();
+          countQuery = countQuery.or(`name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,trade.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`);
+        }
+        if (filters?.company_name && filters.company_name.trim()) {
+          countQuery = countQuery.eq('company_name', filters.company_name);
+        }
+        if (filters?.trade && filters.trade.trim()) {
+          countQuery = countQuery.eq('trade', filters.trade);
+        }
+        if (filters?.nationality && filters.nationality.trim()) {
+          countQuery = countQuery.eq('nationality', filters.nationality);
+        }
+        if (filters?.status && filters.status.trim()) {
+          countQuery = countQuery.eq('status', filters.status);
+        }
+
+        const { count } = await countQuery;
+        
+        console.log(`📊 Total employees matching filters: ${count || 0}`);
+        const total = count || 0;
+        const totalPages = Math.ceil(total / pageSize);
+
+        const response: PaginatedEmployeesResponse = {
+          employees: (employees || []) as unknown as Employee[],
+          total,
+          page: page,
+          pageSize: pageSize,
+          totalPages,
+          error: null
+        };
+        
+        this.employeesCache.set(cacheKey, { data: response, timestamp: Date.now() });
+        this.logPerformance('getEmployees-query', performance.now() - queryStartTime);
+        this.logPerformance('getEmployees-total', performance.now() - startTime);
+        
+        return response;
       };
-      this.employeesCache.set(cacheKey, { data: response, timestamp: Date.now() });
-      return response;
-      };
+      
       const promise = run().finally(() => {
         this.employeesInflight.delete(cacheKey);
       });
@@ -490,6 +616,20 @@ export class EmployeeService {
       return promise;
     } catch (error) {
       console.error('Error fetching employees:', error);
+      
+      // If it's a timeout error, provide more specific message
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.log('⚠️ Employee query timed out, database might be slow');
+              return {
+        employees: [],
+        total: 0,
+        page: page || 1,
+        pageSize: pageSize || 20,
+        totalPages: 0,
+        error: 'Database query timed out. Please try again or contact support if the issue persists.'
+      };
+      }
+      
       return {
         employees: [],
         total: 0,
@@ -503,20 +643,44 @@ export class EmployeeService {
 
   static async getEmployeeById(employeeId: string): Promise<{ employee: Employee | null; error: string | null }> {
     try {
-      const { data: rawEmployee, error } = await supabase
-        .from('employee_table')
-        .select('*')
-        .eq('employee_id', employeeId)
-        .single();
-
-      if (error) {
-        return { employee: null, error: error.message };
+      // Check cache first
+      const cached = this.employeeCache.get(employeeId);
+      if (cached && Date.now() - cached.timestamp < this.EMPLOYEE_CACHE_DURATION_MS) {
+        return { employee: cached.data, error: null };
       }
 
-      // Enhance employee with calculated status fields
-      const employee = rawEmployee ? this.enhanceEmployeeData([rawEmployee])[0] : null;
+      // Check if request is already in flight
+      const inflight = this.employeeInflight.get(employeeId);
+      if (inflight) return inflight;
 
-      return { employee: employee as unknown as Employee, error: null };
+      const run = async (): Promise<{ employee: Employee | null; error: string | null }> => {
+        const { data: rawEmployee, error } = await supabase
+          .from('employee_table')
+          .select('*')
+          .eq('employee_id', employeeId)
+          .single();
+
+        if (error) {
+          return { employee: null, error: error.message };
+        }
+
+        // Enhance employee with calculated status fields
+        const employee = rawEmployee ? this.enhanceEmployeeData([rawEmployee])[0] : null;
+
+        // Cache the result
+        if (employee) {
+          this.employeeCache.set(employeeId, { data: employee as unknown as Employee, timestamp: Date.now() });
+        }
+
+        return { employee: employee as unknown as Employee, error: null };
+      };
+
+      const promise = run().finally(() => {
+        this.employeeInflight.delete(employeeId);
+      });
+      
+      this.employeeInflight.set(employeeId, promise);
+      return promise;
     } catch (error) {
       console.error('Error fetching employee:', error);
       return { employee: null, error: 'Failed to fetch employee' };
@@ -583,6 +747,10 @@ export class EmployeeService {
       if (error) {
         throw new Error(error.message);
       }
+
+      // Clear caches after update
+      this.employeeCache.delete(employeeData.employee_id);
+      this.employeesCache.clear(); // Clear list cache as data changed
 
       return employee as unknown as Employee;
     } catch (error) {
@@ -667,39 +835,67 @@ export class EmployeeService {
   }
 
   static async getFilterOptions(): Promise<FilterOptions> {
+    const startTime = performance.now();
     try {
-      // Get unique companies
-      const { data: companies } = await supabase
-        .from('employee_table')
-        .select('company_name')
-        .not('company_name', 'is', null);
+      // Check cache first
+      if (this.filterOptionsCache && Date.now() - this.filterOptionsCache.timestamp < this.FILTER_CACHE_DURATION_MS) {
+        this.logPerformance('getFilterOptions-cache-hit', performance.now() - startTime);
+        return this.filterOptionsCache.data;
+      }
 
-      // Get unique trades
-      const { data: trades } = await supabase
-        .from('employee_table')
-        .select('trade')
-        .not('trade', 'is', null);
+      // Use simple queries with individual timeout protection and error handling
+      let companiesResult, tradesResult, nationalitiesResult;
 
-      // Get unique nationalities
-      const { data: nationalities } = await supabase
-        .from('employee_table')
-        .select('nationality')
-        .not('nationality', 'is', null);
+      try {
+        companiesResult = await Promise.race([
+          supabase.from('employee_table').select('company_name').not('company_name', 'is', null),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Companies query timeout')), 10000))
+        ]) as any;
+      } catch (error) {
+        console.log('⚠️ Companies query failed, using fallback');
+        companiesResult = { data: [] };
+      }
 
-      // Get unique statuses
-      const { data: statuses } = await supabase
-        .from('employee_table')
-        .select('status')
-        .not('status', 'is', null);
+      try {
+        tradesResult = await Promise.race([
+          supabase.from('employee_table').select('trade').not('trade', 'is', null).limit(50),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Trades query timeout')), 5000))
+        ]) as any;
+      } catch (error) {
+        console.log('⚠️ Trades query failed, using fallback');
+        tradesResult = { data: [] };
+      }
 
-      // Get unique visa statuses
-      const { data: visaStatuses } = await supabase
-        .from('employee_table')
-        .select('visa_status')
-        .not('visa_status', 'is', null);
+      try {
+        nationalitiesResult = await Promise.race([
+          supabase.from('employee_table').select('nationality').not('nationality', 'is', null).limit(50),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Nationalities query timeout')), 5000))
+        ]) as any;
+      } catch (error) {
+        console.log('⚠️ Nationalities query failed, using fallback');
+        nationalitiesResult = { data: [] };
+      }
+
+      // Process results
+      const companies = new Set<string>();
+      const trades = new Set<string>();
+      const nationalities = new Set<string>();
+
+      companiesResult.data?.forEach((row: any) => {
+        if (row.company_name) companies.add(row.company_name as string);
+      });
+
+      tradesResult.data?.forEach((row: any) => {
+        if (row.trade) trades.add(row.trade as string);
+      });
+
+      nationalitiesResult.data?.forEach((row: any) => {
+        if (row.nationality) nationalities.add(row.nationality as string);
+      });
 
       // Get all companies and clean them up
-      const allCompanies = Array.from(new Set(companies?.map(c => c.company_name as string) || [])).sort();
+      const allCompanies = Array.from(companies).sort();
+      console.log('🏢 All companies found in database:', allCompanies);
       
       // Filter out only unwanted companies, keep all active companies
       const cleanCompanies = allCompanies.filter(company => {
@@ -717,21 +913,46 @@ export class EmployeeService {
         return true;
       });
       
-      return {
-        companies: cleanCompanies,
-        trades: Array.from(new Set(trades?.map(t => t.trade as string) || [])).sort(),
-        nationalities: Array.from(new Set(nationalities?.map(n => n.nationality as string) || [])).sort(),
+      console.log('🏢 Clean companies after filtering:', cleanCompanies);
+      
+      const result: FilterOptions = {
+        companies: cleanCompanies as string[],
+        trades: Array.from(trades).sort(),
+        nationalities: Array.from(nationalities).sort(),
         statuses: ['active', 'inactive', 'pending', 'suspended'], // Use standard status values
         visaStatuses: ['valid', 'expiring_soon', 'expired', 'processing', 'unknown'] // Use standard visa status values
       };
+
+      // Cache the result
+      this.filterOptionsCache = { data: result, timestamp: Date.now() };
+      this.logPerformance('getFilterOptions-query', performance.now() - startTime);
+      
+      return result;
     } catch (error) {
       console.error('Error getting filter options:', error);
+      
+      // If it's a timeout error, return basic data
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.log('⚠️ Filter options query timed out, returning basic data');
+      }
+      
+      // Return fallback data to prevent UI from breaking
       return {
-        companies: [],
-        trades: [],
-        nationalities: [],
-        statuses: [],
-        visaStatuses: []
+        companies: [
+          'CUBS', 
+          'GOLDEN CUBS', 
+          'CUBS CONTRACTING', 
+          'FLUID ENGINEERING',
+          'AL ASHBAL AJMAN',
+          'AL MACEN',
+          'RUKIN AL ASHBAL',
+          'ASHBAL AL KHALEEJ',
+          'AL HANA TOURS & TRAVELS'
+        ],
+        trades: ['Electrician', 'Plumber', 'Carpenter', 'Welder', 'Technician'],
+        nationalities: ['Indian', 'Pakistani', 'Bangladeshi', 'Filipino', 'Nepali'],
+        statuses: ['active', 'inactive', 'pending', 'suspended'],
+        visaStatuses: ['valid', 'expiring_soon', 'expired', 'processing', 'unknown']
       };
     }
   }

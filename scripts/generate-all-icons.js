@@ -37,3 +37,8 @@ try {
   console.error('❌ Error generating icons:', error.message);
   process.exit(1);
 }
+
+
+
+
+

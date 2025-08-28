@@ -36,9 +36,10 @@ interface SidebarItemProps {
 
 interface SidebarProps {
   onClose?: () => void;
+  onCollapseChange?: (collapsed: boolean) => void;
 }
 
-function SidebarItem({ href, icon, children, isActive, onClose }: SidebarItemProps & { onClose?: () => void }) {
+function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: SidebarItemProps & { onClose?: () => void; isCollapsed?: boolean }) {
   return (
     <Link
       href={href}
@@ -60,7 +61,12 @@ function SidebarItem({ href, icon, children, isActive, onClose }: SidebarItemPro
       )}>
         {icon}
       </div>
-      <span className="font-medium transition-all duration-300">{children}</span>
+      <span className={cn(
+        'font-medium transition-all duration-300',
+        isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
+      )}>
+        {children}
+      </span>
     </Link>
   );
 }
@@ -73,7 +79,7 @@ const adminItems = [
   { href: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Settings' },
 ];
 
-export default function Sidebar({ onClose }: SidebarProps) {
+export default function Sidebar({ onClose, onCollapseChange }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, signOut } = useAuth();
@@ -106,7 +112,11 @@ export default function Sidebar({ onClose }: SidebarProps) {
           <Logo size="lg" showText={false} />
         )}
         <button
-          onClick={() => setIsCollapsed(!isCollapsed)}
+          onClick={() => {
+            const newCollapsedState = !isCollapsed;
+            setIsCollapsed(newCollapsedState);
+            onCollapseChange?.(newCollapsedState);
+          }}
           className={cn(
             'p-2 rounded-lg transition-all duration-300 ease-in-out',
             'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
@@ -127,6 +137,7 @@ export default function Sidebar({ onClose }: SidebarProps) {
             icon={item.icon}
             isActive={pathname === item.href}
             onClose={onClose}
+            isCollapsed={isCollapsed}
           >
             {item.label}
           </SidebarItem>
@@ -136,7 +147,10 @@ export default function Sidebar({ onClose }: SidebarProps) {
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
         <ThemeToggle size="sm" variant="minimal" />
-        <div className="text-xs text-gray-500 dark:text-gray-400">
+        <div className={cn(
+          'text-xs text-gray-500 dark:text-gray-400 transition-all duration-300',
+          isCollapsed ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100'
+        )}>
           Developed by{' '}
           <a
             href="https://chocosoftdev.com/"
@@ -156,7 +170,12 @@ export default function Sidebar({ onClose }: SidebarProps) {
           )}
         >
           <LogOut className="w-5 h-5" />
-          <span className="font-medium">Sign Out</span>
+          <span className={cn(
+            'font-medium transition-all duration-300',
+            isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
+          )}>
+            Sign Out
+          </span>
         </button>
       </div>
     </div>

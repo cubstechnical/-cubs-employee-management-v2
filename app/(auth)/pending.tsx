@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
@@ -22,24 +22,7 @@ export default function Pending() {
   const [email, setEmail] = useState('');
   const [countdown, setCountdown] = useState(0);
 
-  useEffect(() => {
-    // Get email from session or localStorage
-    const userEmail = localStorage.getItem('pendingEmail') || '';
-    setEmail(userEmail);
-
-    // Check if user is already verified
-    checkVerificationStatus();
-  }, []);
-
-  useEffect(() => {
-    let timer: NodeJS.Timeout;
-    if (countdown > 0) {
-      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
-    }
-    return () => clearTimeout(timer);
-  }, [countdown]);
-
-  const checkVerificationStatus = async () => {
+  const checkVerificationStatus = useCallback(async () => {
     try {
       const sessionData = await AuthService.getSession();
       if (sessionData.session?.user?.email_confirmed_at) {
@@ -50,7 +33,24 @@ export default function Pending() {
     } catch (error) {
       // User not verified yet, stay on this page
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    // Get email from session or localStorage
+    const userEmail = localStorage.getItem('pendingEmail') || '';
+    setEmail(userEmail);
+
+    // Check if user is already verified
+    checkVerificationStatus();
+  }, [checkVerificationStatus]);
+
+  useEffect(() => {
+    let timer: NodeJS.Timeout;
+    if (countdown > 0) {
+      timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   const handleResendEmail = async () => {
     if (!email) {
@@ -100,7 +100,7 @@ export default function Pending() {
           </h2>
           
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            We've sent a verification email to <strong className="text-gray-900 dark:text-white">{email}</strong>
+            We&apos;ve sent a verification email to <strong className="text-gray-900 dark:text-white">{email}</strong>
           </p>
           
           <div className="space-y-4">
@@ -137,7 +137,7 @@ export default function Pending() {
             </div>
             
             <div className="text-sm text-gray-500 dark:text-gray-500">
-              Didn't receive the email? Check your spam folder or try resending.
+              Didn&apos;t receive the email? Check your spam folder or try resending.
             </div>
             
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">

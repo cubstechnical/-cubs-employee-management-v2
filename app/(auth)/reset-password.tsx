@@ -151,7 +151,7 @@ export default function ResetPassword() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Enter your new password below. Make sure it's secure and easy to remember.
+                Enter your new password below. Make sure it&apos;s secure and easy to remember.
               </p>
             </div>
 

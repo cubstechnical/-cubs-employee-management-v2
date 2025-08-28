@@ -3,9 +3,8 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 // Avoid importing Node https in edge/browser contexts. Use dynamic require in Node only.
 let httpsAgent: any = undefined;
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
   // const https = require('https');
-  // httpsAgent = new https.Agent({ rejectUnauthorized: false });
+// httpsAgent = new https.Agent({ rejectUnauthorized: false });
 } catch {}
 
 // Configure AWS SDK for Backblaze B2

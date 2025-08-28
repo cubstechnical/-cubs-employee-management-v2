@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -146,7 +146,7 @@ export default function AdminDashboard() {
   const isMainAdmin = user?.email === 'info@cubstechnical.com';
 
   // Load pending users data
-  const loadPendingUsers = async () => {
+  const loadPendingUsers = useCallback(async () => {
     if (!isMainAdmin) return;
 
     try {
@@ -164,7 +164,7 @@ export default function AdminDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [isMainAdmin]);
 
   useEffect(() => {
     if (isMainAdmin) {
@@ -196,7 +196,7 @@ export default function AdminDashboard() {
       window.removeEventListener('storage', handleDashboardRefresh);
       window.removeEventListener('adminDashboardRefresh', handleCustomRefresh);
     };
-  }, [isMainAdmin, user]);
+  }, [isMainAdmin, user, loadPendingUsers]);
 
   return (
     <Layout>
@@ -206,7 +206,7 @@ export default function AdminDashboard() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
             <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Overview of your organization's performance and key metrics.
+              Overview of your organization&apos;s performance and key metrics.
             </p>
           </div>
           <div className="flex gap-3">

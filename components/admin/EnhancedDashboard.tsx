@@ -437,13 +437,7 @@ export default function EnhancedDashboard() {
     dateRange: '30d'
   });
 
-  // Real-time updates (throttled inside hook)
-  const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
-    onDataChange: fetchDashboardData,
-    enabled: isAutoRefresh
-  });
-
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setIsRefreshing(true);
       
@@ -468,11 +462,17 @@ export default function EnhancedDashboard() {
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }
+  }, [filters]);
+
+  // Real-time updates (throttled inside hook)
+  const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
+    onDataChange: fetchDashboardData,
+    enabled: isAutoRefresh
+  });
 
   useEffect(() => {
     fetchDashboardData();
-  }, [filters]);
+  }, [filters, fetchDashboardData]);
 
   const handleFilterChange = (newFilters: Partial<DashboardFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -566,7 +566,7 @@ export default function EnhancedDashboard() {
                 Admin Dashboard
               </h1>
               <p className="text-gray-600 dark:text-gray-400 text-lg">
-                Welcome back! Here's what's happening with your organization.
+                Welcome back! Here&apos;s what&apos;s happening with your organization.
                 {isConnected && (
                   <span className="ml-3 inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                     <div className="w-2 h-2 bg-green-500 rounded-full mr-2 animate-pulse"></div>

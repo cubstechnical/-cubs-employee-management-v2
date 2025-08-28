@@ -80,3 +80,8 @@ console.log('node scripts/generate-all-icons.js');
 console.log('\n📋 To rebuild apps with new icons:');
 console.log('• Android: BUILD_FINAL_WORKING.bat');
 console.log('• iOS: BUILD_iOS_PRODUCTION.sh (on macOS)');
+
+
+
+
+

@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import AuthService, { AuthUser } from '@/lib/services/auth';
+import { getAuthState, clearAuthCache } from '@/lib/supabase/client';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -26,13 +27,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isApproved, setIsApproved] = useState(false);
 
   useEffect(() => {
-    // Get initial session
+    // Get initial session with caching
     const getInitialSession = async () => {
       try {
-        const sessionData = await AuthService.getSession();
-        setSession(sessionData.session);
+        // Use cached auth state for faster loading
+        const cachedAuth = await getAuthState();
+        setSession(cachedAuth.session);
 
-        if (sessionData.session) {
+        if (cachedAuth.session) {
           const user = await AuthService.getCurrentUser();
           setUser(user);
           // Check approval status
@@ -43,6 +45,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
+        // Clear cache on error
+        clearAuthCache();
       } finally {
         setLoading(false);
       }

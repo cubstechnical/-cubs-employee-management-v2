@@ -66,12 +66,12 @@ export default function ForgotPassword() {
             </h2>
             
             <p className="text-gray-600 dark:text-gray-400 mb-6">
-              We've sent a password reset link to <strong className="text-gray-900 dark:text-white">{email}</strong>
+              We&apos;ve sent a password reset link to <strong className="text-gray-900 dark:text-white">{email}</strong>
             </p>
             
             <div className="space-y-4">
               <p className="text-sm text-gray-500 dark:text-gray-500">
-                Didn't receive the email? Check your spam folder or try again.
+                Didn&apos;t receive the email? Check your spam folder or try again.
               </p>
               
               <Button
@@ -111,7 +111,7 @@ export default function ForgotPassword() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <p className="text-gray-600 dark:text-gray-400 mb-6">
-                Enter your email address and we'll send you a link to reset your password.
+                Enter your email address and we&apos;ll send you a link to reset your password.
               </p>
             </div>
 

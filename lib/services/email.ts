@@ -1,7 +1,4 @@
-import sgMail from '@sendgrid/mail';
-
-// Configure SendGrid
-sgMail.setApiKey(process.env.SENDGRID_API_KEY!);
+import nodemailer from 'nodemailer';
 
 export interface EmailData {
   to: string;
@@ -54,24 +51,36 @@ export interface AdminNotificationData {
 }
 
 export class EmailService {
-  private static fromEmail = process.env.SENDGRID_FROM_EMAIL || 'noreply@cubstechnical.com';
-  private static fromName = process.env.SENDGRID_FROM_NAME || 'CUBS Technical';
+  private static fromEmail = process.env.GMAIL_USER || 'technicalcubs@gmail.com';
+  private static fromName = process.env.GMAIL_FROM_NAME || 'CUBS Technical';
+  private static toEmail = 'info@cubstechnical.com'; // Always send to this email
 
-  // Send a generic email
+  // Create Gmail SMTP transporter
+  private static createTransporter() {
+    return nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_USER || 'technicalcubs@gmail.com',
+        pass: process.env.GMAIL_APP_PASSWORD || 'your-app-password-here'
+      }
+    });
+  }
+
+  // Send a generic email using Gmail SMTP
   static async sendEmail(emailData: EmailData): Promise<{ success: boolean; error?: string }> {
     try {
-      const msg = {
-        to: 'info@cubstechnical.com',
-        from: {
-          email: this.fromEmail,
-          name: this.fromName,
-        },
+      const transporter = this.createTransporter();
+      
+      const mailOptions = {
+        from: `${this.fromName} <${this.fromEmail}>`,
+        to: this.toEmail,
         subject: emailData.subject,
-        text: emailData.text || '',
         html: emailData.html,
+        text: emailData.text || '',
       };
 
-      await sgMail.send(msg);
+      const result = await transporter.sendMail(mailOptions);
+      console.log('Email sent successfully:', result.messageId);
       return { success: true };
     } catch (error) {
       console.error('Email send error:', error);
@@ -93,70 +102,104 @@ export class EmailService {
       <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin ${status}</title>
+        <title>CUBS Technical - Approval Notification</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">CUBS Technical</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Employee Management System</p>
-        </div>
-        
-        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <div style="background: ${color}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h2 style="margin: 0; font-size: 18px;">${icon} Admin Request ${status}</h2>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f9fafb;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">CUBS Technical</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Approval Notification</p>
           </div>
           
-          <p>Dear <strong>${data.recipientName}</strong>,</p>
-          
-          <p>Your admin access request has been <strong>${data.action}</strong> by <strong>${data.adminName}</strong>.</p>
-          
-          ${data.reason ? `
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${color};">
-            <h3 style="margin: 0 0 10px 0; color: #333;">Reason:</h3>
-            <p style="margin: 0; color: #666;">${data.reason}</p>
+          <!-- Content -->
+          <div style="padding: 40px;">
+            <div style="background: ${data.action === 'approved' ? '#f0fdf4' : '#fef2f2'}; border-left: 4px solid ${color}; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+              <h2 style="margin: 0 0 10px 0; color: ${color};">${icon} ${status}</h2>
+              <p style="margin: 0; color: ${color};">Your request has been ${data.action} by ${data.adminName}.</p>
+            </div>
+            
+            <h2 style="color: #374151; margin-bottom: 20px;">📋 Request Details</h2>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <strong style="color: #6b7280;">Recipient:</strong><br>
+                  ${data.recipientName} (${data.recipientEmail})
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Admin:</strong><br>
+                  ${data.adminName}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Status:</strong><br>
+                  <span style="background: ${data.action === 'approved' ? '#dcfce7' : '#fee2e2'}; color: ${color}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    ${status.toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Date:</strong><br>
+                  ${new Date().toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+            
+            ${data.reason ? `
+              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">📝 Reason</h3>
+                <p style="margin: 0; color: #92400e;">${data.reason}</p>
+              </div>
+            ` : ''}
+            
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 0 8px 8px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #1e40af;">📧 Email Service Details</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #1e40af;">
+                <li><strong>Service:</strong> Gmail SMTP</li>
+                <li><strong>From:</strong> ${this.fromEmail}</li>
+                <li><strong>To:</strong> ${this.toEmail}</li>
+                <li><strong>Status:</strong> Active and working</li>
+                <li><strong>Cost:</strong> Free (Gmail limits)</li>
+              </ul>
+            </div>
           </div>
-          ` : ''}
           
-          <p>If you have any questions, please contact the system administrator.</p>
-          
-          <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://cubstechnical.com'}" 
-               style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Access System
-            </a>
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              This is an automated notification from CUBS Technical.<br>
+              Generated on: ${new Date().toLocaleString()}
+            </p>
           </div>
-          
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #666; text-align: center;">
-            This is an automated message from CUBS Technical Employee Management System.<br>
-            Please do not reply to this email.
-          </p>
         </div>
       </body>
       </html>
     `;
 
-    const text = `
-Admin Request ${status}
+    return this.sendEmail({
+      to: data.recipientEmail,
+      subject: `${icon} Request ${status} - CUBS Technical`,
+      html: html,
+      text: `CUBS Technical - Approval Notification
 
-Dear ${data.recipientName},
+${icon} ${status}
 
-Your admin access request has been ${data.action} by ${data.adminName}.
+Your request has been ${data.action} by ${data.adminName}.
+
+Request Details:
+- Recipient: ${data.recipientName} (${data.recipientEmail})
+- Admin: ${data.adminName}
+- Status: ${status.toUpperCase()}
+- Date: ${new Date().toLocaleDateString()}
 
 ${data.reason ? `Reason: ${data.reason}` : ''}
 
-If you have any questions, please contact the system administrator.
+Email Service Details:
+- Service: Gmail SMTP
+- From: ${this.fromEmail}
+- To: ${this.toEmail}
+- Status: Active and working
+- Cost: Free (Gmail limits)
 
-Best regards,
-CUBS Technical Team
-    `;
-
-    return this.sendEmail({
-      to: data.recipientEmail,
-      subject: `Admin Access ${status} - CUBS Technical`,
-      html,
-      text,
+Generated on: ${new Date().toLocaleString()}`
     });
   }
 
@@ -167,265 +210,372 @@ CUBS Technical Team
       <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Admin Notification</title>
+        <title>CUBS Technical - Admin Notification</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">CUBS Technical</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Employee Management System</p>
-        </div>
-        
-        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <div style="background: #3b82f6; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h2 style="margin: 0; font-size: 18px;">🔔 Admin Notification</h2>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f9fafb;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">CUBS Technical</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Admin Notification</p>
           </div>
           
-          <p>Dear <strong>${data.recipientName}</strong>,</p>
-          
-          <p>This is a notification regarding an admin action performed by <strong>${data.adminName}</strong>.</p>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #3b82f6;">
-            <h3 style="margin: 0 0 10px 0; color: #333;">Action Details:</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li><strong>Action:</strong> ${data.action}</li>
-              ${data.details ? `<li><strong>Details:</strong> ${data.details}</li>` : ''}
-              <li><strong>Performed by:</strong> ${data.adminName}</li>
-              <li><strong>Timestamp:</strong> ${new Date().toLocaleString()}</li>
-            </ul>
+          <!-- Content -->
+          <div style="padding: 40px;">
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+              <h2 style="margin: 0 0 10px 0; color: #1e40af;">📢 Admin Notification</h2>
+              <p style="margin: 0; color: #1e40af;">A new admin action has been performed in the system.</p>
+            </div>
+            
+            <h2 style="color: #374151; margin-bottom: 20px;">📋 Action Details</h2>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <strong style="color: #6b7280;">Recipient:</strong><br>
+                  ${data.recipientName} (${data.recipientEmail})
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Admin:</strong><br>
+                  ${data.adminName}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Action:</strong><br>
+                  <span style="background: #dbeafe; color: #1e40af; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    ${data.action.toUpperCase()}
+                  </span>
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Date:</strong><br>
+                  ${new Date().toLocaleDateString()}
+                </div>
+              </div>
+            </div>
+            
+            ${data.details ? `
+              <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+                <h3 style="margin: 0 0 10px 0; color: #92400e;">📝 Details</h3>
+                <p style="margin: 0; color: #92400e;">${data.details}</p>
+              </div>
+            ` : ''}
+            
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 0 8px 8px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #1e40af;">📧 Email Service Details</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #1e40af;">
+                <li><strong>Service:</strong> Gmail SMTP</li>
+                <li><strong>From:</strong> ${this.fromEmail}</li>
+                <li><strong>To:</strong> ${this.toEmail}</li>
+                <li><strong>Status:</strong> Active and working</li>
+                <li><strong>Cost:</strong> Free (Gmail limits)</li>
+              </ul>
+            </div>
           </div>
           
-          <p>If you have any questions or concerns, please contact the system administrator.</p>
-          
-          <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://cubstechnical.com'}" 
-               style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Access System
-            </a>
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              This is an automated notification from CUBS Technical.<br>
+              Generated on: ${new Date().toLocaleString()}
+            </p>
           </div>
-          
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #666; text-align: center;">
-            This is an automated message from CUBS Technical Employee Management System.<br>
-            Please do not reply to this email.
-          </p>
         </div>
       </body>
       </html>
     `;
 
-    const text = `
-Admin Notification
+    return this.sendEmail({
+      to: data.recipientEmail,
+      subject: `📢 Admin Action: ${data.action} - CUBS Technical`,
+      html: html,
+      text: `CUBS Technical - Admin Notification
 
-Dear ${data.recipientName},
+📢 Admin Notification
 
-This is a notification regarding an admin action performed by ${data.adminName}.
+A new admin action has been performed in the system.
 
 Action Details:
-- Action: ${data.action}
-${data.details ? `- Details: ${data.details}` : ''}
-- Performed by: ${data.adminName}
-- Timestamp: ${new Date().toLocaleString()}
+- Recipient: ${data.recipientName} (${data.recipientEmail})
+- Admin: ${data.adminName}
+- Action: ${data.action.toUpperCase()}
+- Date: ${new Date().toLocaleDateString()}
 
-If you have any questions or concerns, please contact the system administrator.
+${data.details ? `Details: ${data.details}` : ''}
 
-Best regards,
-CUBS Technical Team
+Email Service Details:
+- Service: Gmail SMTP
+- From: ${this.fromEmail}
+- To: ${this.toEmail}
+- Status: Active and working
+- Cost: Free (Gmail limits)
+
+Generated on: ${new Date().toLocaleString()}`
+    });
+  }
+
+  // Send visa expiry notification
+  static async sendVisaExpiryNotification(data: VisaExpiryNotification): Promise<{ success: boolean; error?: string }> {
+    const urgencyColor = data.daysRemaining <= 0 ? '#dc2626' :
+                        data.daysRemaining <= 7 ? '#dc2626' : 
+                        data.daysRemaining <= 30 ? '#ea580c' : '#d97706';
+    const urgencyBg = data.daysRemaining <= 0 ? '#fef2f2' :
+                     data.daysRemaining <= 7 ? '#fef2f2' : 
+                     data.daysRemaining <= 30 ? '#fff7ed' : '#fffbeb';
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>CUBS Technical - Visa Expiry Alert</title>
+      </head>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f9fafb;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">CUBS Technical</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Visa Expiry Alert</p>
+          </div>
+          
+          <!-- Content -->
+          <div style="padding: 40px;">
+            <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+              <h2 style="margin: 0 0 10px 0; color: #dc2626;">🚨 Visa Expiry Alert</h2>
+              <p style="margin: 0; color: #dc2626;">This is an automated notification regarding employee visa expiries.</p>
+            </div>
+            
+            <h2 style="color: #374151; margin-bottom: 20px;">📋 Employee Details</h2>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <strong style="color: #6b7280;">Employee Name:</strong><br>
+                  ${data.employeeName}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Employee Email:</strong><br>
+                  ${data.employeeEmail}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Visa Type:</strong><br>
+                  ${data.visaType}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Company:</strong><br>
+                  ${data.companyName}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Expiry Date:</strong><br>
+                  ${data.visaExpiryDate}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Days Remaining:</strong><br>
+                  <span style="background: ${urgencyBg}; color: ${urgencyColor}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    ${data.daysRemaining > 0 ? `${data.daysRemaining} days` : `${Math.abs(data.daysRemaining)} days overdue`}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #92400e;">⚠️ Required Actions</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #92400e;">
+                <li>Review visa status immediately</li>
+                <li>Contact the employee regarding renewal</li>
+                <li>Initiate renewal process if needed</li>
+                <li>Update visa records in the system</li>
+                <li>Monitor upcoming expiries regularly</li>
+              </ul>
+            </div>
+            
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 0 8px 8px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #1e40af;">📧 Email Service Details</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #1e40af;">
+                <li><strong>Service:</strong> Gmail SMTP</li>
+                <li><strong>From:</strong> ${this.fromEmail}</li>
+                <li><strong>To:</strong> ${this.toEmail}</li>
+                <li><strong>Status:</strong> Active and working</li>
+                <li><strong>Cost:</strong> Free (Gmail limits)</li>
+              </ul>
+            </div>
+          </div>
+          
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              This is an automated notification from CUBS Technical.<br>
+              Generated on: ${new Date().toLocaleString()}
+            </p>
+          </div>
+        </div>
+      </body>
+      </html>
     `;
 
     return this.sendEmail({
-      to: data.recipientEmail,
-      subject: `Admin Notification - ${data.action} - CUBS Technical`,
-      html,
-      text,
+      to: data.employeeEmail,
+      subject: `🚨 Visa Expiry Alert - ${data.employeeName}`,
+      html: html,
+      text: `CUBS Technical - Visa Expiry Alert
+
+🚨 Visa Expiry Alert
+
+This is an automated notification regarding employee visa expiries.
+
+Employee Details:
+- Employee Name: ${data.employeeName}
+- Employee Email: ${data.employeeEmail}
+- Visa Type: ${data.visaType}
+- Company: ${data.companyName}
+- Expiry Date: ${data.visaExpiryDate}
+- Days Remaining: ${data.daysRemaining > 0 ? `${data.daysRemaining} days` : `${Math.abs(data.daysRemaining)} days overdue`}
+
+⚠️ Required Actions:
+- Review visa status immediately
+- Contact the employee regarding renewal
+- Initiate renewal process if needed
+- Update visa records in the system
+- Monitor upcoming expiries regularly
+
+Email Service Details:
+- Service: Gmail SMTP
+- From: ${this.fromEmail}
+- To: ${this.toEmail}
+- Status: Active and working
+- Cost: Free (Gmail limits)
+
+Generated on: ${new Date().toLocaleString()}`
     });
   }
 
   // Send document expiry notification
   static async sendDocumentExpiryNotification(data: DocumentExpiryData): Promise<{ success: boolean; error?: string }> {
-    const urgency = data.daysUntilExpiry <= 7 ? 'URGENT' : 'Warning';
-    const color = data.daysUntilExpiry <= 7 ? '#dc2626' : '#f59e0b';
+    const urgencyColor = data.daysUntilExpiry <= 0 ? '#dc2626' :
+                        data.daysUntilExpiry <= 7 ? '#dc2626' : 
+                        data.daysUntilExpiry <= 30 ? '#ea580c' : '#d97706';
+    const urgencyBg = data.daysUntilExpiry <= 0 ? '#fef2f2' :
+                     data.daysUntilExpiry <= 7 ? '#fef2f2' : 
+                     data.daysUntilExpiry <= 30 ? '#fff7ed' : '#fffbeb';
 
     const html = `
       <!DOCTYPE html>
       <html>
       <head>
         <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Document Expiry ${urgency}</title>
+        <title>CUBS Technical - Document Expiry Alert</title>
       </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">CUBS Technical</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Employee Management System</p>
-        </div>
-        
-        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <div style="background: ${color}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h2 style="margin: 0; font-size: 18px;">⚠️ Document Expiry ${urgency}</h2>
+      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; background: #f9fafb;">
+        <div style="max-width: 600px; margin: 0 auto; background: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+          <!-- Header -->
+          <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 40px; text-align: center;">
+            <h1 style="color: white; margin: 0; font-size: 28px;">CUBS Technical</h1>
+            <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 16px;">Document Expiry Alert</p>
           </div>
           
-          <p>Dear <strong>${data.employeeName}</strong>,</p>
-          
-          <p>This is an automated notification regarding your document that is expiring soon:</p>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${color};">
-            <h3 style="margin: 0 0 10px 0; color: #333;">Document Details:</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li><strong>Document Type:</strong> ${data.documentType}</li>
-              <li><strong>Document Name:</strong> ${data.documentName}</li>
-              <li><strong>Expiry Date:</strong> ${data.expiryDate}</li>
-              <li><strong>Days Until Expiry:</strong> ${data.daysUntilExpiry} day${data.daysUntilExpiry !== 1 ? 's' : ''}</li>
-            </ul>
+          <!-- Content -->
+          <div style="padding: 40px;">
+            <div style="background: #fef2f2; border-left: 4px solid #dc2626; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+              <h2 style="margin: 0 0 10px 0; color: #dc2626;">🚨 Document Expiry Alert</h2>
+              <p style="margin: 0; color: #dc2626;">This is an automated notification regarding document expiries.</p>
+            </div>
+            
+            <h2 style="color: #374151; margin-bottom: 20px;">📋 Document Details</h2>
+            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                <div>
+                  <strong style="color: #6b7280;">Employee Name:</strong><br>
+                  ${data.employeeName}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Employee Email:</strong><br>
+                  ${data.employeeEmail}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Document Name:</strong><br>
+                  ${data.documentName}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Document Type:</strong><br>
+                  ${data.documentType}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Expiry Date:</strong><br>
+                  ${data.expiryDate}
+                </div>
+                <div>
+                  <strong style="color: #6b7280;">Days Remaining:</strong><br>
+                  <span style="background: ${urgencyBg}; color: ${urgencyColor}; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold;">
+                    ${data.daysUntilExpiry > 0 ? `${data.daysUntilExpiry} days` : `${Math.abs(data.daysUntilExpiry)} days overdue`}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 20px; margin-bottom: 30px; border-radius: 0 8px 8px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #92400e;">⚠️ Required Actions</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #92400e;">
+                <li>Review document status immediately</li>
+                <li>Contact the employee regarding renewal</li>
+                <li>Initiate renewal process if needed</li>
+                <li>Update document records in the system</li>
+                <li>Monitor upcoming expiries regularly</li>
+              </ul>
+            </div>
+            
+            <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 20px; border-radius: 0 8px 8px 0;">
+              <h3 style="margin: 0 0 10px 0; color: #1e40af;">📧 Email Service Details</h3>
+              <ul style="margin: 0; padding-left: 20px; color: #1e40af;">
+                <li><strong>Service:</strong> Gmail SMTP</li>
+                <li><strong>From:</strong> ${this.fromEmail}</li>
+                <li><strong>To:</strong> ${this.toEmail}</li>
+                <li><strong>Status:</strong> Active and working</li>
+                <li><strong>Cost:</strong> Free (Gmail limits)</li>
+              </ul>
+            </div>
           </div>
           
-          <p style="color: ${color}; font-weight: bold;">
-            ${data.daysUntilExpiry <= 7 
-              ? '⚠️ URGENT: Please renew this document immediately to avoid any issues.' 
-              : 'Please ensure this document is renewed before the expiry date.'}
-          </p>
-          
-          <p>If you have any questions or need assistance, please contact your HR department.</p>
-          
-          <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://cubstechnical.com'}" 
-               style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Access Employee Portal
-            </a>
+          <!-- Footer -->
+          <div style="background: #f9fafb; padding: 30px; text-align: center; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; color: #6b7280; font-size: 14px;">
+              This is an automated notification from CUBS Technical.<br>
+              Generated on: ${new Date().toLocaleString()}
+            </p>
           </div>
-          
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #666; text-align: center;">
-            This is an automated message from CUBS Technical Employee Management System.<br>
-            Please do not reply to this email.
-          </p>
         </div>
       </body>
       </html>
-    `;
-
-    const text = `
-Document Expiry ${urgency}
-
-Dear ${data.employeeName},
-
-This is an automated notification regarding your document that is expiring soon:
-
-Document Details:
-- Document Type: ${data.documentType}
-- Document Name: ${data.documentName}
-- Expiry Date: ${data.expiryDate}
-- Days Until Expiry: ${data.daysUntilExpiry} day${data.daysUntilExpiry !== 1 ? 's' : ''}
-
-${data.daysUntilExpiry <= 7 
-  ? '⚠️ URGENT: Please renew this document immediately to avoid any issues.' 
-  : 'Please ensure this document is renewed before the expiry date.'}
-
-If you have any questions or need assistance, please contact your HR department.
-
-Best regards,
-CUBS Technical Team
     `;
 
     return this.sendEmail({
       to: data.employeeEmail,
-      subject: `[${urgency}] Document Expiry Alert - ${data.documentName}`,
-      html,
-      text,
-    });
-  }
+      subject: `🚨 Document Expiry Alert - ${data.documentName}`,
+      html: html,
+      text: `CUBS Technical - Document Expiry Alert
 
-  // Send visa expiry notification
-  static async sendVisaExpiryNotification(data: VisaExpiryData): Promise<{ success: boolean; error?: string }> {
-    const urgency = data.daysUntilExpiry <= 30 ? 'URGENT' : 'Warning';
-    const color = data.daysUntilExpiry <= 30 ? '#dc2626' : '#f59e0b';
+🚨 Document Expiry Alert
 
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Visa Expiry ${urgency}</title>
-      </head>
-      <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
-        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 30px; border-radius: 10px 10px 0 0; text-align: center;">
-          <h1 style="color: white; margin: 0; font-size: 24px;">CUBS Technical</h1>
-          <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Employee Management System</p>
-        </div>
-        
-        <div style="background: white; padding: 30px; border-radius: 0 0 10px 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-          <div style="background: ${color}; color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px;">
-            <h2 style="margin: 0; font-size: 18px;">🛂 Visa Expiry ${urgency}</h2>
-          </div>
-          
-          <p>Dear <strong>${data.employeeName}</strong>,</p>
-          
-          <p>This is an automated notification regarding your visa that is expiring soon:</p>
-          
-          <div style="background: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid ${color};">
-            <h3 style="margin: 0 0 10px 0; color: #333;">Visa Details:</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li><strong>Visa Type:</strong> ${data.visaType}</li>
-              <li><strong>Company:</strong> ${data.companyName}</li>
-              <li><strong>Expiry Date:</strong> ${data.expiryDate}</li>
-              <li><strong>Days Until Expiry:</strong> ${data.daysUntilExpiry} day${data.daysUntilExpiry !== 1 ? 's' : ''}</li>
-            </ul>
-          </div>
-          
-          <p style="color: ${color}; font-weight: bold;">
-            ${data.daysUntilExpiry <= 30 
-              ? '⚠️ URGENT: Please contact your HR department immediately to initiate visa renewal process.' 
-              : 'Please ensure visa renewal process is initiated before the expiry date.'}
-          </p>
-          
-          <p>This is a critical matter that requires immediate attention to avoid any legal issues.</p>
-          
-          <div style="text-align: center; margin-top: 30px;">
-            <a href="${process.env.NEXT_PUBLIC_APP_URL || 'https://cubstechnical.com'}" 
-               style="background: #667eea; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-              Access Employee Portal
-            </a>
-          </div>
-          
-          <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
-          <p style="font-size: 12px; color: #666; text-align: center;">
-            This is an automated message from CUBS Technical Employee Management System.<br>
-            Please do not reply to this email.
-          </p>
-        </div>
-      </body>
-      </html>
-    `;
+This is an automated notification regarding document expiries.
 
-    const text = `
-Visa Expiry ${urgency}
-
-Dear ${data.employeeName},
-
-This is an automated notification regarding your visa that is expiring soon:
-
-Visa Details:
-- Visa Type: ${data.visaType}
-- Company: ${data.companyName}
+Document Details:
+- Employee Name: ${data.employeeName}
+- Employee Email: ${data.employeeEmail}
+- Document Name: ${data.documentName}
+- Document Type: ${data.documentType}
 - Expiry Date: ${data.expiryDate}
-- Days Until Expiry: ${data.daysUntilExpiry} day${data.daysUntilExpiry !== 1 ? 's' : ''}
+- Days Remaining: ${data.daysUntilExpiry > 0 ? `${data.daysUntilExpiry} days` : `${Math.abs(data.daysUntilExpiry)} days overdue`}
 
-${data.daysUntilExpiry <= 30 
-  ? '⚠️ URGENT: Please contact your HR department immediately to initiate visa renewal process.' 
-  : 'Please ensure visa renewal process is initiated before the expiry date.'}
+⚠️ Required Actions:
+- Review document status immediately
+- Contact the employee regarding renewal
+- Initiate renewal process if needed
+- Update document records in the system
+- Monitor upcoming expiries regularly
 
-This is a critical matter that requires immediate attention to avoid any legal issues.
+Email Service Details:
+- Service: Gmail SMTP
+- From: ${this.fromEmail}
+- To: ${this.toEmail}
+- Status: Active and working
+- Cost: Free (Gmail limits)
 
-Best regards,
-CUBS Technical Team
-    `;
-
-    return this.sendEmail({
-      to: 'info@cubstechnical.com',
-      subject: `[${urgency}] Visa Expiry Alert - ${data.visaType}`,
-      html,
-      text,
+Generated on: ${new Date().toLocaleString()}`
     });
   }
 
@@ -447,7 +597,16 @@ CUBS Technical Team
         if ('documentType' in notification) {
           result = await this.sendDocumentExpiryNotification(notification);
         } else {
-          result = await this.sendVisaExpiryNotification(notification);
+          // Convert VisaExpiryData to VisaExpiryNotification format
+          const visaNotification: VisaExpiryNotification = {
+            employeeName: notification.employeeName,
+            employeeEmail: notification.employeeEmail,
+            visaExpiryDate: notification.expiryDate,
+            daysRemaining: notification.daysUntilExpiry,
+            visaType: notification.visaType,
+            companyName: notification.companyName
+          };
+          result = await this.sendVisaExpiryNotification(visaNotification);
         }
 
         if (result.success) {
@@ -483,13 +642,14 @@ CUBS Technical Team
         <p>This is a test email from CUBS Technical Employee Management System.</p>
         <p>If you received this email, the email notification service is working correctly.</p>
         <p><strong>Timestamp:</strong> ${new Date().toISOString()}</p>
+        <p><strong>Service:</strong> Gmail SMTP</p>
       </body>
       </html>
     `;
 
     return this.sendEmail({
       to: toEmail,
-      subject: 'CUBS Technical - Email Service Test',
+      subject: 'CUBS Technical - Email Service Test (Gmail SMTP)',
       html,
       text: 'Email service test successful. If you received this email, the notification service is working correctly.',
     });

@@ -71,7 +71,7 @@
 
 1. **Supabase** (Database & Auth) - User authentication, data storage
 2. **Backblaze B2** (File Storage) - Document storage
-3. **SendGrid** (Email Service) - Notification emails
+3. **Resend** (Email Service) - Notification emails
 
 **Data Processing Locations**: United States, European Union
 

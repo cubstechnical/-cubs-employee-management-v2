@@ -1,10 +1,15 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Use the correct Supabase URL
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://blbybcxkfcyxrwrlldtd.supabase.co';
+// Use the correct Supabase URL from environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 
+
+// Debug environment variables
+console.log('🔧 Environment check:');
+console.log('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
+console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
 
 // Create Supabase client
 let supabase: ReturnType<typeof createClient>;
@@ -15,6 +20,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   supabase = createClient('https://mock.supabase.co', 'mock-key');
 } else {
   try {
+    console.log('✅ Creating Supabase client with real credentials');
     supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
@@ -31,6 +37,47 @@ if (!supabaseUrl || !supabaseAnonKey) {
 }
 
 export { supabase };
+
+// Auth state cache to improve performance
+let authStateCache: {
+  user: any;
+  session: any;
+  timestamp: number;
+} | null = null;
+
+const AUTH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+
+// Enhanced auth state management
+export const getAuthState = async () => {
+  const now = Date.now();
+  
+  // Return cached auth state if still valid
+  if (authStateCache && (now - authStateCache.timestamp) < AUTH_CACHE_DURATION) {
+    return authStateCache;
+  }
+  
+  // Get fresh auth state
+  const { data: { session }, error } = await supabase.auth.getSession();
+  
+  if (error) {
+    console.error('Auth state error:', error);
+    return { user: null, session: null, timestamp: now };
+  }
+  
+  // Cache the result
+  authStateCache = {
+    user: session?.user || null,
+    session,
+    timestamp: now
+  };
+  
+  return authStateCache;
+};
+
+// Clear auth cache when needed
+export const clearAuthCache = () => {
+  authStateCache = null;
+};
 
 // Type definitions for our database tables
 export interface Employee {

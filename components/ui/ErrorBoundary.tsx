@@ -31,7 +31,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     // Log the error to our error handler
-    const errorReport = ErrorHandler.catch(error, errorInfo);
+    const errorReport = ErrorHandler.catch(error, { componentStack: errorInfo.componentStack });
 
     // Update state with error ID for reference
     this.setState({ errorId: errorReport.timestamp });

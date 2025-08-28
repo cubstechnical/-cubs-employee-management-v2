@@ -32,7 +32,7 @@ A comprehensive admin portal for managing employees, documents, and company oper
 - **Backend**: Supabase (PostgreSQL, Auth, Real-time)
 - **Storage**: Backblaze B2 for document storage
 - **Mobile**: Capacitor for native iOS/Android apps
-- **Email**: SendGrid for notifications
+- **Email**: Gmail SMTP for notifications
 - **Deployment**: Vercel (web), GitHub Actions (mobile builds)
 
 ## Quick Start
@@ -43,7 +43,7 @@ A comprehensive admin portal for managing employees, documents, and company oper
 - npm or yarn
 - Supabase account
 - Backblaze B2 account
-- SendGrid account
+- Gmail account with App Password
 
 ### Installation
 
@@ -124,9 +124,10 @@ Create a `.env` file with the following variables:
 NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
 NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
 
-# SendGrid
-SENDGRID_API_KEY=your_sendgrid_key
-SENDGRID_FROM_EMAIL=your_from_email
+# Gmail SMTP Email Service (Primary Email Provider)
+GMAIL_USER=technicalcubs@gmail.com
+GMAIL_APP_PASSWORD=your-app-password-here
+GMAIL_FROM_NAME=CUBS Technical
 
 # Backblaze B2
 B2_APPLICATION_KEY_ID=your_b2_key_id
@@ -153,6 +154,10 @@ B2_BUCKET_ID=your_bucket_id
 - `npm run cap:sync` - Sync web assets to native platforms
 - `npm run cap:open:android` - Open in Android Studio
 - `npm run cap:open:ios` - Open in Xcode
+
+### Email Service Testing
+- `npm run test:email` - Test email service via command line
+- `POST /api/test-email` - Test email service via API endpoint
 
 ## Project Structure
 

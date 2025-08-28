@@ -113,7 +113,7 @@ export default function DeleteAccountPage() {
                 <h3 className="font-semibold text-gray-900 mb-2">What will be deleted:</h3>
                 <ul className="space-y-1 text-sm text-gray-700">
                   <li>• Your user account and profile information</li>
-                  <li>• All employee records you've created</li>
+                  <li>• All employee records you&apos;ve created</li>
                   <li>• All uploaded documents and files</li>
                   <li>• Your login credentials and authentication data</li>
                   <li>• All app activity and usage history</li>

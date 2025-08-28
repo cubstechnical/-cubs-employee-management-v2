@@ -103,28 +103,27 @@ export class AuthService {
         return null;
       }
 
-      // Try to get user profile from profiles table
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
+      // Get user profile from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-        if (profile && !profileError) {
-          const userRole = getUserRole(user.email!, profile.role as string);
+      if (profile && !profileError) {
+        const userRole = getUserRole(user.email!, profile.role as string);
 
-          return {
-            id: user.id,
-            email: user.email!,
-            role: userRole,
-            name: profile.full_name || user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
-            avatar_url: user.user_metadata?.avatar_url,
-            approved: profile.approved as boolean
-          };
-        }
-      } catch (profileError) {
-        console.log('Profile table not found or user has no profile, using auth user data');
+        return {
+          id: user.id,
+          email: user.email!,
+          role: userRole,
+          name: profile.full_name || user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          avatar_url: user.user_metadata?.avatar_url,
+          approved: profile.approved_by !== null
+        };
+      } else if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        // Continue with fallback user data
       }
 
       // Fallback: create user from auth data
@@ -159,29 +158,28 @@ export class AuthService {
         return { user: null, error: { message: 'No user data returned' } };
       }
 
-      // Try to get user profile from profiles table
-      try {
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', data.user.id)
-          .single();
+      // Get user profile from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
 
-        if (profile && !profileError) {
-          const userRole = getUserRole(data.user.email!, profile.role as string);
+      if (profile && !profileError) {
+        const userRole = getUserRole(data.user.email!, profile.role as string);
 
-          const authUser: AuthUser = {
-            id: data.user.id,
-            email: data.user.email!,
-            role: userRole,
-            name: profile.full_name || data.user.user_metadata?.name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
-            avatar_url: data.user.user_metadata?.avatar_url,
-            approved: profile.approved as boolean
-          };
-          return { user: authUser, error: null };
-        }
-      } catch (profileError) {
-        console.log('Profile table not found or user has no profile, using auth user data');
+        const authUser: AuthUser = {
+          id: data.user.id,
+          email: data.user.email!,
+          role: userRole,
+          name: profile.full_name || data.user.user_metadata?.name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+          avatar_url: data.user.user_metadata?.avatar_url,
+          approved: profile.approved_by !== null
+        };
+        return { user: authUser, error: null };
+      } else if (profileError) {
+        console.error('Profile fetch error during sign in:', profileError);
+        // Continue with fallback user data
       }
 
       // Fallback: create user from auth data

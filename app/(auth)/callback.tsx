@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Card from '@/components/ui/Card';
 import { 
@@ -18,11 +18,7 @@ export default function Callback() {
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading');
   const [message, setMessage] = useState('Processing authentication...');
 
-  useEffect(() => {
-    handleCallback();
-  }, []);
-
-  const handleCallback = async () => {
+  const handleCallback = useCallback(async () => {
     try {
       const urlError = searchParams?.get('error') || null;
       const errorDescription = searchParams?.get('error_description') || null;
@@ -63,7 +59,11 @@ export default function Callback() {
       setMessage('An unexpected error occurred');
       toast.error('Authentication failed');
     }
-  };
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    handleCallback();
+  }, [handleCallback]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">

@@ -347,6 +347,31 @@ export default function AdminDashboard() {
     dateRange: '30d'
   });
 
+  const loadPendingApprovals = useCallback(async (showToast = false) => {
+    setIsRefreshingApprovals(true);
+    try {
+      const { users, error } = await AuthService.getPendingApprovals();
+      if (!error) {
+        const previousCount = pendingApprovals.length;
+
+        setPendingApprovals(users);
+
+        // Show toast if count changed and showToast is true
+        if (showToast && previousCount !== users.length) {
+          if (users.length === 0) {
+            toast.success('All pending approvals have been processed!');
+          } else if (users.length < previousCount) {
+            toast.success('Pending approvals updated!');
+          }
+        }
+      }
+    } catch (error) {
+      // Silent error handling for background polling
+    } finally {
+      setIsRefreshingApprovals(false);
+    }
+  }, [pendingApprovals.length]);
+
   // Load pending approvals
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -391,45 +416,9 @@ export default function AdminDashboard() {
         window.removeEventListener('storage', handleStorageChange);
       };
     }
-  }, [user]);
+  }, [user, loadPendingApprovals]);
 
-  const loadPendingApprovals = async (showToast = false) => {
-    setIsRefreshingApprovals(true);
-    try {
-      const { users, error } = await AuthService.getPendingApprovals();
-      if (!error) {
-        const previousCount = pendingApprovals.length;
-
-        setPendingApprovals(users);
-
-        // Show toast if count changed and showToast is true
-        if (showToast && previousCount !== users.length) {
-          if (users.length === 0) {
-            toast.success('All pending approvals have been processed!');
-          } else if (users.length < previousCount) {
-            toast.success('Pending approvals updated!');
-          }
-        }
-      }
-    } catch (error) {
-      // Silent error handling for background polling
-    } finally {
-      setIsRefreshingApprovals(false);
-    }
-  };
-
-  // Function to refresh pending approvals (can be called from child components)
-  const refreshPendingApprovals = () => {
-    loadPendingApprovals();
-  };
-
-  // Real-time updates (throttled inside hook); enable only when page is visible
-  const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
-    onDataChange: fetchDashboardData,
-    enabled: false
-  });
-
-  async function fetchDashboardData() {
+  const fetchDashboardData = useCallback(async () => {
     try {
       setIsRefreshing(true);
       
@@ -450,11 +439,22 @@ export default function AdminDashboard() {
       setIsRefreshing(false);
       setIsLoading(false);
     }
-  }
+  }, [filters]);
+
+  // Function to refresh pending approvals (can be called from child components)
+  const refreshPendingApprovals = () => {
+    loadPendingApprovals();
+  };
+
+  // Real-time updates (throttled inside hook); enable only when page is visible
+  const { isConnected, lastUpdate, refresh } = useRealtimeDashboard({
+    onDataChange: fetchDashboardData,
+    enabled: false
+  });
 
   useEffect(() => {
     fetchDashboardData();
-  }, [filters]);
+  }, [filters, fetchDashboardData]);
 
   const handleFilterChange = (newFilters: Partial<DashboardFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
@@ -535,7 +535,7 @@ export default function AdminDashboard() {
                 Admin Dashboard
               </h1>
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                Welcome back! Here's your organization overview.
+                Welcome back! Here&apos;s your organization overview.
                 {isConnected && (
                   <span className="ml-2 inline-flex items-center text-xs text-green-600 dark:text-green-400">
                     <div className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1 animate-pulse"></div>

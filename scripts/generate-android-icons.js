@@ -108,3 +108,8 @@ async function generateAdaptiveIcons(sourceIcon, androidResDir) {
 }
 
 generateAndroidIcons().catch(console.error);
+
+
+
+
+

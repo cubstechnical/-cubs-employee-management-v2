@@ -128,11 +128,11 @@ function AdminEmployeesContent() {
       fetchEmployees(1, debouncedSearchTerm, filters);
       setCurrentPage(1);
     }
-  }, [debouncedSearchTerm, filters]);
+  }, [debouncedSearchTerm, filters, fetchEmployees, initialLoading]);
 
   useEffect(() => {
     fetchEmployees();
-  }, []);
+  }, [fetchEmployees]);
 
   const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);

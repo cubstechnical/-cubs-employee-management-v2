@@ -40,8 +40,9 @@ jobs:
         cp env.example .env
         echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
         echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
-        echo "SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}" >> .env
-        echo "SENDGRID_FROM_EMAIL=${{ secrets.SENDGRID_FROM_EMAIL }}" >> .env
+        echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
+        echo "RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}" >> .env
+        echo "RESEND_FROM_NAME=${{ secrets.RESEND_FROM_NAME }}" >> .env
         echo "B2_APPLICATION_KEY_ID=${{ secrets.B2_APPLICATION_KEY_ID }}" >> .env
         echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env
         echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env
@@ -100,8 +101,9 @@ jobs:
         cp env.example .env
         echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
         echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
-        echo "SENDGRID_API_KEY=${{ secrets.SENDGRID_API_KEY }}" >> .env
-        echo "SENDGRID_FROM_EMAIL=${{ secrets.SENDGRID_FROM_EMAIL }}" >> .env
+        echo "RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}" >> .env
+        echo "RESEND_FROM_EMAIL=${{ secrets.RESEND_FROM_EMAIL }}" >> .env
+        echo "RESEND_FROM_NAME=${{ secrets.RESEND_FROM_NAME }}" >> .env
         echo "B2_APPLICATION_KEY_ID=${{ secrets.B2_APPLICATION_KEY_ID }}" >> .env
         echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env
         echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env

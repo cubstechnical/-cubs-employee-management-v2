@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import AppLoadingScreen from '@/components/ui/AppLoadingScreen';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -29,16 +29,9 @@ export default function ProtectedRoute({
     }
   }, [user, loading, isApproved, router]);
 
-  // Show loading spinner while checking authentication
+  // Show loading screen while checking authentication
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-        <div className="text-center">
-          <Loader2 className="w-8 h-8 animate-spin text-primary-600 mx-auto mb-4" />
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
+    return <AppLoadingScreen message="Checking Authentication..." />;
   }
 
   // Redirect to login if not authenticated or to pending approval if not approved
@@ -63,7 +56,7 @@ export default function ProtectedRoute({
               Access Denied
             </h2>
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              You don't have permission to access this page.
+              You don&apos;t have permission to access this page.
             </p>
             <button
               onClick={() => router.push('/dashboard')}

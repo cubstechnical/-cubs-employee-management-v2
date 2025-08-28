@@ -283,3 +283,5 @@ open ios/App/App.xcworkspace
 - Test all app features
 
 **Your client can start testing immediately with iOS Simulator! 🚀**
+
+

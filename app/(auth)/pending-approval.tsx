@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Card from '@/components/ui/Card';
@@ -26,12 +26,7 @@ export default function PendingApproval() {
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isRejected, setIsRejected] = useState(false);
 
-  useEffect(() => {
-    checkApprovalStatus();
-    checkUserProfile();
-  }, []);
-
-  const checkUserProfile = async () => {
+  const checkUserProfile = useCallback(async () => {
     try {
       const user = await AuthService.getCurrentUser();
       if (user) {
@@ -48,9 +43,9 @@ export default function PendingApproval() {
     } catch (error) {
       console.error('Error checking user profile:', error);
     }
-  };
+  }, []);
 
-  const checkApprovalStatus = async () => {
+  const checkApprovalStatus = useCallback(async () => {
     setCheckingStatus(true);
     try {
       const user = await AuthService.getCurrentUser();
@@ -83,7 +78,12 @@ export default function PendingApproval() {
       console.error('Error checking approval status:', error);
       setCheckingStatus(false);
     }
-  };
+  }, [router]);
+
+  useEffect(() => {
+    checkApprovalStatus();
+    checkUserProfile();
+  }, [checkApprovalStatus, checkUserProfile]);
 
   const handleRefresh = () => {
     checkApprovalStatus();
@@ -200,10 +200,10 @@ export default function PendingApproval() {
                 About reapplying:
               </h4>
               <ul className="text-sm text-yellow-800 dark:text-yellow-200 space-y-1">
-                <li>• Click "Reapply" to submit a new application</li>
+                <li>• Click &quot;Reapply&quot; to submit a new application</li>
                 <li>• Your previous application data will be preserved</li>
                 <li>• An admin will review your new application</li>
-                <li>• You'll receive notification when approved</li>
+                <li>• You&apos;ll receive notification when approved</li>
               </ul>
             </div>
           ) : (
@@ -214,7 +214,7 @@ export default function PendingApproval() {
               </h4>
               <ul className="text-sm text-blue-800 dark:text-blue-200 space-y-1">
                 <li>• An admin will review your account</li>
-                <li>• You'll receive email notification when approved</li>
+                <li>• You&apos;ll receive email notification when approved</li>
                 <li>• This process typically takes 1-2 business days</li>
                 <li>• You can check status by refreshing this page</li>
               </ul>
@@ -278,7 +278,7 @@ export default function PendingApproval() {
               <p className="text-xs text-gray-500 dark:text-gray-500">
                 {isRejected
                   ? 'Click "Reapply" to submit a new application for review.'
-                  : 'Once approved, you\'ll be automatically redirected to the dashboard.'
+                  : 'Once approved, you&apos;ll be automatically redirected to the dashboard.'
                 }
               </p>
             </div>

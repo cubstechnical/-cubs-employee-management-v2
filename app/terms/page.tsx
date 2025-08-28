@@ -35,7 +35,7 @@ export default function TermsOfService() {
           <div className="prose prose-gray dark:prose-invert max-w-none">
             <h2>1. Acceptance of Terms</h2>
             <p>
-              By accessing and using the CUBS Technical Admin Portal ("the App"), you accept 
+              By accessing and using the CUBS Technical Admin Portal (&quot;the App&quot;), you accept 
               and agree to be bound by the terms and provision of this agreement.
             </p>
 
@@ -110,7 +110,7 @@ export default function TermsOfService() {
 
             <h2>10. Disclaimer of Warranties</h2>
             <p>
-              The App is provided "as is" without warranties of any kind, either express 
+              The App is provided &quot;as is&quot; without warranties of any kind, either express 
               or implied. We disclaim all warranties, including but not limited to 
               warranties of merchantability, fitness for a particular purpose, and 
               non-infringement.

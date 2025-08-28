@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { X, Download, ExternalLink, FileText, FileImage, FileVideo, FileAudio, Archive } from 'lucide-react';
 
@@ -22,13 +22,7 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  useEffect(() => {
-    if (isOpen && document) {
-      generatePreviewUrl();
-    }
-  }, [isOpen, document]);
-
-  const generatePreviewUrl = async () => {
+  const generatePreviewUrl = useCallback(async () => {
     try {
       setLoading(true);
       setError('');
@@ -65,7 +59,13 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
     } finally {
       setLoading(false);
     }
-  };
+  }, [document]);
+
+  useEffect(() => {
+    if (isOpen && document) {
+      generatePreviewUrl();
+    }
+  }, [isOpen, document, generatePreviewUrl]);
 
   const getFileIcon = (fileName: string, mimeType?: string) => {
     const extension = fileName.split('.').pop()?.toLowerCase();

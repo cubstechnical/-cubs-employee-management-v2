@@ -123,7 +123,7 @@ Password: Admin@123456
 - **Mobile**: Capacitor for native mobile apps
 - **Backend**: Supabase (PostgreSQL + Auth)
 - **Storage**: Backblaze B2 for document storage
-- **Notifications**: SendGrid (email) + Firebase (push)
+- **Notifications**: Resend (email) + Firebase (push)
 
 ### **Platform Support**
 - **iOS**: iOS 13.0+ (iPhone & iPad)

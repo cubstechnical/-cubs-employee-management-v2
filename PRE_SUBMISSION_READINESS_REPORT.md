@@ -24,7 +24,7 @@
 ### Key Features
 - **Personal Data**: Names, emails, phone numbers properly declared
 - **Sensitive Data**: Passport/visa information, employee records covered
-- **Third-Party Services**: Supabase, Backblaze B2, SendGrid documented
+- **Third-Party Services**: Supabase, Backblaze B2, Resend documented
 - **Compliance**: GDPR, CCPA, and app store requirements met
 
 ---

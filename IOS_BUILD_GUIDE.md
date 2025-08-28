@@ -19,8 +19,8 @@
    ```
 
 2. **Install CocoaPods**
-   ```bash
-   sudo gem install cocoapods
+```bash
+sudo gem install cocoapods
    ```
 
 3. **Install Node.js** (if not already installed)
@@ -42,13 +42,13 @@
    ```
 
 2. **Run iOS Build Script**
-   ```bash
-   # Make script executable
-   chmod +x BUILD_iOS_PRODUCTION.sh
-   
-   # Run the build script
-   ./BUILD_iOS_PRODUCTION.sh
-   ```
+```bash
+# Make script executable
+chmod +x BUILD_iOS_PRODUCTION.sh
+
+# Run the build script
+./BUILD_iOS_PRODUCTION.sh
+```
 
 3. **Open in Xcode**
    ```bash
@@ -208,10 +208,10 @@ xcodebuild -workspace ios/App/App.xcworkspace -scheme App -configuration Release
 ### Common iOS Issues:
 
 1. **Build Fails with CocoaPods**
-   ```bash
-   cd ios/App
-   pod deintegrate
-   pod install
+```bash
+cd ios/App
+pod deintegrate
+pod install
    cd ../..
    ```
 

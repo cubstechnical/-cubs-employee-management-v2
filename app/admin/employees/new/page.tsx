@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
@@ -103,20 +103,26 @@ function NewEmployeeContent() {
     }
   };
 
-  const generatePreviewId = async () => {
+  const generatePreviewId = useCallback(async () => {
+    console.log('🔄 Generating preview ID for:', { company: formData.company_name, name: formData.name });
     if (formData.company_name && formData.name) {
       try {
         const id = await EmployeeService.generateEmployeeId(formData.company_name, formData.name);
+        console.log('✅ Generated employee ID:', id);
         setPreviewId(id);
       } catch (error) {
-        console.error('Error generating preview ID:', error);
+        console.error('❌ Error generating preview ID:', error);
+        setPreviewId('');
       }
+    } else {
+      console.log('⚠️ Missing company or name for ID generation');
+      setPreviewId('');
     }
-  };
+  }, [formData.company_name, formData.name]);
 
   useEffect(() => {
     generatePreviewId();
-  }, [formData.company_name, formData.name]);
+  }, [formData.company_name, formData.name, generatePreviewId]);
 
   const validateForm = (): boolean => {
     const newErrors: { [key: string]: string } = {};
