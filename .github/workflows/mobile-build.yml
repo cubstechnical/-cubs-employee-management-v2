@@ -57,6 +57,11 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
+    - name: Fix Gradle permissions
+      run: |
+        cd android
+        chmod +x ./gradlew
+
     - name: Build Android APK
       run: |
         cd android
@@ -118,13 +123,16 @@ jobs:
         sudo gem install cocoapods
         pod --version
 
-    - name: Clean iOS build directory
+    - name: Clean and regenerate iOS project
       run: |
         cd ios/App
         rm -rf Pods
         rm -rf Podfile.lock
         rm -rf build
         rm -rf App.xcworkspace
+        rm -rf App.xcodeproj
+        cd ../..
+        npx cap add ios --force
 
     - name: Install iOS dependencies
       run: |
