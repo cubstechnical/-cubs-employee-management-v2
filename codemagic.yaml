@@ -98,8 +98,6 @@ workflows:
   ios-build-testing:
     name: iOS Build (Testing Only)
     environment:
-      groups:
-
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -164,8 +162,6 @@ workflows:
   ios-release-ready:
     name: iOS Release Build (Ready for Publishing)
     environment:
-      groups:
-
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
