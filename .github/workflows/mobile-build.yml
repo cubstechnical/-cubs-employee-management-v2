@@ -131,6 +131,8 @@ jobs:
       run: |
         npm run build
         node scripts/prepare-capacitor.js
+        # Remove existing android platform if it exists
+        rm -rf android
         npx cap add android
         npx cap copy android
         npx cap sync android
@@ -169,7 +171,8 @@ jobs:
         echo '  # Capacitor framework handled manually' >> Podfile
         echo 'end' >> Podfile
         cd ../..
-        # Add iOS platform and build frameworks
+        # Remove existing iOS platform if it exists and add fresh
+        rm -rf ios
         npx cap add ios
         # Copy web assets after platform addition
         npx cap copy ios
