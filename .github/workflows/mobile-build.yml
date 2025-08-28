@@ -166,15 +166,12 @@ jobs:
         rm -rf *.xcodeproj/xcuserdata
         rm -rf *.xcodeproj/project.xcworkspace
         # Create minimal Podfile for direct build
-        cat > Podfile << 'EOF'
-platform :ios, '13.0'
-use_frameworks!
-
-target 'App' do
-  # Minimal dependencies for direct build
-  pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
-end
-EOF
+        echo 'platform :ios, '\''13.0'\''' > Podfile
+        echo 'use_frameworks!' >> Podfile
+        echo '' >> Podfile
+        echo 'target '\''App'\'' do' >> Podfile
+        echo '  pod '\''Capacitor'\'', :path => '\''../../node_modules/@capacitor/ios'\''' >> Podfile
+        echo 'end' >> Podfile
         cd ../..
         # Copy Capacitor frameworks manually
         mkdir -p ios/App/Frameworks
@@ -185,28 +182,26 @@ EOF
     - name: Create export options plist
       run: |
         cd ios/App
-        cat > exportOptions.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>method</key>
-            <string>development</string>
-            <key>teamID</key>
-            <string>${{ secrets.APPLE_TEAM_ID || 'DEVELOPMENT' }}</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <false/>
-            <key>compileBitcode</key>
-            <false/>
-        </dict>
-        </plist>
-        EOF
+        echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
+        echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> exportOptions.plist
+        echo '<plist version="1.0">' >> exportOptions.plist
+        echo '<dict>' >> exportOptions.plist
+        echo '    <key>method</key>' >> exportOptions.plist
+        echo '    <string>development</string>' >> exportOptions.plist
+        echo '    <key>teamID</key>' >> exportOptions.plist
+        echo '    <string>${{ secrets.APPLE_TEAM_ID || '\''DEVELOPMENT'\'' }}</string>' >> exportOptions.plist
+        echo '    <key>signingStyle</key>' >> exportOptions.plist
+        echo '    <string>automatic</string>' >> exportOptions.plist
+        echo '    <key>stripSwiftSymbols</key>' >> exportOptions.plist
+        echo '    <true/>' >> exportOptions.plist
+        echo '    <key>uploadBitcode</key>' >> exportOptions.plist
+        echo '    <false/>' >> exportOptions.plist
+        echo '    <key>uploadSymbols</key>' >> exportOptions.plist
+        echo '    <false/>' >> exportOptions.plist
+        echo '    <key>compileBitcode</key>' >> exportOptions.plist
+        echo '    <false/>' >> exportOptions.plist
+        echo '</dict>' >> exportOptions.plist
+        echo '</plist>' >> exportOptions.plist
 
     - name: Build iOS app (Development)
       run: |
