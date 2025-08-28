@@ -178,7 +178,12 @@ jobs:
         npx cap copy ios
         # Build the iOS project to generate frameworks (without code signing)
         cd ios/App
-        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        # Use workspace if it exists (created by CocoaPods), otherwise use project
+        if [ -f "App.xcworkspace" ]; then
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        else
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        fi
         cd ../..
         # Now copy the built framework
         mkdir -p ios/App/Frameworks
@@ -216,13 +221,21 @@ jobs:
       run: |
         cd ios/App
         # Build with Capacitor frameworks
-        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO
+        if [ -f "App.xcworkspace" ]; then
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        else
+          xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        fi
 
     - name: Build iOS app (Release Archive)
       run: |
         cd ios/App
         # Archive with Capacitor frameworks (without code signing)
-        xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        if [ -f "App.xcworkspace" ]; then
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        else
+          xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        fi
 
     - name: Export iOS IPA
       run: |
