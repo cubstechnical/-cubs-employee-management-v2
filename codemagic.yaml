@@ -102,14 +102,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: "com.cubstechnical.admin"
-      # Clear any old manual environment variables
-      vars:
-        CM_CERTIFICATE: null
-        CM_CERTIFICATE_PASSWORD: null
-        CM_PROVISIONING_PROFILE: null
-        XCODE_PROJECT: null
-        XCODE_SCHEME: null
-        XCODE_WORKSPACE: null
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -212,14 +204,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: "com.cubstechnical.admin"
-      # Clear any old manual environment variables
-      vars:
-        CM_CERTIFICATE: null
-        CM_CERTIFICATE_PASSWORD: null
-        CM_PROVISIONING_PROFILE: null
-        XCODE_PROJECT: null
-        XCODE_SCHEME: null
-        XCODE_WORKSPACE: null
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -263,14 +247,6 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: "com.cubstechnical.admin"
-      # Clear any old manual environment variables
-      vars:
-        CM_CERTIFICATE: null
-        CM_CERTIFICATE_PASSWORD: null
-        CM_PROVISIONING_PROFILE: null
-        XCODE_PROJECT: null
-        XCODE_SCHEME: null
-        XCODE_WORKSPACE: null
     scripts:
       - name: Install Node.js dependencies
         script: |
