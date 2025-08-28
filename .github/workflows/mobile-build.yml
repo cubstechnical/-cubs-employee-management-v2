@@ -51,25 +51,8 @@ jobs:
         echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
         echo "NODE_ENV=production" >> .env
 
-    - name: Build Next.js static app
-      run: npm run build
-
-    - name: Initialize Capacitor (if needed)
-      run: |
-        if [ ! -f "capacitor.config.ts" ]; then
-          npx cap init
-        fi
-
-    - name: Add Android platform (if needed)
-      run: |
-        if [ ! -d "android" ]; then
-          npx cap add android
-        else
-          echo "Android platform already exists, skipping..."
-        fi
-
-    - name: Sync Capacitor assets
-      run: npx cap sync
+    - name: Build mobile app
+      run: npm run build:mobile
 
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
@@ -122,25 +105,8 @@ jobs:
         echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
         echo "NODE_ENV=production" >> .env
 
-    - name: Build Next.js static app
-      run: npm run build
-
-    - name: Initialize Capacitor (if needed)
-      run: |
-        if [ ! -f "capacitor.config.ts" ]; then
-          npx cap init
-        fi
-
-    - name: Add iOS platform (if needed)
-      run: |
-        if [ ! -d "ios" ]; then
-          npx cap add ios
-        else
-          echo "iOS platform already exists, skipping..."
-        fi
-
-    - name: Sync Capacitor assets
-      run: npx cap sync
+    - name: Build mobile app
+      run: npm run build:mobile
 
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
