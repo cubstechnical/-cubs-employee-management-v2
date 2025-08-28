@@ -223,9 +223,6 @@ workflows:
   ios-build-publishing:
     name: iOS Build (With Publishing)
     environment:
-      groups:
-        - app_store_connect
-
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -259,10 +256,31 @@ workflows:
           cd ios
           xcodebuild -workspace App/App.xcworkspace \
             -scheme App \
-            -configuration Debug \
+            -configuration Release \
             -destination 'generic/platform=iOS' \
             -archivePath App/build/App.xcarchive \
             archive
+          cd ..
+      - name: Create Export Options
+        script: |
+          echo "Creating export options plist..."
+          cd ios
+          cat > exportOptions.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>teamID</key>
+            <string>GQCYASP5XS</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+          </dict>
+          </plist>
+          EOF
           cd ..
       - name: Export iOS IPA
         script: |
@@ -292,9 +310,6 @@ workflows:
   ios-release-publishing:
     name: iOS Release Build (With Publishing)
     environment:
-      groups:
-        - app_store_connect
-
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
