@@ -176,9 +176,9 @@ jobs:
         npx cap add ios
         # Copy web assets after platform addition
         npx cap copy ios
-        # Build the iOS project to generate frameworks
+        # Build the iOS project to generate frameworks (without code signing)
         cd ios/App
-        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO
+        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
         cd ../..
         # Now copy the built framework
         mkdir -p ios/App/Frameworks
@@ -221,13 +221,13 @@ jobs:
     - name: Build iOS app (Release Archive)
       run: |
         cd ios/App
-        # Archive with Capacitor frameworks
-        xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO
+        # Archive with Capacitor frameworks (without code signing)
+        xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
 
     - name: Export iOS IPA
       run: |
         cd ios/App
-        xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist
+        xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
       continue-on-error: true
 
     - name: Upload iOS artifacts
