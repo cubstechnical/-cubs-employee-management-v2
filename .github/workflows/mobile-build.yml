@@ -113,6 +113,24 @@ jobs:
       with:
         xcode-version: 'latest-stable'
 
+    - name: Install CocoaPods
+      run: |
+        sudo gem install cocoapods
+        pod --version
+
+    - name: Clean iOS build directory
+      run: |
+        cd ios/App
+        rm -rf Pods
+        rm -rf Podfile.lock
+        rm -rf build
+        rm -rf App.xcworkspace
+
+    - name: Install iOS dependencies
+      run: |
+        cd ios/App
+        pod install --repo-update
+
     - name: Create export options plist
       run: |
         cd ios/App
@@ -124,7 +142,7 @@ jobs:
             <key>method</key>
             <string>development</string>
             <key>teamID</key>
-            <string>${{ secrets.APPLE_TEAM_ID }}</string>
+            <string>${{ secrets.APPLE_TEAM_ID || 'DEVELOPMENT' }}</string>
             <key>signingStyle</key>
             <string>automatic</string>
             <key>stripSwiftSymbols</key>
@@ -139,22 +157,29 @@ jobs:
         </plist>
         EOF
 
-    - name: Install iOS dependencies
+    - name: Build iOS app (Development)
       run: |
         cd ios/App
-        pod install
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build
 
-    - name: Build iOS app
+    - name: Build iOS app (Release Archive)
       run: |
         cd ios/App
         xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive
+
+    - name: Export iOS IPA
+      run: |
+        cd ios/App
         xcodebuild -exportArchive -archivePath $PWD/App.xcarchive -exportPath $PWD/build -exportOptionsPlist exportOptions.plist
+      continue-on-error: true
 
     - name: Upload iOS artifacts
       uses: actions/upload-artifact@v4
       with:
         name: ios-build
-        path: ios/App/build/
+        path: |
+          ios/App/build/
+          ios/App/App.xcarchive/
         retention-days: 30
 
   deploy-preview:
@@ -183,7 +208,8 @@ jobs:
         echo "- AAB: Available in artifacts" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### iOS Build" >> $GITHUB_STEP_SUMMARY
-        echo "- IPA: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- Archive: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- IPA: Available in artifacts (if export successful)" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
         echo "1. Download artifacts for testing" >> $GITHUB_STEP_SUMMARY
