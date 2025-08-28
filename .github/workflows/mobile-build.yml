@@ -63,10 +63,14 @@ jobs:
         distribution: 'temurin'
         java-version: '17'
 
-    - name: Fix Gradle permissions and Java home
+    - name: Clear Gradle cache and setup Java
       run: |
         cd android
         chmod +x ./gradlew
+        # Clear Gradle cache to remove old Java home settings
+        ./gradlew --stop
+        rm -rf ~/.gradle/caches
+        rm -rf .gradle
         # Clear any existing Java home settings
         unset JAVA_HOME
         unset GRADLE_OPTS
@@ -77,8 +81,9 @@ jobs:
       run: |
         cd android
         export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
-        ./gradlew assembleDebug
-        ./gradlew bundleRelease
+        ./gradlew clean
+        ./gradlew assembleDebug --no-daemon
+        ./gradlew bundleRelease --no-daemon
 
     - name: Upload Android artifacts
       uses: actions/upload-artifact@v4
@@ -128,27 +133,29 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: 'latest-stable'
+        xcode-version: '15.4'  # Use a stable Xcode version to avoid corruption issues
 
     - name: Install CocoaPods
       run: |
         sudo gem install cocoapods
         pod --version
 
-    - name: Complete iOS project cleanup and regeneration
+    - name: Clean and prepare iOS build environment
       run: |
-        # Remove entire iOS directory
-        rm -rf ios
-        # Remove Capacitor config to force fresh generation
-        rm -f capacitor.config.ts
-        # Regenerate Capacitor config
-        npx cap init "CUBS Employee Management" "com.cubs.employee-management" --web-dir=out
-        # Add iOS platform fresh
-        npx cap add ios
-        # Copy web assets
-        npx cap copy ios
-        # Sync plugins
-        npx cap sync ios
+        # Clean Xcode derived data and caches
+        rm -rf ~/Library/Developer/Xcode/DerivedData
+        rm -rf ~/Library/Caches/CocoaPods
+        # Clean iOS project artifacts
+        cd ios/App
+        rm -rf Pods
+        rm -rf Podfile.lock
+        rm -rf build
+        rm -rf *.xcworkspace/xcuserdata
+        rm -rf *.xcodeproj/xcuserdata
+        rm -rf *.xcodeproj/project.xcworkspace
+        cd ../..
+        # Ensure clean Capacitor sync
+        npx cap sync ios --no-build
 
     - name: Install iOS dependencies
       run: |
