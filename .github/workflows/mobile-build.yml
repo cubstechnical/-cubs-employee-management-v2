@@ -127,14 +127,13 @@ jobs:
         echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
         echo "NODE_ENV=production" >> .env
 
-    - name: Build mobile app (skip iOS sync)
+    - name: Build mobile app
       run: |
         npm run build
         node scripts/prepare-capacitor.js
+        npx cap add android --force
         npx cap copy android
-        npx cap copy ios
         npx cap sync android
-        # Skip iOS sync to avoid CocoaPods issues
 
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
@@ -170,11 +169,21 @@ jobs:
         echo '  # Capacitor framework handled manually' >> Podfile
         echo 'end' >> Podfile
         cd ../..
-        # Copy Capacitor frameworks manually
+        # Add iOS platform and build frameworks
+        npx cap add ios --force
+        # Copy web assets after platform addition
+        npx cap copy ios
+        # Build the iOS project to generate frameworks
+        cd ios/App
+        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO
+        cd ../..
+        # Now copy the built framework
         mkdir -p ios/App/Frameworks
-        cp -r node_modules/@capacitor/ios/Capacitor.framework ios/App/Frameworks/
-        # Skip iOS sync entirely to avoid CocoaPods issues
-        echo "Skipping iOS sync to avoid CocoaPods compatibility problems"
+        # Copy from built products if available
+        if [ -d "ios/App/build/Debug-iphoneos" ]; then
+          cp -r ios/App/build/Debug-iphoneos/*.framework ios/App/Frameworks/ 2>/dev/null || true
+        fi
+        echo "iOS platform setup completed"
 
     - name: Create export options plist
       run: |
@@ -203,14 +212,14 @@ jobs:
     - name: Build iOS app (Development)
       run: |
         cd ios/App
-        # Build without CocoaPods, using manually copied frameworks
-        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build FRAMEWORK_SEARCH_PATHS="$(PWD)/Frameworks" -UseNewBuildSystem=NO
+        # Build with Capacitor frameworks
+        xcodebuild -project App.xcodeproj -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO
 
     - name: Build iOS app (Release Archive)
       run: |
         cd ios/App
-        # Archive without CocoaPods, using manually copied frameworks
-        xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive FRAMEWORK_SEARCH_PATHS="$(PWD)/Frameworks" -UseNewBuildSystem=NO
+        # Archive with Capacitor frameworks
+        xcodebuild -project App.xcodeproj -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO
 
     - name: Export iOS IPA
       run: |
