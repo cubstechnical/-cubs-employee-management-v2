@@ -147,16 +147,7 @@ jobs:
         xcodebuild -version
         xcode-select -p
 
-    - name: Install CocoaPods and update xcodeproj gem
-      run: |
-        # Update RubyGems first
-        sudo gem update --system
-        # Install xcodeproj gem compatible with Xcode 16
-        sudo gem install xcodeproj -v '1.27.1'
-        # Install CocoaPods
-        sudo gem install cocoapods
-        pod --version
-        gem list xcodeproj
+    # CocoaPods installation skipped - using manual framework management
 
     - name: Clean iOS build environment and prepare for direct build
       run: |
@@ -171,12 +162,12 @@ jobs:
         rm -rf *.xcworkspace/xcuserdata
         rm -rf *.xcodeproj/xcuserdata
         rm -rf *.xcodeproj/project.xcworkspace
-        # Create minimal Podfile for direct build
+        # Create minimal Podfile (compatibility only, not used for building)
         echo 'platform :ios, '\''13.0'\''' > Podfile
         echo 'use_frameworks!' >> Podfile
         echo '' >> Podfile
         echo 'target '\''App'\'' do' >> Podfile
-        echo '  pod '\''Capacitor'\'', :path => '\''../../node_modules/@capacitor/ios'\''' >> Podfile
+        echo '  # Capacitor framework handled manually' >> Podfile
         echo 'end' >> Podfile
         cd ../..
         # Copy Capacitor frameworks manually
