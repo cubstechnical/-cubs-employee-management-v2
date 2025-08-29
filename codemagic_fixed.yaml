@@ -1,0 +1,213 @@
+workflows:
+  android-build:
+    name: Android Build
+    environment:
+      groups:
+        - google_play
+      vars:
+        PACKAGE_NAME: "com.cubstechnical.admin"
+        BUILD_SCRIPT_NAME: "BUILD_ANDROID_FIXED.bat"
+    scripts:
+      - name: Set up environment
+        script: |
+          echo "Setting up Android build environment..."
+          export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
+          export ANDROID_HOME=$HOME/Android/Sdk
+          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+      - name: Install dependencies
+        script: |
+          echo "Installing Node.js dependencies..."
+          npm install
+      - name: Build Android APK
+        script: |
+          echo "Building Android APK..."
+          cd android
+          ./gradlew assembleDebug
+          cd ..
+      - name: Build Android Release APK
+        script: |
+          echo "Building Android Release APK..."
+          cd android
+          ./gradlew assembleRelease
+          cd ..
+      - name: List APK files
+        script: |
+          echo "Generated APK files:"
+          find android/app/build/outputs/apk -name "*.apk" -exec ls -la {} \;
+    artifacts:
+      - android/app/build/outputs/apk/debug/*.apk
+      - android/app/build/outputs/apk/release/*.apk
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
+
+  ios-build-automatic:
+    name: iOS Build (Automatic Signing & Upload)
+    max_build_duration: 120
+    environment:
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: "com.cubstechnical.admin"
+        team_credentials: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+      vars:
+        BUNDLE_ID: "com.cubstechnical.admin"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+    scripts:
+      - name: Install Node.js dependencies
+        script: |
+          echo "Installing Node.js dependencies..."
+          npm install
+      - name: Set up iOS platform
+        script: |
+          echo "Setting up iOS platform..."
+          # Remove existing iOS platform if it exists
+          rm -rf ios
+          # Add iOS platform
+          npx cap add ios
+      - name: Install iOS dependencies
+        script: |
+          echo "Installing iOS dependencies..."
+          cd ios/App
+          pod install
+          cd ../..
+      - name: Build and archive iOS app
+        script: |
+          echo "Building and archiving iOS app with automatic signing..."
+          cd ios
+          xcodebuild -workspace App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath App/build/App.xcarchive \
+            -allowProvisioningUpdates \
+            archive
+          cd ..
+      - name: Export signed IPA
+        script: |
+          echo "Exporting signed IPA for App Store Connect..."
+          cd ios
+          # Create export options for app store
+          cat > exportOptions.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+          </dict>
+          </plist>
+          EOF
+          
+          xcodebuild -exportArchive \
+            -archivePath App/build/App.xcarchive \
+            -exportPath App/build/ipa \
+            -exportOptionsPlist exportOptions.plist \
+            -allowProvisioningUpdates
+          cd ..
+      - name: Verify IPA creation
+        script: |
+          echo "Verifying IPA creation..."
+          if [ -f "ios/App/build/ipa/App.ipa" ]; then
+            echo "✅ IPA created successfully:"
+            ls -la ios/App/build/ipa/
+          else
+            echo "❌ IPA not found. Available files:"
+            find ios/App/build -name "*.ipa" -o -name "*.xcarchive"
+            exit 1
+          fi
+    artifacts:
+      - ios/App/build/ipa/*.ipa
+      - ios/App/build/App.xcarchive
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
+        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
+
+  ios-build-manual:
+    name: iOS Build (Manual Upload - Fallback)
+    max_build_duration: 120
+    environment:
+      vars:
+        BUNDLE_ID: "com.cubstechnical.admin"
+        XCODE_PROJECT: "ios/App/App.xcodeproj"
+        XCODE_SCHEME: "App"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+    scripts:
+      - name: Install Node.js dependencies
+        script: |
+          echo "Installing Node.js dependencies..."
+          npm install
+      - name: Set up iOS platform
+        script: |
+          echo "Setting up iOS platform..."
+          # Remove existing iOS platform if it exists
+          rm -rf ios
+          # Add iOS platform
+          npx cap add ios
+      - name: Install iOS dependencies
+        script: |
+          echo "Installing iOS dependencies..."
+          cd ios/App
+          pod install
+          cd ../..
+      - name: Build iOS app (unsigned)
+        script: |
+          echo "Building iOS app (unsigned for manual signing)..."
+          cd ios
+          xcodebuild -workspace App/App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath App/build/App.xcarchive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO \
+            -allowProvisioningUpdates \
+            archive
+          cd ..
+      - name: Prepare for manual upload
+        script: |
+          echo "Preparing archive for manual upload to App Store Connect..."
+          cd ios
+          echo "✅ Archive created: App/build/App.xcarchive"
+          echo "📋 Manual upload steps:"
+          echo "1. Download this archive from Codemagic"
+          echo "2. Use Transporter app or Xcode Cloud"
+          echo "3. Upload to App Store Connect"
+          echo "4. App will appear in TestFlight"
+          cd ..
+    artifacts:
+      - ios/App/build/App.xcarchive
+    publishing:
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
