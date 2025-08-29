@@ -1,14 +1,11 @@
 workflows:
   ios-capacitor-build:
-    name: iOS Capacitor Build with Auto Publishing
+    name: iOS Capacitor Build (Unsigned - Ready for Manual Signing)
     max_build_duration: 60
     environment:
       node: 18.17.0
       xcode: latest
       cocoapods: default
-      ios_signing:
-        distribution_type: app_store
-        bundle_identifier: "com.cubstechnical.admin"
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -75,13 +72,27 @@ workflows:
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_ALLOWED=NO
           cd ../..
-      - name: Verify build
+      - name: Verify build and provide instructions
         script: |
           echo "Verifying build artifacts..."
           if [ -f "ios/App/build/ipa/App.ipa" ]; then
             echo "✅ iOS build successful!"
             ls -la ios/App/build/ipa/
-            echo "📱 IPA ready for download and manual upload to App Store Connect"
+            echo ""
+            echo "📱 MANUAL SIGNING & UPLOAD INSTRUCTIONS:"
+            echo "=========================================="
+            echo "1. Download the App.ipa file from Codemagic artifacts"
+            echo "2. Go to: https://appstoreconnect.apple.com"
+            echo "3. Navigate to TestFlight → iOS Builds"
+            echo "4. Click '+' to upload a new build"
+            echo "5. Drag and drop your App.ipa file"
+            echo "6. Wait 10-15 minutes for processing"
+            echo ""
+            echo "💡 The IPA is unsigned - you'll need to:"
+            echo "   - Have a Mac with Xcode for code signing"
+            echo "   - Or use Transporter app to upload and sign"
+            echo ""
+            echo "🚀 Build completed successfully!"
           else
             echo "❌ Build failed - IPA not found"
             find ios/App/build -name "*.ipa" 2>/dev/null || echo "No IPA files found"
@@ -91,13 +102,6 @@ workflows:
       - ios/App/build/ipa/*.ipa
       - ios/App/build/App.xcarchive
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_API_KEY
-        key_id: $APP_STORE_CONNECT_KEY_ID
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
-        beta_groups:
-          - "Internal Testers"
       email:
         recipients:
           - info@cubstechnical.com
