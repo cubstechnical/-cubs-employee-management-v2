@@ -1,0 +1,22 @@
+# EAS Build Environment Variables Template
+# Copy this file and rename it to .env.local for local development
+# For EAS Build, set these as environment variables in your EAS dashboard
+
+# Expo Account
+EXPO_ACCOUNT_OWNER=your-expo-account
+
+# iOS Build Credentials (for EAS Build)
+EXPO_APPLE_ID=your-apple-id@example.com
+EXPO_APPLE_PASSWORD=your-app-specific-password
+
+# App Store Connect
+APP_STORE_CONNECT_PRIVATE_KEY_PATH=./private_keys/AuthKey.p8
+APP_STORE_CONNECT_KEY_ID=your-key-id
+APP_STORE_CONNECT_ISSUER_ID=your-issuer-id
+
+# Android Build Credentials (for EAS Build)
+GOOGLE_SERVICE_ACCOUNT_KEY_PATH=./google-service-account-key.json
+
+# Build Configuration
+NODE_ENV=production
+EXPO_PUBLIC_API_URL=https://your-api-url.com

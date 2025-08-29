@@ -1,0 +1,23 @@
+{
+  "expo": {
+    "name": "CUBS Visa Management - Test App",
+    "slug": "cubs-visa-management-test",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#111827",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cubstechnical.test",
+      "buildNumber": "1.0.0"
+    },
+    "android": {
+      "package": "com.cubstechnical.test",
+      "versionCode": 1
+    }
+  }
+}

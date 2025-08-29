@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "CUBS Visa Management",
+    "slug": "cubs-visa-management",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./public/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#111827"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.cubstechnical.admin",
+      "buildNumber": "1.0.0",
+      "requireFullScreen": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./public/icon.png",
+        "backgroundColor": "#111827"
+      },
+      "package": "com.cubstechnical.admin",
+      "versionCode": 1
+    },
+    "web": {
+      "favicon": "./public/favicon.png"
+    },
+    "plugins": [],
+    "extra": {
+      "eas": {}
+    }
+  }
+}

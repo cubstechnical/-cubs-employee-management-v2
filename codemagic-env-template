@@ -1,0 +1,18 @@
+# Codemagic Environment Variables Template
+# Copy this and add to Codemagic dashboard under Environment Variables
+
+# App Store Connect API Key (for publishing)
+APP_STORE_CONNECT_API_KEY=<your-private-key-content>
+APP_STORE_CONNECT_KEY_ID=<your-key-id>
+APP_STORE_CONNECT_ISSUER_ID=<your-issuer-id>
+
+# Google Play Store (for Android publishing)
+GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS=<your-service-account-json>
+
+# Build Configuration
+NODE_ENV=production
+CI=true
+
+# Optional: Add your environment variables here
+# NEXT_PUBLIC_SUPABASE_URL=<your-supabase-url>
+# NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-anon-key>

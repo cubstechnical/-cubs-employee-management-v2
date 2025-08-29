@@ -1,145 +1,147 @@
-# CodeMagic CI/CD Setup Guide - CUBS Visa Management
+# Codemagic Setup Guide for iOS Builds (No Mac Required)
 
-## ✅ **Android Build Status**
-- **APK Ready**: ✅ `android\app\build\outputs\apk\debug\app-debug.apk`
-- **Size**: 3.97 MB
-- **Status**: Ready for deployment
+This guide will help you set up Codemagic to build your iOS app without needing a Mac computer.
 
----
+## 📋 Prerequisites
 
-## 🔧 **CodeMagic Environment Variables Setup**
+1. **Codemagic Account**: Sign up at [codemagic.io](https://codemagic.io)
+2. **Apple Developer Account**: Required for App Store Connect
+3. **App Store Connect API Key**: For automated publishing (optional)
 
-### **Step 1: Create Environment Variable Groups**
+## 🚀 Step-by-Step Setup
 
-In CodeMagic, create these environment variable groups:
+### Step 1: Connect Your Repository
 
-#### **Group 1: `cubs_environment`**
+1. **Go to Codemagic Dashboard**: [codemagic.io/apps](https://codemagic.io/apps)
+2. **Click "Add Application"**
+3. **Connect your Git repository** (GitHub, GitLab, Bitbucket)
+4. **Select your repository** containing this project
+
+### Step 2: Configure Build Settings
+
+1. **Workflow**: Select `ios-capacitor-build`
+2. **Branch**: Choose your main branch (usually `main` or `master`)
+3. **Build Triggers**:
+   - ✅ Push to branch
+   - ✅ Pull request
+   - ✅ Manual trigger
+
+### Step 3: Set Up Environment Variables
+
+1. **Go to "Environment Variables"** in your app settings
+2. **Add the following variables** (use the template file as reference):
+
+#### Required Variables:
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://tndfjsjemqjgagtsqudr.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuZGZqc2plbXFqZ2FndHNxdWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4ODQ1MDMsImV4cCI6MjA2NTQ2MDUwM30.jcPuX4IVgeCIwHuc53RiXhIm9yzMXYepgSzZ8QYu1iA
-SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRuZGZqc2plbXFqZ2FndHNxdWRyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk4ODQ1MDMsImV4cCI6MjA2NTQ2MDUwM30.jcPuX4IVgeCIwHuc53RiXhIm9yzMXYepgSzZ8QYu1iA
 NODE_ENV=production
-RESEND_API_KEY=re_FJr7iFpu_JekUmj5VwX6xFmDb2rgkR5JF
-RESEND_FROM_EMAIL=onboarding@resend.dev
-RESEND_FROM_NAME=CUBS Technical
-B2_APPLICATION_KEY_ID=005777f1de8041c0000000001
-B2_APPLICATION_KEY=K005atrNvhb2raSkcqcpIAM6PsbUPco
-B2_BUCKET_NAME=cubsdocs
-B2_ENDPOINT=https://s3.us-east-005.backblazeb2.com
-B2_BUCKET_ID=4747b73f41bd6ee89074011c
+CI=true
 ```
 
-#### **Group 2: `google_play`**
+#### Optional (for publishing):
 ```
-GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS=[Your Google Play Service Account JSON]
-GOOGLE_PLAY_TRACK=internal
+APP_STORE_CONNECT_API_KEY=<your-private-key-content>
+APP_STORE_CONNECT_KEY_ID=<your-key-id>
+APP_STORE_CONNECT_ISSUER_ID=<your-issuer-id>
 ```
 
----
+### Step 4: Configure Code Signing (Optional)
 
-## 📋 **Step-by-Step Setup Instructions**
+For **automatic publishing**, you'll need:
 
-### **1. CodeMagic Dashboard Setup**
-1. Go to [CodeMagic Dashboard](https://codemagic.io/apps)
-2. Connect your GitHub repository
-3. Select your CUBS project
+1. **App Store Connect API Key**:
+   - Go to [App Store Connect → Users and Access → Keys](https://appstoreconnect.apple.com/access/api)
+   - Create a new API Key with "App Manager" access
+   - Download the `.p8` file
+   - Copy the entire content of the `.p8` file to `APP_STORE_CONNECT_API_KEY`
+   - Note the Key ID and Issuer ID
 
-### **2. Environment Variables Configuration**
-1. Go to **Settings** → **Environment Variables**
-2. Click **Add group**
-3. Create group `cubs_environment`
-4. Add all variables from the list above
-5. Mark sensitive variables as **Secret**:
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-   - `RESEND_API_KEY`
-   - `B2_APPLICATION_KEY`
+2. **Add to Environment Variables**:
+   ```
+   APP_STORE_CONNECT_API_KEY=<content-of-your-p8-file>
+   APP_STORE_CONNECT_KEY_ID=<your-key-id>
+   APP_STORE_CONNECT_ISSUER_ID=<your-issuer-id>
+   ```
 
-### **3. Google Play Store Setup**
-1. Create group `google_play`
-2. Add your Google Play Service Account credentials
-3. Set up Google Play Console integration
+### Step 5: Test Your First Build
 
-### **4. Workflow Configuration**
-1. Use the provided `codemagic.yaml` file
-2. The workflow will automatically use your environment variables
-3. Configure build triggers (push to main branch)
+1. **Click "Start Build"** in Codemagic
+2. **Select the `ios-capacitor-build` workflow**
+3. **Monitor the build logs** in real-time
+4. **Download the IPA file** from the artifacts section
 
----
+## 📱 Manual Upload Process
 
-## 🚀 **Available Workflows**
+If you don't set up automatic publishing, here's how to manually upload:
 
-### **1. Android Build (Debug)**
-- **Trigger**: Push to main branch
-- **Output**: Debug APK
-- **Purpose**: Testing and development
+### After Build Completes:
 
-### **2. Android Release**
-- **Trigger**: Manual or tagged releases
-- **Output**: Release APK + AAB
-- **Purpose**: Production deployment
+1. **Download the IPA file** from Codemagic artifacts
+2. **Go to App Store Connect**: [appstoreconnect.apple.com](https://appstoreconnect.apple.com)
+3. **Navigate to "TestFlight" → "iOS Builds"**
+4. **Click "+" to upload a new build**
+5. **Drag and drop your `.ipa` file**
+6. **Wait 10-15 minutes** for processing
+7. **Add to TestFlight** for testing
 
----
+## 🔧 Troubleshooting
 
-## 📱 **Build Artifacts**
+### Build Fails with "Scheme not found":
 
-### **Debug Build:**
-- `app-debug.apk` - For testing
-- Size: ~4 MB
+**Solution**: The workflow automatically handles the Xcode scheme configuration.
 
-### **Release Build:**
-- `app-release.apk` - For distribution
-- `app-release.aab` - For Google Play Store
-- Size: ~3-4 MB
+### Pod Install Fails:
 
----
+**Solution**: Make sure your `ios/App/Podfile` is properly configured.
 
-## 🔐 **Security Notes**
+### Archive Creation Fails:
 
-### **Mark as Secret:**
-- ✅ `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- ✅ `SUPABASE_SERVICE_ROLE_KEY`
-- ✅ `RESEND_API_KEY`
-- ✅ `B2_APPLICATION_KEY`
-- ✅ `GOOGLE_PLAY_SERVICE_ACCOUNT_CREDENTIALS`
+**Solution**: Check that your Capacitor configuration is correct.
 
-### **Public Variables:**
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NODE_ENV`
-- `RESEND_FROM_EMAIL`
-- `B2_APPLICATION_KEY_ID`
-- `B2_BUCKET_NAME`
-- `B2_ENDPOINT`
-- `B2_BUCKET_ID`
+### Publishing Fails:
 
----
+**Solution**:
+1. Verify your App Store Connect API Key is correct
+2. Ensure the bundle identifier matches your App Store Connect app
+3. Check that you have the right permissions
 
-## 📧 **Notifications**
+## 📊 Build Workflow Details
 
-The workflow is configured to send email notifications to:
-- **Success**: info@cubstechnical.com
-- **Failure**: info@cubstechnical.com
+The `ios-capacitor-build` workflow does:
 
----
+1. **Install Dependencies**: `npm ci`
+2. **Build Next.js**: `npm run build`
+3. **Sync Capacitor**: `npx cap sync ios`
+4. **Install Pods**: `pod install`
+5. **Build iOS App**: Creates unsigned archive
+6. **Export IPA**: Creates `.ipa` file for upload
+7. **Verify**: Confirms build artifacts
 
-## 🎯 **Next Steps**
+## 🎯 What You'll Get
 
-1. **Set up environment variables** in CodeMagic
-2. **Configure Google Play Store** integration
-3. **Run first build** to test configuration
-4. **Deploy to Google Play Store** for testing
-5. **Submit for production** release
+After successful build:
+- ✅ **IPA file** ready for App Store Connect
+- ✅ **Build artifacts** for download
+- ✅ **Email notifications** on build status
+- ✅ **TestFlight ready** builds
 
----
+## 🚀 Next Steps
 
-## ✅ **Ready for Deployment**
+1. **Set up your first build** and test it
+2. **Configure publishing** for automatic uploads
+3. **Set up Android builds** using the existing workflow
+4. **Configure web deployment** for your Next.js app
 
-Your Android app is **100% ready** for CodeMagic CI/CD deployment with:
-- ✅ Environment variables configured
-- ✅ Build scripts ready
-- ✅ Google Play Store integration
-- ✅ Automated testing and deployment
-- ✅ Email notifications
+## 💡 Pro Tips
 
-**File to use**: `codemagic.yaml`
+- **Build Time**: iOS builds typically take 15-30 minutes
+- **Storage**: Codemagic provides 500 free builds per month
+- **Parallel Builds**: You can run multiple builds simultaneously
+- **Webhooks**: Integrate with Slack/Discord for notifications
 
+## 📞 Support
+
+- **Codemagic Docs**: [docs.codemagic.io](https://docs.codemagic.io)
+- **App Store Connect**: [developer.apple.com/support/app-store-connect](https://developer.apple.com/support/app-store-connect)
+- **Capacitor Docs**: [capacitorjs.com/docs](https://capacitorjs.com/docs)
+
+Your iOS build setup is now ready! 🎉

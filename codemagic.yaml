@@ -1,4 +1,110 @@
 workflows:
+  ios-capacitor-build:
+    name: iOS Capacitor Build with Auto Publishing
+    max_build_duration: 60
+    environment:
+      node: 18.17.0
+      xcode: latest
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: "com.cubstechnical.admin"
+    scripts:
+      - name: Install Node.js dependencies
+        script: |
+          echo "Installing Node.js dependencies..."
+          npm ci
+      - name: Build Next.js app
+        script: |
+          echo "Building Next.js production app..."
+          npm run build
+      - name: Sync with Capacitor
+        script: |
+          echo "Syncing web assets with Capacitor..."
+          npx cap sync ios
+      - name: Install CocoaPods
+        script: |
+          echo "Installing CocoaPods dependencies..."
+          cd ios/App
+          pod install
+          cd ../..
+      - name: Build iOS app
+        script: |
+          echo "Building iOS app..."
+          cd ios/App
+          xcodebuild -project App.xcodeproj \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO \
+            archive
+          cd ../..
+      - name: Export unsigned IPA
+        script: |
+          echo "Exporting unsigned IPA..."
+          cd ios/App
+          mkdir -p build/ipa
+
+          # Create export options for unsigned build
+          cat > exportOptions.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>signingStyle</key>
+            <string>manual</string>
+          </dict>
+          </plist>
+          EOF
+
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist exportOptions.plist \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO
+          cd ../..
+      - name: Verify build
+        script: |
+          echo "Verifying build artifacts..."
+          if [ -f "ios/App/build/ipa/App.ipa" ]; then
+            echo "✅ iOS build successful!"
+            ls -la ios/App/build/ipa/
+            echo "📱 IPA ready for download and manual upload to App Store Connect"
+          else
+            echo "❌ Build failed - IPA not found"
+            find ios/App/build -name "*.ipa" 2>/dev/null || echo "No IPA files found"
+            exit 1
+          fi
+    artifacts:
+      - ios/App/build/ipa/*.ipa
+      - ios/App/build/App.xcarchive
+    publishing:
+      app_store_connect:
+        api_key: $APP_STORE_CONNECT_API_KEY
+        key_id: $APP_STORE_CONNECT_KEY_ID
+        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
+        submit_to_testflight: true
+        beta_groups:
+          - "Internal Testers"
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
+
   android-build:
     name: Android Build
     environment:
