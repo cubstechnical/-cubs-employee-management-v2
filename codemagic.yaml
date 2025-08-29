@@ -56,8 +56,6 @@ workflows:
       ios_signing:
         distribution_type: ad_hoc
         bundle_identifier: "com.cubstechnical.admin"
-        profile_credentials: $IOS_ADHOC_PROVISIONING_PROFILE
-        certificate_credentials: $IOS_DISTRIBUTION_CERTIFICATE
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
