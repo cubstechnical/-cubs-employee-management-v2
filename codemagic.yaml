@@ -93,9 +93,9 @@ workflows:
             -allowProvisioningUpdates \
             archive
           cd ..
-             - name: Export signed IPA
-         script: |
-           echo "Exporting signed IPA for Ad Hoc distribution..."
+      - name: Export signed IPA
+        script: |
+          echo "Exporting signed IPA for Ad Hoc distribution..."
            cd ios
            # Create export options for ad hoc
            cat > exportOptions.plist << 'EOF'
@@ -223,8 +223,8 @@ workflows:
             ls -la ios/App/build/ipa/
             echo "📋 Upload instructions:"
             echo "1. Download the App.ipa file from artifacts"
-            echo "2. Use Transporter app on your iPhone"
-            echo "3. Upload to App Store Connect"
+            echo "2. Go to https://developer.apple.com/xcode-cloud/"
+            echo "3. Upload the IPA file to Xcode Cloud"
             echo "4. App will appear in TestFlight within 10-15 minutes"
           else
             echo "❌ IPA not found. Available files:"
