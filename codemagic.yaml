@@ -343,6 +343,10 @@ workflows:
             <true/>
             <key>compileBitcode</key>
             <false/>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>teamID</key>
+            <string>GQCYASP5XS</string>
           </dict>
           </plist>
           EOF
