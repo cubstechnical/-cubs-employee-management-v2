@@ -185,18 +185,54 @@ workflows:
             -allowProvisioningUpdates \
             archive
           cd ..
-      - name: Prepare for manual upload
+      - name: Export unsigned IPA for App Store Connect
         script: |
-          echo "Preparing archive for manual upload to App Store Connect..."
+          echo "Exporting unsigned IPA for App Store Connect upload..."
           cd ios
-          echo "✅ Archive created: App/build/App.xcarchive"
-          echo "📋 Manual upload steps:"
-          echo "1. Download this archive from Codemagic"
-          echo "2. Use Transporter app or Xcode Cloud"
-          echo "3. Upload to App Store Connect"
-          echo "4. App will appear in TestFlight"
+          # Create export options for app store
+          cat > exportOptions.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>signingStyle</key>
+            <string>manual</string>
+          </dict>
+          </plist>
+          EOF
+          
+          xcodebuild -exportArchive \
+            -archivePath App/build/App.xcarchive \
+            -exportPath App/build/ipa \
+            -exportOptionsPlist exportOptions.plist \
+            -allowProvisioningUpdates
           cd ..
+      - name: Verify IPA creation
+        script: |
+          echo "Verifying IPA creation..."
+          if [ -f "ios/App/build/ipa/App.ipa" ]; then
+            echo "✅ IPA created successfully:"
+            ls -la ios/App/build/ipa/
+            echo "📋 Upload instructions:"
+            echo "1. Download the App.ipa file from artifacts"
+            echo "2. Use Transporter app on your iPhone"
+            echo "3. Upload to App Store Connect"
+            echo "4. App will appear in TestFlight within 10-15 minutes"
+          else
+            echo "❌ IPA not found. Available files:"
+            find ios/App/build -name "*.ipa" -o -name "*.xcarchive"
+            exit 1
+          fi
     artifacts:
+      - ios/App/build/ipa/*.ipa
       - ios/App/build/App.xcarchive
     publishing:
       email:
