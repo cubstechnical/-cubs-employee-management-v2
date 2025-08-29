@@ -49,13 +49,15 @@ workflows:
           success: true
           failure: true
 
-  ios-build-automatic:
-    name: iOS Build (Automatic Signing & Upload)
+  ios-build-adhoc:
+    name: iOS Build (Ad Hoc Distribution)
     max_build_duration: 120
     environment:
       ios_signing:
-        distribution_type: app_store
+        distribution_type: ad_hoc
         bundle_identifier: "com.cubstechnical.admin"
+        profile_credentials: $IOS_ADHOC_PROVISIONING_PROFILE
+        certificate_credentials: $IOS_DISTRIBUTION_CERTIFICATE
       vars:
         BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_PROJECT: "ios/App/App.xcodeproj"
@@ -91,34 +93,34 @@ workflows:
             -allowProvisioningUpdates \
             archive
           cd ..
-      - name: Export signed IPA
-        script: |
-          echo "Exporting signed IPA for App Store Connect..."
-          cd ios
-          # Create export options for app store
-          cat > exportOptions.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>app-store-connect</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>compileBitcode</key>
-            <false/>
-          </dict>
-          </plist>
-          EOF
-          
-          xcodebuild -exportArchive \
-            -archivePath App/build/App.xcarchive \
-            -exportPath App/build/ipa \
-            -exportOptionsPlist exportOptions.plist \
-            -allowProvisioningUpdates
-          cd ..
+             - name: Export signed IPA
+         script: |
+           echo "Exporting signed IPA for Ad Hoc distribution..."
+           cd ios
+           # Create export options for ad hoc
+           cat > exportOptions.plist << 'EOF'
+           <?xml version="1.0" encoding="UTF-8"?>
+           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+           <plist version="1.0">
+           <dict>
+             <key>method</key>
+             <string>ad-hoc</string>
+             <key>uploadBitcode</key>
+             <false/>
+             <key>uploadSymbols</key>
+             <true/>
+             <key>compileBitcode</key>
+             <false/>
+           </dict>
+           </plist>
+           EOF
+           
+           xcodebuild -exportArchive \
+             -archivePath App/build/App.xcarchive \
+             -exportPath App/build/ipa \
+             -exportOptionsPlist exportOptions.plist \
+             -allowProvisioningUpdates
+           cd ..
       - name: Verify IPA creation
         script: |
           echo "Verifying IPA creation..."
@@ -134,11 +136,6 @@ workflows:
       - ios/App/build/ipa/*.ipa
       - ios/App/build/App.xcarchive
     publishing:
-      app_store_connect:
-        api_key: $APP_STORE_CONNECT_PRIVATE_KEY
-        key_id: $APP_STORE_CONNECT_KEY_IDENTIFIER
-        issuer_id: $APP_STORE_CONNECT_ISSUER_ID
-        submit_to_testflight: true
       email:
         recipients:
           - info@cubstechnical.com
