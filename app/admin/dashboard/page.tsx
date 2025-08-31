@@ -165,17 +165,11 @@ function EnhancedChartCard({ title, children, className = '', subtitle, loading 
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
-          {subtitle && (
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subtitle}</p>
-          )}
-        </div>
-        <button className="text-sm text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 flex items-center space-x-1">
-          <Download className="w-4 h-4" />
-          <span>Export</span>
-        </button>
+      <div className="mb-6">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
+        {subtitle && (
+          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subtitle}</p>
+        )}
       </div>
       <div>
       {children}
