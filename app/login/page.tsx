@@ -13,7 +13,6 @@ import Input from '@/components/ui/Input';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
-import { DemoInfo } from '@/components/DemoInfo';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -115,9 +114,6 @@ export default function LoginPage() {
         </div>
 
         <Card className="p-8">
-          {/* Demo Info for App Reviewers */}
-          <DemoInfo />
-          
           {!isForgotPassword ? (
             <>
               <div className="text-center mb-6">
