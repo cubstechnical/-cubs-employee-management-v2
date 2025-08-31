@@ -13,7 +13,6 @@ import {
   Calendar,
   CheckCircle,
   Clock,
-  Download,
   Filter,
   RefreshCw,
   Monitor,
@@ -667,8 +666,15 @@ export default function AdminDashboard() {
             </EnhancedChartCard>
 
             {/* Upcoming visa expiries */}
-            <EnhancedChartCard title="Upcoming Visa Expiries" subtitle="Next 90 days" loading={isRefreshing}>
-              {visaAlerts.length > 0 ? (
+            <div className="relative overflow-hidden rounded-2xl p-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between mb-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Upcoming Visa Expiries</h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Next 90 days</p>
+                </div>
+              </div>
+              <div>
+                {visaAlerts.length > 0 ? (
                 <div className="space-y-6">
                   {/* Summary chips */}
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
@@ -723,7 +729,8 @@ export default function AdminDashboard() {
                   <p className="text-gray-500 dark:text-gray-500 text-sm mt-1">All employee visas are up to date</p>
                 </div>
               )}
-          </EnhancedChartCard>
+              </div>
+            </div>
           </div>
         </div>
       </div>
