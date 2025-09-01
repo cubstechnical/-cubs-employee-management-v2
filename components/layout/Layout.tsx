@@ -6,6 +6,7 @@ import ThemeToggle from '@/components/ui/ThemeToggle';
 import Logo from '@/components/ui/Logo';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { usePWA } from '@/hooks/usePWA';
 
 interface LayoutProps {
   children: ReactNode;
@@ -16,11 +17,22 @@ export default function Layout({ children, className }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { isPWA, isStandalone } = usePWA();
 
   useEffect(() => {
     const checkMobile = () => {
       const mobile = window.innerWidth < 1024;
       setIsMobile(mobile);
+      
+      // Debug logging for PWA
+      console.log('🔍 Mobile check:', { 
+        mobile, 
+        width: window.innerWidth, 
+        isPWA, 
+        isStandalone,
+        userAgent: navigator.userAgent.includes('Mobile')
+      });
+      
       // Close sidebar on mobile when screen size changes
       if (mobile && sidebarOpen) {
         setSidebarOpen(false);
@@ -29,14 +41,30 @@ export default function Layout({ children, className }: LayoutProps) {
 
     checkMobile();
     window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
-  }, [sidebarOpen]);
+    
+    // PWA-specific: Handle orientation change
+    window.addEventListener('orientationchange', () => {
+      setTimeout(checkMobile, 100); // Small delay to ensure proper dimensions
+    });
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('orientationchange', checkMobile);
+    };
+  }, [sidebarOpen, isPWA, isStandalone]);
 
   const toggleSidebar = () => {
+    console.log('🔄 Toggling sidebar:', { 
+      currentState: sidebarOpen, 
+      newState: !sidebarOpen, 
+      isMobile, 
+      isPWA 
+    });
     setSidebarOpen(!sidebarOpen);
   };
 
   const closeSidebar = () => {
+    console.log('❌ Closing sidebar');
     setSidebarOpen(false);
   };
 
@@ -47,13 +75,25 @@ export default function Layout({ children, className }: LayoutProps) {
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={closeSidebar}
+          onTouchEnd={closeSidebar}
+          style={{ touchAction: 'manipulation' }}
         />
       )}
 
       {/* Mobile menu button */}
       <button
         onClick={toggleSidebar}
-        className="fixed top-4 left-4 z-50 lg:hidden p-2 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          toggleSidebar();
+        }}
+        className="fixed top-4 left-4 z-50 lg:hidden p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors touch-manipulation"
+        style={{ 
+          touchAction: 'manipulation',
+          WebkitTapHighlightColor: 'transparent',
+          minWidth: '44px',
+          minHeight: '44px'
+        }}
         aria-label="Toggle menu"
       >
         {sidebarOpen ? (

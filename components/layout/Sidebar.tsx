@@ -44,14 +44,25 @@ function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: S
     <Link
       href={href}
       onClick={onClose}
+      onTouchEnd={(e) => {
+        // Prevent double-tap zoom on mobile
+        e.preventDefault();
+        onClose?.();
+      }}
       className={cn(
         'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
         'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
+        'active:bg-gray-200 dark:active:bg-gray-700',
         'transform hover:translate-x-1',
         isActive
           ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 shadow-sm'
           : 'text-gray-700 dark:text-gray-300'
       )}
+      style={{ 
+        touchAction: 'manipulation',
+        WebkitTapHighlightColor: 'transparent',
+        minHeight: '44px'
+      }}
     >
       <div className={cn(
         'transition-all duration-300 ease-in-out',
