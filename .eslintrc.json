@@ -7,5 +7,6 @@
     "@next/next/no-img-element": "warn",
     "@typescript-eslint/no-var-requires": "off",
     "no-var-requires": "off"
-  }
+  },
+  "ignorePatterns": ["expo.json", "*.md", "scripts/*.js"]
 }

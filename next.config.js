@@ -29,15 +29,20 @@ const withPWA = require('next-pwa')({
 
 /** @type {import('next').NextConfig} */
 const baseConfig = {
-  // Use standard build for Capacitor - more compatible
+  // Mobile-optimized build configuration
+  output: 'export', // Required for Capacitor
+  trailingSlash: true, // Required for static export
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
-    unoptimized: true,
+    unoptimized: true, // Required for static export
   },
   compress: true,
   eslint: {
     ignoreDuringBuilds: true, // Temporarily disable ESLint for mobile build
   },
+  // Mobile-specific optimizations
+  poweredByHeader: false,
+  generateEtags: false,
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react'],

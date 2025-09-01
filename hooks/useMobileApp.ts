@@ -12,7 +12,6 @@ export function useMobileApp() {
       try {
         // Skip mobile-specific initialization on web platform
         if (isWeb) {
-          console.log('Running on web platform, skipping mobile app initialization');
           return;
         }
 
@@ -31,16 +30,14 @@ export function useMobileApp() {
         });
 
         App.addListener('appStateChange', ({ isActive }) => {
-          console.log('App state changed. Is active?', isActive);
+          // Handle app state changes silently
         });
 
         App.addListener('appUrlOpen', (data) => {
-          console.log('App opened with URL:', data.url);
+          // Handle deep links silently
         });
-
-        console.log('Mobile app initialized successfully');
       } catch (error) {
-        console.error('Error initializing mobile app:', error);
+        // Handle mobile initialization errors silently
       }
     };
 

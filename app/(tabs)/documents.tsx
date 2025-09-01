@@ -5,7 +5,7 @@ import { Metadata } from 'next';
 
 // Lazy load heavy components for faster initial load
 const DocumentPreview = lazy(() => import('@/components/documents/DocumentPreview'));
-const UploadModal = lazy(() => import('@/components/documents/UploadModal'));
+const LazyUploadModal = lazy(() => import('@/components/documents/UploadModal'));
 
 export const metadata: Metadata = {
   title: 'Documents',
@@ -36,7 +36,7 @@ import Button from '@/components/ui/Button';
 import { Upload, Search, Folder, File, ChevronRight, Download, Eye, Trash2, FileText, Image, FileVideo, FileAudio, Archive, Loader2, X } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { DocumentService } from '@/lib/services/documents';
-import UploadModal from '@/components/documents/UploadModal';
+// UploadModal is now lazy loaded as LazyUploadModal
 import toast from 'react-hot-toast';
 
 interface Document {
@@ -932,12 +932,14 @@ function DocumentsContent() {
         </Card>
 
         {/* Upload Modal */}
-        <UploadModal
-          isOpen={isUploadModalOpen}
-          onClose={() => setIsUploadModalOpen(false)}
-          onUploadComplete={handleUploadComplete}
-          currentPath={currentPath}
-        />
+        <Suspense fallback={<div>Loading upload modal...</div>}>
+          <LazyUploadModal
+            isOpen={isUploadModalOpen}
+            onClose={() => setIsUploadModalOpen(false)}
+            onUploadComplete={handleUploadComplete}
+            currentPath={currentPath}
+          />
+        </Suspense>
       </div>
     </Layout>
   );
