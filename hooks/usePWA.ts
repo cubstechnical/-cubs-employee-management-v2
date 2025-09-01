@@ -19,26 +19,40 @@ export function usePWA() {
                               (window.navigator as any).standalone ||
                               document.referrer.includes('android-app://');
       
+      // Check for mobile browser in PWA-like mode
+      const isMobileBrowser = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      const isSmallScreen = window.innerWidth < 1024;
+      
       // Also check for PWA indicators
       const isPWAIndicator = window.location.protocol === 'https:' && 
                             ('serviceWorker' in navigator) &&
                             (window.matchMedia('(display-mode: standalone)').matches || 
                              (window.navigator as any).standalone);
       
-      const pwaMode = isStandaloneMode || isPWAIndicator;
+      // Enhanced PWA detection for mobile browsers
+      const isMobilePWA = isMobileBrowser && isTouchDevice && (isSmallScreen || isStandaloneMode);
+      
+      const pwaMode = isStandaloneMode || isPWAIndicator || isMobilePWA;
       
       setIsStandalone(isStandaloneMode);
       setIsPWA(pwaMode);
       
-      console.log('🔍 PWA Detection:', {
+      console.log('🔍 Enhanced PWA Detection:', {
         isStandaloneMode,
         isPWAIndicator,
+        isMobilePWA,
         pwaMode,
         displayMode: window.matchMedia('(display-mode: standalone)').matches,
         standalone: (window.navigator as any).standalone,
         referrer: document.referrer,
         protocol: window.location.protocol,
-        serviceWorker: 'serviceWorker' in navigator
+        serviceWorker: 'serviceWorker' in navigator,
+        isMobileBrowser,
+        isTouchDevice,
+        isSmallScreen,
+        windowWidth: window.innerWidth,
+        windowHeight: window.innerHeight
       });
     };
 

@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import PWA sidebar styles */
+@import '../styles/pwa-sidebar.css';
+
 /* PWA-specific fixes */
 @layer base {
   /* Prevent zoom on input focus on iOS */

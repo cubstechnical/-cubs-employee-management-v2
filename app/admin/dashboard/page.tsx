@@ -411,20 +411,24 @@ export default function AdminDashboard() {
     }
   }, [user, loadPendingApprovals]);
 
-  const fetchDashboardData = useCallback(async () => {
+  const fetchDashboardData = useCallback(async (fetchHeavyData = false) => {
     try {
       setIsRefreshing(true);
-      
-      // Fetch only required dashboard data in parallel
-      const [statsData, companyDist, visaData] = await Promise.all([
-        EmployeeService.getAdminDashboardStats(filters),
-        EmployeeService.getEmployeeDistributionByCompany(filters),
-        EmployeeService.getExpiringVisasSummary(8)
-      ]);
 
+      // Phase 1: Fetch only essential stats first for fast initial load
+      const statsData = await EmployeeService.getAdminDashboardStats(filters);
       setStats(statsData);
-      setCompanyData(companyDist);
-      setVisaAlerts(visaData);
+
+      // Phase 2: Defer heavy data fetching to avoid blocking initial load
+      if (fetchHeavyData) {
+        const [companyDist, visaData] = await Promise.all([
+          EmployeeService.getEmployeeDistributionByCompany(filters),
+          EmployeeService.getExpiringVisasSummary(8)
+        ]);
+
+        setCompanyData(companyDist);
+        setVisaAlerts(visaData);
+      }
 
     } catch (error) {
       toast.error('Failed to load dashboard data');
@@ -446,15 +450,28 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    fetchDashboardData();
+    // Initial load - only essential stats for fast startup
+    fetchDashboardData(false);
   }, [filters, fetchDashboardData]);
+
+  // Load heavy data after initial load completes
+  useEffect(() => {
+    if (!isLoading) {
+      const loadHeavyData = async () => {
+        await fetchDashboardData(true);
+      };
+      // Load heavy data with a small delay to prioritize initial render
+      const timeoutId = setTimeout(loadHeavyData, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [isLoading, fetchDashboardData]);
 
   const handleFilterChange = (newFilters: Partial<DashboardFilters>) => {
     setFilters(prev => ({ ...prev, ...newFilters }));
   };
 
   const handleManualRefresh = () => {
-    fetchDashboardData();
+    fetchDashboardData(true);
     toast.success('Dashboard refreshed');
   };
 

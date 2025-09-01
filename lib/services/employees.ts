@@ -507,7 +507,7 @@ export class EmployeeService {
           const searchPattern = `%${searchTerm}%`;
           try {
             query = query.or(
-              `name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,trade.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`
+              `name.ilike.${searchPattern},employee_id.ilike.${searchPattern},trade.ilike.${searchPattern},company_name.ilike.${searchPattern}`
             );
           } catch (error) {
             // Fallback to name search only if OR fails

@@ -20,6 +20,8 @@ import {
   Shield,
   UserPlus,
   LogOut,
+  Pin,
+  PinOff,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Logo from '@/components/ui/Logo';
@@ -37,6 +39,9 @@ interface SidebarItemProps {
 interface SidebarProps {
   onClose?: () => void;
   onCollapseChange?: (collapsed: boolean) => void;
+  isPersistent?: boolean;
+  onTogglePersistent?: () => void;
+  isPWA?: boolean;
 }
 
 function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: SidebarItemProps & { onClose?: () => void; isCollapsed?: boolean }) {
@@ -45,7 +50,7 @@ function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: S
       href={href}
       onClick={onClose}
       className={cn(
-        'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
+        'pwa-sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
         'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
         'active:bg-gray-200 dark:active:bg-gray-700',
         'transform hover:translate-x-1',
@@ -53,11 +58,6 @@ function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: S
           ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 shadow-sm'
           : 'text-gray-700 dark:text-gray-300'
       )}
-      style={{ 
-        touchAction: 'manipulation',
-        WebkitTapHighlightColor: 'transparent',
-        minHeight: '44px'
-      }}
     >
       <div className={cn(
         'transition-all duration-300 ease-in-out',
@@ -85,7 +85,7 @@ const adminItems = [
   { href: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Settings' },
 ];
 
-export default function Sidebar({ onClose, onCollapseChange }: SidebarProps) {
+export default function Sidebar({ onClose, onCollapseChange, isPersistent, onTogglePersistent, isPWA }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, signOut } = useAuth();
@@ -152,6 +152,37 @@ export default function Sidebar({ onClose, onCollapseChange }: SidebarProps) {
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
+        {/* PWA Persistent Sidebar Toggle */}
+        {isPWA && onTogglePersistent && (
+          <button
+            onClick={onTogglePersistent}
+            className={cn(
+              'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
+              'hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-sm',
+              isPersistent 
+                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' 
+                : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
+            )}
+            style={{ 
+              touchAction: 'manipulation',
+              WebkitTapHighlightColor: 'transparent',
+              minHeight: '44px'
+            }}
+          >
+            {isPersistent ? (
+              <Pin className="w-5 h-5" />
+            ) : (
+              <PinOff className="w-5 h-5" />
+            )}
+            <span className={cn(
+              'font-medium transition-all duration-300',
+              isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
+            )}>
+              {isPersistent ? 'Unpin Sidebar' : 'Pin Sidebar'}
+            </span>
+          </button>
+        )}
+        
         <ThemeToggle size="sm" variant="minimal" />
         <div className={cn(
           'text-xs text-gray-500 dark:text-gray-400 transition-all duration-300',
@@ -174,6 +205,11 @@ export default function Sidebar({ onClose, onCollapseChange }: SidebarProps) {
             'hover:bg-red-50 dark:hover:bg-red-900/20 hover:shadow-sm',
             'text-red-600 dark:text-red-400'
           )}
+          style={{ 
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            minHeight: '44px'
+          }}
         >
           <LogOut className="w-5 h-5" />
           <span className={cn(

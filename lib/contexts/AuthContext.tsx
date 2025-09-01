@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { Session } from '@supabase/supabase-js';
 import AuthService, { AuthUser } from '@/lib/services/auth';
-import { getAuthState, clearAuthCache } from '@/lib/supabase/client';
+import { getAuthState, clearAuthCache, isSupabaseAvailable } from '@/lib/supabase/client';
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -27,26 +27,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [isApproved, setIsApproved] = useState(false);
 
   useEffect(() => {
-    // Get initial session with caching
+    // Get initial session with robust error handling
     const getInitialSession = async () => {
       try {
+        // If Supabase is not available, skip authentication
+        if (!isSupabaseAvailable) {
+          console.log('⚠️ Supabase not available, skipping authentication');
+          setSession(null);
+          setUser(null);
+          setIsApproved(false);
+          setLoading(false);
+          return;
+        }
+
         // Use cached auth state for faster loading
         const cachedAuth = await getAuthState();
         setSession(cachedAuth.session);
 
         if (cachedAuth.session) {
-          const user = await AuthService.getCurrentUser();
-          setUser(user);
-          // Check approval status
-          if (user) {
-            const approved = await AuthService.isApproved();
-            setIsApproved(approved);
+          try {
+            const user = await AuthService.getCurrentUser();
+            setUser(user);
+            // Check approval status
+            if (user) {
+              const approved = await AuthService.isApproved();
+              setIsApproved(approved);
+            }
+          } catch (userError) {
+            console.error('Error getting user data:', userError);
+            // Continue with session but no user data
           }
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
         // Clear cache on error
         clearAuthCache();
+        // Don't fail completely - allow app to load
       } finally {
         setLoading(false);
       }
