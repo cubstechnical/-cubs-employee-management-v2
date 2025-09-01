@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { ClientLayout } from '@/components/layout/ClientLayout'
 import AppWrapper from '@/components/layout/AppWrapper'
+import { QueryProvider } from '@/components/providers/QueryProvider'
+import PerformanceMonitor from '@/components/utils/PerformanceMonitor'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -95,35 +97,30 @@ export default function RootLayout({
         <meta name="application-name" content="CUBS Admin" />
         <meta name="msapplication-TileColor" content="#111827" />
         <meta name="msapplication-tap-highlight" content="no" />
-      </head>
-      <body className={`${inter.variable} font-sans`}>
+        <meta name="theme-color" content="#111827" />
+        
+        {/* Resource hints for performance */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://s3.us-east-005.backblazeb2.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://s3.us-east-005.backblazeb2.com" />
+        
+        {/* App icons and manifest */}
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/assets/appicon-512x512.png" sizes="32x32" />
         <link rel="icon" href="/assets/appicon-512x512.png" sizes="192x192" />
         <link rel="icon" href="/assets/appicon-512x512.png" sizes="512x512" />
         <link rel="apple-touch-icon" href="/assets/appicon-512x512.png" />
         <link rel="apple-touch-icon" href="/assets/appicon-512x512.png" sizes="180x180" />
-        <meta name="theme-color" content="#111827" />
-        {/* Web-vitals to Sentry (if Sentry is present) */}
-        <script dangerouslySetInnerHTML={{ __html: `
-          (function(){
-            try {
-              function send(metric){
-                var S = (window).Sentry; if (!S || !S.captureMessage) return;
-                S.captureMessage('web-vital', { level: 'info', tags: { metric: metric.name }, extra: metric });
-              }
-              var w = window; w.__onWebVitals = send;
-            } catch(e) {}
-          })();
-        `}} />
-        <ClientLayout>
-          <AppWrapper>
-            {children}
-          </AppWrapper>
-        </ClientLayout>
+      </head>
+      <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
+        <PerformanceMonitor />
+        <QueryProvider>
+          <ClientLayout>
+            <AppWrapper>
+              {children}
+            </AppWrapper>
+          </ClientLayout>
+        </QueryProvider>
       </body>
     </html>
   )

@@ -33,7 +33,7 @@ function checkCommand(command, description) {
 
 // Check configuration files
 console.log('📁 Configuration Files:');
-checkFile('app.json', 'Expo app configuration');
+checkFile('expo.json', 'Expo app configuration');
 checkFile('eas.json', 'EAS Build configuration');
 checkFile('capacitor.config.ts', 'Capacitor configuration');
 checkFile('metro.config.js', 'Metro bundler configuration');

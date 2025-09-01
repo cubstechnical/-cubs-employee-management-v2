@@ -28,10 +28,10 @@ const withPWA = require('next-pwa')({
 });
 
 /** @type {import('next').NextConfig} */
-const baseConfig = {
-  // Mobile-optimized build configuration
-  // Note: output: 'export' is not compatible with API routes
-  // For Capacitor, we'll use a different approach
+const mobileConfig = {
+  // Mobile-optimized build configuration for Capacitor
+  output: 'export', // Required for Capacitor static hosting
+  distDir: 'dist', // Output to dist directory
   trailingSlash: true, // Required for static export
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
@@ -71,33 +71,7 @@ const baseConfig = {
     B2_ENDPOINT: process.env.B2_ENDPOINT || '',
     B2_BUCKET_ID: process.env.B2_BUCKET_ID || '',
   },
-  webpack: (config, { isServer, dev }) => {
-    // Optimize bundle splitting and chunk loading
-    if (!isServer && !dev) {
-      config.optimization = {
-        ...config.optimization,
-        splitChunks: {
-          ...config.optimization.splitChunks,
-          chunks: 'all',
-          cacheGroups: {
-            ...config.optimization.splitChunks.cacheGroups,
-            vendor: {
-              test: /[\\/]node_modules[\\/]/,
-              name: 'vendors',
-              chunks: 'all',
-              enforce: true,
-            },
-            common: {
-              name: 'common',
-              minChunks: 2,
-              chunks: 'all',
-              enforce: true,
-            },
-          },
-        },
-      };
-    }
-
+  webpack: (config, { isServer }) => {
     // Ignore optional native deps used by ws in Node, not needed for Next builds
     config.externals = config.externals || [];
     // For server builds, mark as externals false via fallback so bundler won't try to resolve
@@ -118,4 +92,4 @@ const baseConfig = {
   },
 }
 
-module.exports = withPWA(baseConfig)
+module.exports = withPWA(mobileConfig)

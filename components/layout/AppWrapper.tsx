@@ -22,7 +22,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
 
       setFastLoadMode(true);
       setProgress(100);
-      setTimeout(() => setAppLoading(false), 500);
+      setTimeout(() => setAppLoading(false), 200);
       return;
     }
   }, []);
@@ -31,12 +31,12 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     // Skip loading logic in fast mode
     if (fastLoadMode) return;
 
-    // Add timeout to prevent infinite loading (10 seconds max)
+    // Add timeout to prevent infinite loading (2 seconds max)
     const timeout = setTimeout(() => {
       setHasTimedOut(true);
       setProgress(100);
-      setTimeout(() => setAppLoading(false), 200);
-    }, 10000);
+      setTimeout(() => setAppLoading(false), 100);
+    }, 2000);
 
     // Simulate app initialization progress
     const timer = setInterval(() => {
@@ -58,7 +58,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
       clearInterval(timer);
       clearTimeout(timeout);
       setProgress(100);
-      setTimeout(() => setAppLoading(false), 300);
+      setTimeout(() => setAppLoading(false), 100);
     }
 
     return () => {
@@ -67,9 +67,9 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     };
   }, [loading, hasTimedOut, fastLoadMode]);
 
-  // Force loading completion after 3 seconds in normal mode, 1 second in fast mode
+  // Force loading completion after minimal delay
   useEffect(() => {
-    const forceLoadDelay = fastLoadMode ? 1000 : 3000;
+    const forceLoadDelay = fastLoadMode ? 200 : 500; // Much faster
     const forceLoadTimer = setTimeout(() => {
       if (appLoading) {
         setAppLoading(false);
@@ -86,7 +86,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
       // Preload data in background after app is ready
       setTimeout(() => {
         preloadAppData();
-      }, 1000);
+      }, 200);
     }
   }, [appLoading]);
 

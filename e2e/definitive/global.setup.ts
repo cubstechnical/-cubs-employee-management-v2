@@ -22,7 +22,7 @@ async function globalSetup(config: FullConfig) {
     console.log('📄 Login page loaded');
     
     // Wait for login form to be visible - try multiple selectors
-    await page.waitForSelector('h1:has-text("Sign In"), h1:has-text("Login"), form', { timeout: 15000 });
+    await page.waitForSelector('h1:has-text("Sign In"), h1:has-text("Login"), form, input[type="email"]', { timeout: 15000 });
     
     // Fill in real credentials - try multiple placeholder variations
     const emailInput = page.getByPlaceholder('Enter your email').or(page.getByPlaceholder('Email')).or(page.locator('input[type="email"]'));
@@ -38,7 +38,7 @@ async function globalSetup(config: FullConfig) {
     console.log('🚀 Login attempt initiated');
     
     // Wait for navigation and check if login was successful
-    await page.waitForTimeout(5000);
+    await page.waitForTimeout(3000);
     
     const currentUrl = page.url();
     console.log('📍 Current URL after login:', currentUrl);

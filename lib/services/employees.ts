@@ -980,8 +980,54 @@ export class EmployeeService {
     }
   }
 
-  // Dashboard-specific methods
+  // Dashboard-specific methods - OPTIMIZED with single RPC call
   static async getAdminDashboardStats(filters?: DashboardFilters): Promise<DashboardStats> {
+    try {
+      // Check cache first
+      const cacheKey = JSON.stringify(filters || {});
+      const cached = this.dashboardStatsCache.get(cacheKey);
+      if (cached && Date.now() - cached.timestamp < this.DASHBOARD_CACHE_DURATION_MS) {
+        return cached.data;
+      }
+
+      // Use the new consolidated RPC function
+      const { data, error } = await supabase.rpc('get_dashboard_stats');
+
+      if (error) {
+        console.error('Error fetching dashboard stats via RPC:', error);
+        // Fallback to individual queries if RPC fails
+        return this.getAdminDashboardStatsFallback(filters);
+      }
+
+      if (!data) {
+        throw new Error('No data returned from dashboard stats function');
+      }
+
+      // Type assertion for the RPC response - cast to any first, then to DashboardStats
+      const rpcData = data as any;
+
+      const stats: DashboardStats = {
+        totalEmployees: Number(rpcData.totalEmployees) || 0,
+        activeEmployees: Number(rpcData.activeEmployees) || 0,
+        totalDocuments: Number(rpcData.totalDocuments) || 0,
+        pendingApprovals: Number(rpcData.pendingApprovals) || 0,
+        visasExpiringSoon: Number(rpcData.visasExpiringSoon) || 0,
+        departments: Number(rpcData.departments) || 0
+      };
+
+      // Cache the result
+      this.dashboardStatsCache.set(cacheKey, { data: stats, timestamp: Date.now() });
+
+      return stats;
+    } catch (error) {
+      console.error('Error in getAdminDashboardStats:', error);
+      // Fallback to individual queries
+      return this.getAdminDashboardStatsFallback(filters);
+    }
+  }
+
+  // Fallback method for dashboard stats (original implementation)
+  private static async getAdminDashboardStatsFallback(filters?: DashboardFilters): Promise<DashboardStats> {
     try {
       const dateFilter = this.getDateFilter(filters?.dateRange);
       
@@ -1039,7 +1085,7 @@ export class EmployeeService {
         departments: uniqueDepartments
       };
     } catch (error) {
-      console.error('Error in getAdminDashboardStats:', error);
+      console.error('Error in getAdminDashboardStatsFallback:', error);
       throw error;
     }
   }

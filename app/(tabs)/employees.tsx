@@ -9,7 +9,8 @@ import Input from '@/components/ui/Input';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Metadata } from 'next';
-import { EmployeeService, PaginationParams, EmployeeFilters, FilterOptions } from '@/lib/services/employees';
+import { PaginationParams, EmployeeFilters } from '@/lib/services/employees';
+import { useEmployees, useEmployeeFilterOptions, useRefreshEmployees } from '@/lib/hooks/useEmployees';
 
 export const metadata: Metadata = {
   title: 'Employees',
@@ -124,16 +125,11 @@ const EmployeeCard = ({ employee, onView, onEdit }: {
   );
 };
 
-// Main Employees component
+// Main Employees component - OPTIMIZED with TanStack Query
 function EmployeesOptimized() {
   const router = useRouter();
-  const [employees, setEmployees] = useState<Employee[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [initialLoading, setInitialLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalEmployees, setTotalEmployees] = useState(0);
   const [filters, setFilters] = useState<EmployeeFilters>({
     company_name: '',
     status: '',
@@ -141,50 +137,40 @@ function EmployeesOptimized() {
     nationality: ''
   });
   const [showFilters, setShowFilters] = useState(false);
-  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
-    companies: [],
-    statuses: [],
-    visaStatuses: [],
-    nationalities: [],
-    trades: []
-  });
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const fetchEmployees = useCallback(async (page?: number, search?: string, filterOpts?: EmployeeFilters) => {
-    const pageToFetch = page || currentPage;
-    const searchToUse = search !== undefined ? search : debouncedSearchTerm;
-    const filtersToUse = filterOpts || filters;
+  // Use TanStack Query hooks for data fetching
+  const pagination: PaginationParams = { page: currentPage, pageSize: 10 };
+  const employeeFilters: EmployeeFilters = {
+    ...filters,
+    search: debouncedSearchTerm
+  };
 
-      setLoading(true);
-    try {
-      const params: PaginationParams = {
-        page: pageToFetch,
-        pageSize: 10
-      };
+  const { 
+    data: employeesData, 
+    isLoading, 
+    error,
+    isFetching 
+  } = useEmployees(employeeFilters, pagination);
 
-      const result = await EmployeeService.getEmployees(params, {
-        ...filtersToUse,
-        search: searchToUse
-      });
-      
-      if (result.employees) {
-        setEmployees(result.employees);
-        setTotalPages(result.totalPages || 1);
-        setTotalEmployees(result.total || 0);
-      }
-    } catch (error) {
-      toast.error('Failed to load employees');
-    } finally {
-        setLoading(false);
-        setInitialLoading(false);
-      }
-  }, [currentPage, debouncedSearchTerm, filters]);
+  const { 
+    data: filterOptions, 
+    isLoading: filterOptionsLoading 
+  } = useEmployeeFilterOptions();
 
-  const handleRefresh = useCallback(async () => {
-    await fetchEmployees();
-    toast.success('Employees refreshed');
-  }, [fetchEmployees]);
+  const refreshEmployees = useRefreshEmployees();
+
+  // Extract data from query result
+  const employees = employeesData?.employees || [];
+  const totalPages = employeesData?.totalPages || 1;
+  const totalEmployees = employeesData?.total || 0;
+  const loading = isLoading || filterOptionsLoading;
+  const initialLoading = isLoading && !employeesData;
+
+  const handleRefresh = useCallback(() => {
+    refreshEmployees();
+  }, [refreshEmployees]);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
@@ -210,25 +196,6 @@ function EmployeesOptimized() {
     setCurrentPage(1);
   };
 
-  // Load employees when dependencies change
-  useEffect(() => {
-    fetchEmployees();
-  }, [fetchEmployees]);
-
-  // Load filter options
-  useEffect(() => {
-    const loadFilterOptions = async () => {
-      try {
-        const options = await EmployeeService.getFilterOptions();
-        setFilterOptions(options);
-      } catch (error) {
-        console.error('Failed to load filter options:', error);
-      }
-    };
-
-    loadFilterOptions();
-  }, []);
-
   if (initialLoading) {
     return (
       <Layout>
@@ -251,6 +218,12 @@ function EmployeesOptimized() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Employees</h1>
             <p className="text-gray-600 dark:text-gray-400">
               {totalEmployees} employee{totalEmployees !== 1 ? 's' : ''} found
+              {isFetching && !loading && (
+                <span className="ml-2 text-blue-600 dark:text-blue-400">
+                  <Loader2 className="w-4 h-4 inline animate-spin mr-1" />
+                  Updating...
+                </span>
+              )}
               </p>
             </div>
           <Button
@@ -318,7 +291,7 @@ function EmployeesOptimized() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                     >
                     <option value="">All Companies</option>
-                    {filterOptions.companies.map(company => (
+                    {filterOptions?.companies?.map(company => (
                         <option key={company} value={company}>{company}</option>
                       ))}
                     </select>
@@ -334,7 +307,7 @@ function EmployeesOptimized() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     <option value="">All Statuses</option>
-                    {filterOptions.statuses.map(status => (
+                    {filterOptions?.statuses?.map(status => (
                       <option key={status} value={status}>{status}</option>
                       ))}
                     </select>
@@ -350,7 +323,7 @@ function EmployeesOptimized() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     <option value="">All Visa Statuses</option>
-                    {filterOptions.visaStatuses.map(status => (
+                    {filterOptions?.visaStatuses?.map(status => (
                       <option key={status} value={status}>{status}</option>
                       ))}
                     </select>
@@ -366,7 +339,7 @@ function EmployeesOptimized() {
                     className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                   >
                     <option value="">All Nationalities</option>
-                    {filterOptions.nationalities.map(nationality => (
+                    {filterOptions?.nationalities?.map(nationality => (
                         <option key={nationality} value={nationality}>{nationality}</option>
                       ))}
                     </select>
@@ -382,6 +355,15 @@ function EmployeesOptimized() {
             <div className="text-center py-8">
               <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
               <p className="text-gray-600 dark:text-gray-400">Loading employees...</p>
+            </div>
+          ) : error ? (
+            <div className="text-center py-8">
+              <XCircle className="w-8 h-8 text-red-500 mx-auto mb-4" />
+              <p className="text-red-600 dark:text-red-400 mb-4">Failed to load employees</p>
+              <Button onClick={handleRefresh} variant="outline">
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
             </div>
           ) : employees.length === 0 ? (
             <Card className="p-8 text-center">

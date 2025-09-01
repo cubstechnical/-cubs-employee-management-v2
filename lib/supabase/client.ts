@@ -45,40 +45,64 @@ let authStateCache: {
 } | null = null;
 
 const AUTH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let authPromise: Promise<any> | null = null; // Prevent multiple simultaneous calls
 
 // Enhanced auth state management with timeout
 export const getAuthState = async () => {
   const now = Date.now();
+
+  // If Supabase is not available, return empty state immediately
+  if (!isSupabaseAvailable) {
+    return { user: null, session: null, timestamp: now };
+  }
 
   // Return cached auth state if still valid
   if (authStateCache && (now - authStateCache.timestamp) < AUTH_CACHE_DURATION) {
     return authStateCache;
   }
 
-  try {
-    // Add timeout to prevent hanging
-    const authPromise = supabase.auth.getSession();
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Auth timeout')), 10000)
-    );
-
-    const { data: { session }, error } = await Promise.race([authPromise, timeoutPromise]) as any;
-
-    if (error) {
-      console.error('Auth state error:', error);
-      return { user: null, session: null, timestamp: now };
+  // If there's already an auth request in progress, wait for it
+  if (authPromise) {
+    try {
+      return await authPromise;
+    } catch (error) {
+      // If the existing promise fails, continue with new request
+      authPromise = null;
     }
+  }
 
-    // Cache the result
-    authStateCache = {
-      user: session?.user || null,
-      session,
-      timestamp: now
-    };
+  try {
+    // Create new auth promise
+    authPromise = (async () => {
+      // Add timeout to prevent hanging (reduced from 10s to 5s)
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth timeout')), 5000)
+      );
 
-    return authStateCache;
+      const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+
+      if (error) {
+        console.error('Auth state error:', error);
+        return { user: null, session: null, timestamp: now };
+      }
+
+      // Cache the result
+      authStateCache = {
+        user: session?.user || null,
+        session,
+        timestamp: now
+      };
+
+      return authStateCache;
+    })();
+
+    const result = await authPromise;
+    authPromise = null; // Clear the promise after completion
+    return result;
   } catch (error) {
     console.error('Auth state timeout or error:', error);
+    authPromise = null; // Clear the promise on error
     // Return empty state on timeout
     return { user: null, session: null, timestamp: now };
   }
@@ -87,6 +111,7 @@ export const getAuthState = async () => {
 // Clear auth cache when needed
 export const clearAuthCache = () => {
   authStateCache = null;
+  authPromise = null;
 };
 
 // Preload critical app data

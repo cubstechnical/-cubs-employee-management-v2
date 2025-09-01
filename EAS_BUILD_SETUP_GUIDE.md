@@ -108,7 +108,7 @@ npm run eas:submit:android
 
 ## Project Configuration Files
 
-### app.json
+### expo.json
 Contains your app configuration including:
 - App name and bundle identifier
 - Icons and splash screens

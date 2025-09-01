@@ -75,12 +75,12 @@ function groupNotificationsByInterval(records: VisaExpiryRecord[]): Record<numbe
 
 async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
   const { data, error } = await supabase
-    .from('employee_table') // Updated to match your actual table name
+    .from('employee_table')
     .select(`
       id,
-      employee_name,
+      name,
       visa_expiry_date,
-      email,
+      email_id,
       notification_sent_60,
       notification_sent_30,
       notification_sent_15,
@@ -88,14 +88,28 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
       notification_sent_1
     `)
     .not('visa_expiry_date', 'is', null)
-    .not('visa_expiry_date', 'eq', '');
+    .not('visa_expiry_date', 'eq', '')
+    .eq('is_active', true);
 
   if (error) {
     console.error('Error fetching visa expiry records:', error);
     return [];
   }
 
-  return (data as VisaExpiryRecord[]) || [];
+  // Map the database columns to our interface
+  const mappedData: VisaExpiryRecord[] = (data || []).map(record => ({
+    id: String(record.id || ''),
+    employee_name: String(record.name || ''),
+    visa_expiry_date: String(record.visa_expiry_date || ''),
+    email: String(record.email_id || 'no-email@cubstechnical.com'),
+    notification_sent_60: Boolean(record.notification_sent_60),
+    notification_sent_30: Boolean(record.notification_sent_30),
+    notification_sent_15: Boolean(record.notification_sent_15),
+    notification_sent_7: Boolean(record.notification_sent_7),
+    notification_sent_1: Boolean(record.notification_sent_1),
+  }));
+
+  return mappedData;
 }
 
 function calculateDaysUntilExpiry(visaExpiryDate: string): number {
@@ -320,7 +334,7 @@ async function updateNotificationFlagsForBatch(employees: VisaExpiryRecord[], da
   }
 
   const { error } = await supabase
-    .from('employee_table') // Updated to match your actual table name
+    .from('employee_table')
     .update(updateData)
     .in('id', employeeIds);
 
@@ -346,9 +360,10 @@ export async function getVisaExpiryStats(): Promise<{
 }> {
   try {
     const { data: employees, error } = await supabase
-      .from('employee_table') // Updated to match your actual table name
+      .from('employee_table')
       .select('visa_expiry_date, notification_sent_60, notification_sent_30, notification_sent_15, notification_sent_7, notification_sent_1')
-      .not('visa_expiry_date', 'is', null);
+      .not('visa_expiry_date', 'is', null)
+      .eq('is_active', true);
 
     if (error) {
       console.error('❌ Error fetching visa expiry stats:', error);

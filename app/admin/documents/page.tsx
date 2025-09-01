@@ -375,9 +375,7 @@ function AdminDocumentsContent() {
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 {folder.companyName}
               </span>
-              <span className="text-sm text-gray-500 dark:text-gray-400">
-                {folder.documentCount} documents
-              </span>
+
             </div>
           </div>
         </div>

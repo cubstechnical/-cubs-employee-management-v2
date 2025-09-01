@@ -161,7 +161,7 @@ npx cap open ios
 # Update version in package.json
 "version": "1.0.1"
 
-# Update version in app.json (for Expo compatibility)
+# Update version in expo.json (for Expo compatibility)
 "version": "1.0.1"
 
 # Update version in capacitor.config.ts (if needed)

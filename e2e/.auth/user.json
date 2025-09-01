@@ -5,7 +5,7 @@
       "value": "mock-access-token",
       "domain": "localhost",
       "path": "/",
-      "expires": 1754848996,
+      "expires": 1756754182,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -15,7 +15,7 @@
       "value": "mock-refresh-token",
       "domain": "localhost",
       "path": "/",
-      "expires": 1754931796,
+      "expires": 1756836982,
       "httpOnly": false,
       "secure": false,
       "sameSite": "Lax"
@@ -27,11 +27,11 @@
       "localStorage": [
         {
           "name": "supabase.auth.token",
-          "value": "{\"access_token\":\"mock-access-token\",\"refresh_token\":\"mock-refresh-token\",\"expires_at\":1754848996,\"token_type\":\"bearer\"}"
+          "value": "{\"access_token\":\"mock-access-token\",\"refresh_token\":\"mock-refresh-token\",\"expires_at\":1756754182,\"token_type\":\"bearer\"}"
         },
         {
           "name": "supabase.auth.expires_at",
-          "value": "1754848996"
+          "value": "1756754182"
         },
         {
           "name": "supabase.auth.refresh_token",

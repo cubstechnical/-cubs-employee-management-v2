@@ -36,19 +36,32 @@ jobs:
       run: npm ci
 
     - name: Setup environment variables
+      env:
+        # GitHub Actions secrets - only available in repository context
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        GMAIL_FROM_NAME: ${{ secrets.GMAIL_FROM_NAME }}
+        B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+        B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        B2_BUCKET_NAME: ${{ secrets.B2_BUCKET_NAME }}
+        B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+        B2_BUCKET_ID: ${{ secrets.B2_BUCKET_ID }}
       run: |
         cp env.example .env
-        echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
-        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
-        echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
-        echo "GMAIL_USER=${{ secrets.GMAIL_USER }}" >> .env
-        echo "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}" >> .env
-        echo "GMAIL_FROM_NAME=${{ secrets.GMAIL_FROM_NAME }}" >> .env
-        echo "B2_APPLICATION_KEY_ID=${{ secrets.B2_APPLICATION_KEY_ID }}" >> .env
-        echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env
-        echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env
-        echo "B2_ENDPOINT=${{ secrets.B2_ENDPOINT }}" >> .env
-        echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
+        echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}" >> .env
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" >> .env
+        echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}" >> .env
+        echo "GMAIL_USER=${GMAIL_USER:-}" >> .env
+        echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}" >> .env
+        echo "GMAIL_FROM_NAME=${GMAIL_FROM_NAME:-}" >> .env
+        echo "B2_APPLICATION_KEY_ID=${B2_APPLICATION_KEY_ID:-}" >> .env
+        echo "B2_APPLICATION_KEY=${B2_APPLICATION_KEY:-}" >> .env
+        echo "B2_BUCKET_NAME=${B2_BUCKET_NAME:-}" >> .env
+        echo "B2_ENDPOINT=${B2_ENDPOINT:-}" >> .env
+        echo "B2_BUCKET_ID=${B2_BUCKET_ID:-}" >> .env
         echo "NODE_ENV=production" >> .env
 
     - name: Build mobile app
@@ -112,19 +125,32 @@ jobs:
       run: npm ci
 
     - name: Setup environment variables
+      env:
+        # GitHub Actions secrets - only available in repository context
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        GMAIL_FROM_NAME: ${{ secrets.GMAIL_FROM_NAME }}
+        B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+        B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        B2_BUCKET_NAME: ${{ secrets.B2_BUCKET_NAME }}
+        B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+        B2_BUCKET_ID: ${{ secrets.B2_BUCKET_ID }}
       run: |
         cp env.example .env
-        echo "NEXT_PUBLIC_SUPABASE_URL=${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}" >> .env
-        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}" >> .env
-        echo "SUPABASE_SERVICE_ROLE_KEY=${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}" >> .env
-        echo "GMAIL_USER=${{ secrets.GMAIL_USER }}" >> .env
-        echo "GMAIL_APP_PASSWORD=${{ secrets.GMAIL_APP_PASSWORD }}" >> .env
-        echo "GMAIL_FROM_NAME=${{ secrets.GMAIL_FROM_NAME }}" >> .env
-        echo "B2_APPLICATION_KEY_ID=${{ secrets.B2_APPLICATION_KEY_ID }}" >> .env
-        echo "B2_APPLICATION_KEY=${{ secrets.B2_APPLICATION_KEY }}" >> .env
-        echo "B2_BUCKET_NAME=${{ secrets.B2_BUCKET_NAME }}" >> .env
-        echo "B2_ENDPOINT=${{ secrets.B2_ENDPOINT }}" >> .env
-        echo "B2_BUCKET_ID=${{ secrets.B2_BUCKET_ID }}" >> .env
+        echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}" >> .env
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" >> .env
+        echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}" >> .env
+        echo "GMAIL_USER=${GMAIL_USER:-}" >> .env
+        echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}" >> .env
+        echo "GMAIL_FROM_NAME=${GMAIL_FROM_NAME:-}" >> .env
+        echo "B2_APPLICATION_KEY_ID=${B2_APPLICATION_KEY_ID:-}" >> .env
+        echo "B2_APPLICATION_KEY=${B2_APPLICATION_KEY:-}" >> .env
+        echo "B2_BUCKET_NAME=${B2_BUCKET_NAME:-}" >> .env
+        echo "B2_ENDPOINT=${B2_ENDPOINT:-}" >> .env
+        echo "B2_BUCKET_ID=${B2_BUCKET_ID:-}" >> .env
         echo "NODE_ENV=production" >> .env
 
     - name: Build mobile app
@@ -190,6 +216,9 @@ jobs:
         echo "iOS platform setup completed"
 
     - name: Create export options plist
+      env:
+        # GitHub Actions secret - only available in repository context
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       run: |
         cd ios/App
         echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
@@ -199,7 +228,7 @@ jobs:
         echo '    <key>method</key>' >> exportOptions.plist
         echo '    <string>development</string>' >> exportOptions.plist
         echo '    <key>teamID</key>' >> exportOptions.plist
-        echo "    <string>\${{ secrets.APPLE_TEAM_ID || 'DEVELOPMENT' }}</string>" >> exportOptions.plist
+        echo "    <string>${APPLE_TEAM_ID:-DEVELOPMENT}</string>" >> exportOptions.plist
         echo '    <key>signingStyle</key>' >> exportOptions.plist
         echo '    <string>automatic</string>' >> exportOptions.plist
         echo '    <key>stripSwiftSymbols</key>' >> exportOptions.plist

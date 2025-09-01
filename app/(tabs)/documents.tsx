@@ -36,6 +36,7 @@ import Button from '@/components/ui/Button';
 import { Upload, Search, Folder, File, ChevronRight, Download, Eye, Trash2, FileText, Image, FileVideo, FileAudio, Archive, Loader2, X } from 'lucide-react';
 import { saveAs } from 'file-saver';
 import { DocumentService } from '@/lib/services/documents';
+import { useDocumentFolders, useEmployeeFolders, useEmployeeDocuments, useCompanyDocuments, useDocumentSearch, useRefreshDocuments } from '@/lib/hooks/useDocuments';
 // UploadModal is now lazy loaded as LazyUploadModal
 import toast from 'react-hot-toast';
 
@@ -142,11 +143,7 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
                 {formatFileSize(item.file_size)}
               </p>
             )}
-            {item.type === 'folder' && item.documentCount !== undefined && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                {item.documentCount} documents
-              </p>
-            )}
+
             {item.type === 'document' && (item.employeeName || item.companyName) && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {item.employeeName && item.companyName 
@@ -236,30 +233,107 @@ const DocumentSkeleton = () => (
 );
 
 function DocumentsContent() {
-  const [items, setItems] = useState<FolderItem[]>([]);
   const [currentPath, setCurrentPath] = useState('/');
-  const [loading, setLoading] = useState(true);
-  const [loadingStates, setLoadingStates] = useState<{
-    companies: boolean;
-    employees: boolean;  
-    documents: boolean;
-  }>({
-    companies: false,
-    employees: false,
-    documents: false
-  });
   const [searchTerm, setSearchTerm] = useState('');
-  const [searchResults, setSearchResults] = useState<FolderItem[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loadingDocumentId, setLoadingDocumentId] = useState<string | null>(null);
-  const shouldBypassCacheRef = useRef(false);
-  const latestRequestIdRef = useRef(0);
-  const activeRequestsRef = useRef<Set<string>>(new Set());
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkDownloading, setIsBulkDownloading] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const hasClearedCacheRef = useRef(false);
+
+  // Use TanStack Query hooks for data fetching
+  const { 
+    data: foldersData, 
+    isLoading: foldersLoading, 
+    error: foldersError 
+  } = useDocumentFolders();
+
+  const pathParts = currentPath.split('/').filter(Boolean);
+  const companyName = pathParts[0];
+  const employeeId = pathParts[1];
+
+  const { 
+    data: employeeFoldersData, 
+    isLoading: employeeFoldersLoading, 
+    error: employeeFoldersError 
+  } = useEmployeeFolders(companyName || '');
+
+  const { 
+    data: employeeDocumentsData, 
+    isLoading: employeeDocumentsLoading, 
+    error: employeeDocumentsError 
+  } = useEmployeeDocuments(employeeId || '');
+
+  const { 
+    data: companyDocumentsData, 
+    isLoading: companyDocumentsLoading, 
+    error: companyDocumentsError 
+  } = useCompanyDocuments(companyName || '');
+
+  const { 
+    data: searchData, 
+    isLoading: isSearching, 
+    error: searchError 
+  } = useDocumentSearch(searchTerm);
+
+  const refreshDocuments = useRefreshDocuments();
+
+  // Determine which data to display based on current path
+  let items: FolderItem[] = [];
+  let loading = false;
+  let error: string | null = null;
+
+  if (currentPath === '/') {
+    // Root path - show company folders
+    items = foldersData?.folders?.map(folder => ({
+      name: folder.name,
+      type: 'folder' as const,
+      path: folder.path,
+      documentCount: folder.documentCount
+    })) || [];
+    loading = foldersLoading;
+    error = foldersError?.message || null;
+  } else if (pathParts.length === 1) {
+    // Company level
+    if (companyName === 'Company Documents') {
+      // Show company documents directly
+      items = companyDocumentsData?.documents?.map(doc => ({
+        name: doc.file_name,
+        type: 'document' as const,
+        path: doc.file_path,
+        file_size: doc.file_size,
+        file_url: doc.file_url,
+        document_id: doc.id,
+        file_type: doc.file_type
+      })) || [];
+      loading = companyDocumentsLoading;
+      error = companyDocumentsError?.message || null;
+    } else {
+      // Show employee folders
+      items = employeeFoldersData?.folders?.map(folder => ({
+        name: folder.name,
+        type: 'folder' as const,
+        employeeId: folder.employeeId,
+        path: folder.path,
+        documentCount: folder.documentCount
+      })) || [];
+      loading = employeeFoldersLoading;
+      error = employeeFoldersError?.message || null;
+    }
+  } else if (pathParts.length === 2) {
+    // Employee level - show documents
+    items = employeeDocumentsData?.documents?.map(doc => ({
+      name: doc.file_name,
+      type: 'document' as const,
+      path: doc.file_path,
+      file_size: doc.file_size,
+      file_url: doc.file_url,
+      document_id: doc.id,
+      file_type: doc.file_type
+    })) || [];
+    loading = employeeDocumentsLoading;
+    error = employeeDocumentsError?.message || null;
+  }
 
   // Mobile detection
   useEffect(() => {
@@ -271,234 +345,20 @@ function DocumentsContent() {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Clear cache only on initial app load, not on every navigation
-  useEffect(() => {
-    if (!hasClearedCacheRef.current && currentPath === '/') {
-      DocumentService.clearCache();
-      hasClearedCacheRef.current = true;
-      console.log('🧹 Cleared document cache on initial load');
-    }
-  }, []); // Remove currentPath dependency to prevent clearing on navigation
-
-  const loadItems = useCallback(async () => {
-    const startTime = performance.now();
-    const requestId = ++latestRequestIdRef.current;
-    const requestKey = `load-${currentPath}`;
-    
-    // Simple request deduplication - only skip if exact same request
-    if (activeRequestsRef.current.has(requestKey)) {
-      console.log('🚫 Skipping duplicate request for:', currentPath, 'Request ID:', requestId);
-      return;
-    }
-    
-    activeRequestsRef.current.add(requestKey);
-      
-    console.log('🔄 Starting to load items for path:', currentPath, 'Request ID:', requestId);
-    
-    // For root path, load real company folders
-      if (currentPath === '/') {
-      console.log('🔄 Loading real company folders for root path');
-      setLoadingStates(prev => ({ ...prev, companies: true }));
-      
-      try {
-        // Use cache unless explicitly bypassed
-        const { folders, error } = await DocumentService.getDocumentFolders(!shouldBypassCacheRef.current);
-        if (error) {
-          console.error('❌ Error loading document folders:', error);
-          toast.error(error);
-          setLoading(false);
-          return;
-        }
-
-        const folderItems: FolderItem[] = folders
-          .filter((folder: any) => folder.type === 'company')
-          .map((folder: any) => ({
-            name: folder.name,
-            type: 'folder',
-            path: `/${folder.companyName}`
-          }));
-        
-          setItems(folderItems);
-        setLoadingStates(prev => ({ ...prev, companies: false }));
-        setLoading(false); // Also set the main loading state for UI compatibility
-        console.log(`✅ Loaded ${folderItems.length} real company folders ${!shouldBypassCacheRef.current ? '(cached)' : '(fresh)'}`);
-      } catch (error) {
-        console.error('❌ Error in loadItems:', error);
-        setLoadingStates(prev => ({ ...prev, companies: false }));
-        setLoading(false); // Also set the main loading state for UI compatibility
-      }
-      return;
-    }
-    
-    // Set loading state for non-root paths
-    setLoading(true);
-    
-    try {
-      console.log('🔄 Loading items for path:', currentPath);
-        const pathParts = currentPath.split('/').filter(Boolean);
-        const companyName = pathParts[0];
-        
-        if (pathParts.length === 1) {
-          // Company level - show employee folders or documents
-          if (companyName === 'Company Documents') {
-            // For Company Documents, show documents directly
-            console.log('📁 Loading Company Documents...');
-            const { documents, error } = await DocumentService.getCompanyDocuments('Company Documents');
-            console.log('📁 Company Documents result:', { count: documents?.length, error });
-            if (error) {
-              toast.error(error);
-            setLoading(false);
-              return;
-            }
-
-          const documentItems: FolderItem[] = documents.map((doc: Document) => ({
-              name: doc.file_name,
-              type: 'document',
-              path: doc.file_path,
-              file_size: doc.file_size,
-              file_url: doc.file_url,
-              document_id: doc.id,
-              file_type: doc.file_type
-            }));
-          
-            if (latestRequestIdRef.current === requestId) {
-              setItems(documentItems);
-              setLoading(false); // Also set the main loading state for UI compatibility
-            }
-                     } else {
-             // For other companies, show employee folders
-             console.log('🏢 Loading employee folders for company:', companyName);
-             setLoadingStates(prev => ({ ...prev, employees: true }));
-                          const { folders, error } = await DocumentService.getEmployeeFolders(companyName, !shouldBypassCacheRef.current);
-             console.log('📁 Received folders:', folders, 'Error:', error);
-             if (error) {
-               toast.error(error);
-            setLoadingStates(prev => ({ ...prev, employees: false }));
-            setLoading(false); // Also set the main loading state for UI compatibility
-               return;
-             }
-
-                           const folderItems: FolderItem[] = folders
-            .filter((folder: any) => folder.type === 'employee')
-            .map((folder: any) => ({
-                  name: folder.employeeName || folder.name,
-                  type: 'folder',
-                  employeeId: folder.employeeId,
-                  path: `${currentPath}/${folder.employeeId}`,
-                  documentCount: folder.documentCount
-                }));
-             console.log(`📁 Created folder items: ${folderItems.length} ${!shouldBypassCacheRef.current ? '(cached)' : '(fresh)'}`);
-          
-            if (latestRequestIdRef.current === requestId) {
-              setItems(folderItems);
-              setLoadingStates(prev => ({ ...prev, employees: false }));
-              setLoading(false); // Also set the main loading state for UI compatibility
-            }
-          }
-                 } else {
-           // Employee level - show documents
-           const employeeId = pathParts[1];
-           console.log('👤 Loading documents for employee:', employeeId, 'Type:', typeof employeeId);
-           setLoadingStates(prev => ({ ...prev, documents: true }));
-        
-        try {
-                      const { documents, error } = await DocumentService.getDocumentsForEmployee(employeeId);
-           console.log('📄 Received documents for employee:', employeeId, 'Count:', documents?.length, 'Error:', error);
-          
-           if (error) {
-            console.error('❌ Error loading employee documents:', error);
-            toast.error(`Failed to load documents: ${error}`);
-            setLoadingStates(prev => ({ ...prev, documents: false }));
-            setLoading(false); // Also set the main loading state for UI compatibility
-             return;
-           }
-
-          if (!documents || documents.length === 0) {
-            console.warn('⚠️ No documents found for employee:', employeeId);
-            toast.error(`No documents found for employee ${employeeId}`);
-            setItems([]);
-            setLoadingStates(prev => ({ ...prev, documents: false }));
-            setLoading(false); // Also set the main loading state for UI compatibility
-             return;
-           }
-
-          const documentItems: FolderItem[] = documents.map((doc: Document) => ({
-             name: doc.file_name,
-             type: 'document',
-             path: doc.file_path,
-             file_size: doc.file_size,
-             file_url: doc.file_url,
-             document_id: doc.id,
-             file_type: doc.file_type
-           }));
-           console.log('📄 Created document items:', documentItems.length);
-          
-          if (latestRequestIdRef.current === requestId) {
-            setItems(documentItems);
-            setLoadingStates(prev => ({ ...prev, documents: false }));
-            setLoading(false); // Also set the main loading state for UI compatibility
-          }
-        } catch (error) {
-          console.error('❌ Exception loading employee documents:', error);
-          toast.error('Failed to load employee documents');
-          setLoadingStates(prev => ({ ...prev, documents: false }));
-          setLoading(false); // Also set the main loading state for UI compatibility
-        }
-      }
-      
-      // Reset all loading states
-      setLoadingStates({
-        companies: false,
-        employees: false,
-        documents: false
-      });
-      setLoading(false); // Also set the main loading state for UI compatibility
-    } catch (error) {
-      console.error('Error loading items:', error);
-      toast.error('Failed to load documents');
-      // Reset all loading states on error
-      setLoadingStates({
-        companies: false,
-        employees: false,
-        documents: false
-      });
-      setLoading(false); // Also set the main loading state for UI compatibility
-    } finally {
-      // Always remove from active requests when done
-      activeRequestsRef.current.delete(requestKey);
-    }
-  }, [currentPath]);
-
-  // Background preloading for better UX
-  const preloadCompanyData = useCallback(async (companyName: string) => {
-    // Preload employee folders in background
-    setTimeout(async () => {
-      try {
-        await DocumentService.getEmployeeFolders(companyName);
-        console.log('⚡ Preloaded employees for:', companyName);
-      } catch (error) {
-        console.log('❌ Preload failed for:', companyName);
-      }
-    }, 1000); // Delay to not interfere with main loading
-  }, []);
-
+  // Simplified navigation handling with TanStack Query
   const handleItemClick = (item: FolderItem) => {
     if (item.type === 'folder') {
       console.log('📁 Folder clicked:', item.name, 'Path:', item.path);
-      shouldBypassCacheRef.current = true;
       setCurrentPath(item.path);
-      // cancel inflight and clear selections
-      latestRequestIdRef.current++;
       setSelectedIds(new Set());
-      
-      // Trigger background preloading for company folders
-      if (item.path.split('/').length === 2) { // Company level
-        const companyName = item.name;
-        preloadCompanyData(companyName);
-      }
     }
-    // Document clicks are handled by action buttons
   };
+
+  // Background preloading for better UX (simplified)
+  const preloadCompanyData = useCallback(async (companyName: string) => {
+    // TanStack Query handles preloading automatically
+    console.log('⚡ Preloading employees for:', companyName);
+  }, []);
 
   const toggleSelect = (docId?: string) => {
     if (!docId) return;
@@ -526,8 +386,7 @@ function DocumentsContent() {
       const blob = await res.blob();
       saveAs(blob, 'documents.zip');
       toast.success('Download started');
-      // Ensure next navigation bypasses cache to avoid stale folder lists
-      shouldBypassCacheRef.current = true;
+      refreshDocuments();
     } catch (e) {
       console.error('Bulk download error', e);
       toast.error('Failed to prepare zip');
@@ -543,45 +402,10 @@ function DocumentsContent() {
   };
   const clearSelection = () => setSelectedIds(new Set());
 
-  // Debounced loading to prevent rapid navigation issues
-  const debouncedLoadItems = useCallback(
-    debounce(loadItems, 300), // 300ms debounce
-    [loadItems]
-  );
-
-  // Debounced search function
-  const debouncedSearch = useCallback(
-    debounce(async (searchValue: string) => {
-      if (!searchValue || searchValue.trim().length === 0) {
-        setSearchResults([]);
-        setIsSearching(false);
-        return;
-      }
-
-      setIsSearching(true);
-      try {
-        console.log(`🔍 Performing document search for: "${searchValue}"`);
-        
-        // Use the new search function from DocumentService
-        const { documents, error } = await DocumentService.searchDocuments(searchValue);
-        
-        if (error) {
-          console.error('❌ Search error:', error);
-          toast.error('Search failed: ' + error);
-          setSearchResults([]);
-          return;
-        }
-
-        if (!documents || documents.length === 0) {
-          console.log('❌ No documents found matching search term');
-          setSearchResults([]);
-          return;
-        }
-
-        // Convert search results to FolderItem format
-        const searchItems: FolderItem[] = documents.map((doc: any) => ({
+  // Handle search results
+  const searchResults: FolderItem[] = searchData?.documents?.map((doc: any) => ({
           name: doc.file_name,
-          type: 'document',
+    type: 'document' as const,
           path: doc.file_path,
           file_size: doc.file_size,
           file_url: doc.file_url,
@@ -590,43 +414,13 @@ function DocumentsContent() {
           employeeId: doc.employee_id,
           employeeName: doc.employee_name,
           companyName: doc.company_name
-        }));
-
-        console.log(`✅ Found ${searchItems.length} documents matching search`);
-        setSearchResults(searchItems);
-      } catch (error) {
-        console.error('❌ Error in search:', error);
-        toast.error('Search failed');
-        setSearchResults([]);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 300), // 300ms debounce
-    []
-  );
-
-  // Single useEffect for loading items
-  useEffect(() => {
-    console.log('🔄 useEffect triggered for path:', currentPath);
-    debouncedLoadItems();
-  }, [currentPath, debouncedLoadItems]);
-
-  // Handle search term changes
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      debouncedSearch(searchTerm);
-    } else {
-      setSearchResults([]);
-      setIsSearching(false);
-    }
-  }, [searchTerm, debouncedSearch]);
+  })) || [];
 
 
 
   const handleUploadComplete = () => {
     setIsUploadModalOpen(false);
-    shouldBypassCacheRef.current = true;
-        loadItems();
+    refreshDocuments();
   };
 
   const handleDocumentView = async (item: FolderItem) => {
@@ -697,8 +491,7 @@ function DocumentsContent() {
       
       console.log('✅ Document deleted successfully');
               toast.success('Document deleted successfully');
-      shouldBypassCacheRef.current = true;
-      loadItems();
+      refreshDocuments();
     } catch (error) {
       console.error('❌ Error deleting document:', error);
       toast.error('Failed to delete document');
@@ -718,7 +511,6 @@ function DocumentsContent() {
       // Go back one level
       setCurrentPath('/' + pathParts.slice(0, -1).join('/'));
     }
-      shouldBypassCacheRef.current = true;
       setSelectedIds(new Set());
   };
 
@@ -815,10 +607,7 @@ function DocumentsContent() {
               <button
                 onClick={() => {
                   console.log('🔄 "Back to Companies" button clicked - navigating to root');
-                  // Clear any existing requests to allow navigation to proceed
-                  activeRequestsRef.current.clear();
                   setCurrentPath('/');
-                  shouldBypassCacheRef.current = false; // Use cache for faster loading
                   setSelectedIds(new Set());
                 }}
                 className="flex items-center space-x-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
@@ -840,12 +629,10 @@ function DocumentsContent() {
                     // Go back to company level
                     const companyPath = '/' + pathParts[0];
                     setCurrentPath(companyPath);
-                    shouldBypassCacheRef.current = false; // Use cache for faster loading
                     setSelectedIds(new Set());
                   } else {
                     // Go back to root
                     setCurrentPath('/');
-                    shouldBypassCacheRef.current = false; // Use cache for faster loading
                     setSelectedIds(new Set());
                   }
                 }}
@@ -859,7 +646,6 @@ function DocumentsContent() {
                 <button
                   onClick={() => {
                     setCurrentPath('/');
-                    shouldBypassCacheRef.current = false; // Use cache for faster loading
                     setSelectedIds(new Set());
                   }}
                   className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
@@ -873,7 +659,6 @@ function DocumentsContent() {
                       onClick={() => {
                         const newPath = '/' + breadcrumbParts.slice(0, index + 1).join('/');
                         setCurrentPath(newPath);
-                        shouldBypassCacheRef.current = index === 0 ? false : true; // Use cache for company level
                         setSelectedIds(new Set());
                       }}
                       className="text-blue-600 hover:text-blue-800 hover:underline max-w-32 truncate font-medium"

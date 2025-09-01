@@ -16,11 +16,13 @@ import {
   BarChart3,
   Download,
   Eye,
-  ShieldX
+  ShieldX,
+  Loader2
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { AuthService } from '@/lib/services/auth';
+import { useEmployeeDashboardStats } from '@/lib/hooks/useEmployees';
 import toast from 'react-hot-toast';
 
 interface PendingUser {
@@ -145,6 +147,13 @@ export default function AdminDashboard() {
   // Check if user is main admin (info@cubstechnical.com)
   const isMainAdmin = user?.email === 'info@cubstechnical.com';
 
+  // Use TanStack Query for dashboard stats
+  const { 
+    data: dashboardStats, 
+    isLoading: statsLoading, 
+    error: statsError 
+  } = useEmployeeDashboardStats();
+
   // Load pending users data
   const loadPendingUsers = useCallback(async () => {
     if (!isMainAdmin) return;
@@ -224,8 +233,8 @@ export default function AdminDashboard() {
           {/* Total Employees */}
           <StatCard
             label="Total Employees"
-            value="1,247"
-            change="+12%"
+            value={statsLoading ? "..." : dashboardStats?.totalEmployees?.toLocaleString() || "0"}
+            change={statsLoading ? "Loading..." : "Real-time data"}
             icon={Users}
             color="text-blue-600 dark:text-blue-400"
           />
@@ -233,8 +242,8 @@ export default function AdminDashboard() {
           {/* Active Documents */}
           <StatCard
             label="Active Documents"
-            value="3,891"
-            change="+8%"
+            value={statsLoading ? "..." : dashboardStats?.totalDocuments?.toLocaleString() || "0"}
+            change={statsLoading ? "Loading..." : "Real-time data"}
             icon={FileText}
             color="text-green-600 dark:text-green-400"
           />
@@ -253,8 +262,8 @@ export default function AdminDashboard() {
           {/* Departments */}
           <StatCard
             label="Departments"
-            value="12"
-            change="+2%"
+            value={statsLoading ? "..." : dashboardStats?.departments?.toString() || "0"}
+            change={statsLoading ? "Loading..." : "Real-time data"}
             icon={Building2}
             color="text-purple-600 dark:text-purple-400"
           />

@@ -8,17 +8,25 @@ export default defineConfig({
     baseURL: process.env.BASE_URL || 'http://localhost:3002',
     storageState: 'e2e/.auth/user.json',
     trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/user.json' },
+      use: { 
+        ...devices['Desktop Chrome'], 
+        storageState: 'e2e/.auth/user.json',
+        viewport: { width: 1280, height: 720 },
+      },
     },
   ],
   webServer: {
-    command: 'npm run dev -w . -s',
+    command: 'npm run dev',
     url: process.env.BASE_URL || 'http://localhost:3002',
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 120_000,
   },
+  retries: process.env.CI ? 2 : 0,
+  workers: process.env.CI ? 1 : undefined,
 });

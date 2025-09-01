@@ -25,8 +25,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [isApproved, setIsApproved] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  // Handle client-side rendering
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
+    if (!isClient) return;
+    
     // Get initial session with robust error handling
     const getInitialSession = async () => {
       try {
@@ -45,16 +53,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (cachedAuth.session) {
           try {
-            // Parallel execution for faster loading
+            // Parallel execution for faster loading with timeout
             const [user, approved] = await Promise.all([
-              AuthService.getCurrentUser(),
-              AuthService.isApproved()
+              AuthService.getCurrentUser().catch(() => null),
+              AuthService.isApproved().catch(() => false)
             ]);
             setUser(user);
             setIsApproved(approved);
           } catch (userError) {
+            console.warn('Auth user data fetch failed:', userError);
             // Continue with session but no user data
+            setUser(null);
+            setIsApproved(false);
           }
+        } else {
+          setUser(null);
+          setIsApproved(false);
         }
       } catch (error) {
         // Clear cache on error
@@ -73,13 +87,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         
         if (session) {
-          // Parallel execution for faster auth state changes
-          const [user, approved] = await Promise.all([
-            AuthService.getCurrentUser(),
-            AuthService.isApproved()
-          ]);
-          setUser(user);
-          setIsApproved(approved);
+          try {
+            // Parallel execution for faster auth state changes with error handling
+            const [user, approved] = await Promise.all([
+              AuthService.getCurrentUser().catch(() => null),
+              AuthService.isApproved().catch(() => false)
+            ]);
+            setUser(user);
+            setIsApproved(approved);
+          } catch (error) {
+            console.warn('Auth state change user data fetch failed:', error);
+            setUser(null);
+            setIsApproved(false);
+          }
         } else {
           setUser(null);
           setIsApproved(false);
@@ -90,7 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     );
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [isClient]);
 
   const signIn = async (email: string, password: string) => {
     const result = await AuthService.signIn({ email, password });
