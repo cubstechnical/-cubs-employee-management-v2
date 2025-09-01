@@ -9,6 +9,7 @@ import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
 import { PWADebugger } from '@/components/ui/PWADebugger';
 import MobileDebugger from '@/components/debug/MobileDebugger';
+import { isMobileDevice } from '@/utils/mobileDetection';
 
 interface LayoutProps {
   children: ReactNode;
@@ -31,32 +32,10 @@ export default function Layout({ children, className }: LayoutProps) {
     }
 
     const checkMobile = () => {
-      // More comprehensive mobile detection for PWA
-      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      const isSmallScreen = window.innerWidth < 1024;
-      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-      
-      // Always consider it mobile if it's a small screen OR mobile device OR touch device
-      // This ensures the menu button shows on all mobile devices
-      const mobile = isSmallScreen || isMobileDevice || isTouchDevice;
+      // Use the reliable mobile detection utility
+      const mobile = isMobileDevice();
       
       setIsMobile(mobile);
-      
-      // Debug logging for PWA
-      console.log('🔍 Mobile check:', { 
-        mobile, 
-        width: window.innerWidth,
-        height: window.innerHeight,
-        isPWA, 
-        isStandalone,
-        isMobileDevice,
-        isSmallScreen,
-        isTouchDevice,
-        userAgent: navigator.userAgent.includes('Mobile'),
-        touchSupport: 'ontouchstart' in window,
-        maxTouchPoints: navigator.maxTouchPoints,
-        persistentSidebar
-      });
       
       // Close sidebar on mobile when screen size changes (unless persistent)
       if (mobile && sidebarOpen && !persistentSidebar) {
@@ -111,24 +90,41 @@ export default function Layout({ children, className }: LayoutProps) {
     console.log('🔄 Toggled persistent sidebar:', newPersistentState);
   };
 
-  // Determine if we should show mobile behavior
-  const isMobileBehavior = isPWA || isMobile;
+  // Mobile behavior is now independent of PWA detection
+  const isMobileBehavior = isMobile;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Mobile sidebar overlay - Enhanced for PWA */}
       {sidebarOpen && isMobile && !persistentSidebar && (
         <div 
-          className="pwa-sidebar-overlay pwa-sidebar-backdrop fixed inset-0 bg-black bg-opacity-50 lg:hidden"
+          className="mobile-sidebar-overlay fixed inset-0 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            closeSidebar();
+          }}
+          style={{
+            zIndex: 50,
+            touchAction: 'manipulation'
+          }}
         />
       )}
 
       {/* Mobile menu button - Enhanced for PWA */}
       <button
         onClick={toggleSidebar}
+        onTouchEnd={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleSidebar();
+        }}
+        onTouchStart={(e) => {
+          e.preventDefault();
+        }}
         className={cn(
-          "pwa-sidebar-button pwa-sidebar-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors",
+          "mobile-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors",
           // Always show on small screens (mobile), hide on large screens
           "block lg:hidden"
         )}
@@ -137,6 +133,9 @@ export default function Layout({ children, className }: LayoutProps) {
           display: 'flex !important',
           alignItems: 'center',
           justifyContent: 'center',
+          minWidth: '48px',
+          minHeight: '48px',
+          zIndex: 9999,
           // Add visual feedback for PWA
           boxShadow: isPWA ? '0 4px 12px rgba(0, 0, 0, 0.15)' : undefined
         }}
@@ -203,6 +202,31 @@ export default function Layout({ children, className }: LayoutProps) {
       
       {/* Mobile Debugger - Shows debug info for mobile issues */}
       <MobileDebugger />
+      
+      {/* EMERGENCY FALLBACK: Always visible menu button for mobile */}
+      {isMobile && (
+        <button
+          onClick={toggleSidebar}
+          onTouchEnd={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            toggleSidebar();
+          }}
+          className="emergency-menu-button fixed top-4 left-4 z-[99999] p-2 bg-red-500 text-white rounded-full shadow-lg"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '40px',
+            minHeight: '40px',
+            fontSize: '18px',
+            fontWeight: 'bold'
+          }}
+          aria-label="Emergency menu toggle"
+        >
+          {sidebarOpen ? '✕' : '☰'}
+        </button>
+      )}
     </div>
   );
 }
