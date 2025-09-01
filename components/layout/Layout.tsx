@@ -9,6 +9,7 @@ import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
 
 import { isMobileDevice } from '@/utils/mobileDetection';
+import SidebarDebug from '@/components/debug/SidebarDebug';
 
 interface LayoutProps {
   children: ReactNode;
@@ -25,6 +26,13 @@ export default function Layout({ children, className }: LayoutProps) {
     const checkMobile = () => {
       // Use the reliable mobile detection utility
       const mobile = isMobileDevice();
+      
+      console.log('📱 Mobile detection:', { 
+        mobile, 
+        width: window.innerWidth, 
+        height: window.innerHeight,
+        touchSupport: 'ontouchstart' in window
+      });
       
       setIsMobile(mobile);
       
@@ -49,6 +57,7 @@ export default function Layout({ children, className }: LayoutProps) {
   }, [sidebarOpen]);
 
   const toggleSidebar = () => {
+    console.log('🔄 toggleSidebar called - current state:', sidebarOpen, 'isMobile:', isMobile);
     setSidebarOpen(!sidebarOpen);
   };
 
@@ -81,14 +90,11 @@ export default function Layout({ children, className }: LayoutProps) {
 
       {/* Mobile menu button */}
       <button
-        onClick={toggleSidebar}
-        onTouchEnd={(e) => {
+        onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
+          console.log('🔥 Button clicked - sidebarOpen:', sidebarOpen, '→', !sidebarOpen);
           toggleSidebar();
-        }}
-        onTouchStart={(e) => {
-          e.preventDefault();
         }}
         className="mobile-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors block lg:hidden"
         style={{ 
@@ -151,6 +157,8 @@ export default function Layout({ children, className }: LayoutProps) {
         </div>
       </main>
       
+      {/* Temporary Debug Component */}
+      <SidebarDebug sidebarOpen={sidebarOpen} isMobile={isMobile} />
     </div>
   );
 }
