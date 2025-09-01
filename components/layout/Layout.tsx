@@ -9,7 +9,6 @@ import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
 
 import { isMobileDevice } from '@/utils/mobileDetection';
-import SidebarDebug from '@/components/debug/SidebarDebug';
 
 interface LayoutProps {
   children: ReactNode;
@@ -27,19 +26,7 @@ export default function Layout({ children, className }: LayoutProps) {
       // Use the reliable mobile detection utility
       const mobile = isMobileDevice();
       
-      console.log('📱 Mobile detection:', { 
-        mobile, 
-        width: window.innerWidth, 
-        height: window.innerHeight,
-        touchSupport: 'ontouchstart' in window
-      });
-      
       setIsMobile(mobile);
-      
-      // Close sidebar on mobile when screen size changes
-      if (mobile && sidebarOpen) {
-        setSidebarOpen(false);
-      }
     };
 
     checkMobile();
@@ -54,10 +41,9 @@ export default function Layout({ children, className }: LayoutProps) {
       window.removeEventListener('resize', checkMobile);
       window.removeEventListener('orientationchange', checkMobile);
     };
-  }, [sidebarOpen]);
+  }, []); // Remove sidebarOpen dependency!
 
   const toggleSidebar = () => {
-    console.log('🔄 toggleSidebar called - current state:', sidebarOpen, 'isMobile:', isMobile);
     setSidebarOpen(!sidebarOpen);
   };
 
@@ -75,8 +61,7 @@ export default function Layout({ children, className }: LayoutProps) {
       {sidebarOpen && isMobile && (
         <div 
           className="mobile-sidebar-overlay fixed inset-0 bg-black bg-opacity-50 lg:hidden"
-          onClick={closeSidebar}
-          onTouchEnd={(e) => {
+          onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             closeSidebar();
@@ -93,7 +78,6 @@ export default function Layout({ children, className }: LayoutProps) {
         onClick={(e) => {
           e.preventDefault();
           e.stopPropagation();
-          console.log('🔥 Button clicked - sidebarOpen:', sidebarOpen, '→', !sidebarOpen);
           toggleSidebar();
         }}
         className="mobile-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors block lg:hidden"
@@ -157,8 +141,6 @@ export default function Layout({ children, className }: LayoutProps) {
         </div>
       </main>
       
-      {/* Temporary Debug Component */}
-      <SidebarDebug sidebarOpen={sidebarOpen} isMobile={isMobile} />
     </div>
   );
 }
