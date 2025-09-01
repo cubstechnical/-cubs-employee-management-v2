@@ -11,12 +11,14 @@ console.log('🔧 Environment check:');
 console.log('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
 console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
 
-// Create Supabase client
+// Create Supabase client with robust fallback
 let supabase: ReturnType<typeof createClient>;
+let isSupabaseAvailable = true;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Missing Supabase environment variables. Using mock client for development.');
-  // Create a mock client that won't throw errors
+  console.warn('⚠️ Missing Supabase environment variables. Using offline mode.');
+  isSupabaseAvailable = false;
+  // Create a minimal mock client
   supabase = createClient('https://mock.supabase.co', 'mock-key');
 } else {
   try {
@@ -29,12 +31,27 @@ if (!supabaseUrl || !supabaseAnonKey) {
       },
     });
 
+    // Test connection immediately
+    setTimeout(async () => {
+      try {
+        await supabase.auth.getSession();
+        console.log('✅ Supabase connection successful');
+      } catch (error) {
+        console.warn('⚠️ Supabase connection issue detected');
+        isSupabaseAvailable = false;
+      }
+    }, 1000);
+
   } catch (error) {
     console.error('❌ Error creating Supabase client:', error);
+    isSupabaseAvailable = false;
     // Fallback to mock client
     supabase = createClient('https://mock.supabase.co', 'mock-key');
   }
 }
+
+// Export availability status
+export { isSupabaseAvailable };
 
 export { supabase };
 
@@ -47,36 +64,89 @@ let authStateCache: {
 
 const AUTH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
-// Enhanced auth state management
+// Enhanced auth state management with timeout
 export const getAuthState = async () => {
   const now = Date.now();
-  
+
   // Return cached auth state if still valid
   if (authStateCache && (now - authStateCache.timestamp) < AUTH_CACHE_DURATION) {
     return authStateCache;
   }
-  
-  // Get fresh auth state
-  const { data: { session }, error } = await supabase.auth.getSession();
-  
-  if (error) {
-    console.error('Auth state error:', error);
+
+  try {
+    // Add timeout to prevent hanging
+    const authPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Auth timeout')), 10000)
+    );
+
+    const { data: { session }, error } = await Promise.race([authPromise, timeoutPromise]) as any;
+
+    if (error) {
+      console.error('Auth state error:', error);
+      return { user: null, session: null, timestamp: now };
+    }
+
+    // Cache the result
+    authStateCache = {
+      user: session?.user || null,
+      session,
+      timestamp: now
+    };
+
+    return authStateCache;
+  } catch (error) {
+    console.error('Auth state timeout or error:', error);
+    // Return empty state on timeout
     return { user: null, session: null, timestamp: now };
   }
-  
-  // Cache the result
-  authStateCache = {
-    user: session?.user || null,
-    session,
-    timestamp: now
-  };
-  
-  return authStateCache;
 };
 
 // Clear auth cache when needed
 export const clearAuthCache = () => {
   authStateCache = null;
+};
+
+// Preload critical app data
+export const preloadAppData = async () => {
+  if (!isSupabaseAvailable) return;
+
+  try {
+    console.log('🔄 Preloading critical app data...');
+
+    // Preload common data in background
+    const preloadPromises = [
+      // Preload user profile if logged in
+      getAuthState().then(async (auth) => {
+        if (auth.session) {
+          try {
+            await supabase.from('profiles').select('id, full_name, role').limit(1);
+          } catch (e) {
+            // Ignore preload errors
+          }
+        }
+      }),
+
+      // Preload basic employee count
+      (async () => {
+        try {
+          await supabase.from('employee_table').select('count').limit(1);
+        } catch (error) {
+          // Ignore preload errors
+        }
+        return null;
+      })(),
+    ];
+
+    // Don't wait for preload, just initiate
+    Promise.allSettled(preloadPromises).then(() => {
+      console.log('✅ App data preloading completed');
+    });
+
+  } catch (error) {
+    // Ignore preload errors
+    console.log('⚠️ App data preloading failed, but continuing');
+  }
 };
 
 // Type definitions for our database tables

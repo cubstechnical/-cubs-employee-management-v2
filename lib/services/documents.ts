@@ -1148,7 +1148,7 @@ export class DocumentService {
           throw error; // This will trigger the fallback
         }
 
-        if (!data || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
           console.log('❌ No employee folders found matching search term');
           return { folders: [], error: null };
         }
@@ -1282,7 +1282,7 @@ export class DocumentService {
           throw error; // This will trigger the fallback
         }
 
-        if (!data || data.length === 0) {
+        if (!data || !Array.isArray(data) || data.length === 0) {
           console.log('❌ No documents found matching search term');
           return { documents: [], error: null };
         }
