@@ -96,19 +96,23 @@ export default function Layout({ children, className }: LayoutProps) {
         />
       )}
 
-      {/* Mobile menu button - Always show in PWA mode */}
+      {/* Mobile menu button - Always show in PWA mode or on mobile */}
       <button
         onClick={toggleSidebar}
         className={cn(
           "fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors",
-          isPWA ? "block" : "lg:hidden"
+          // Always show in PWA mode, or on mobile screens
+          (isPWA || isMobile) ? "block" : "lg:hidden"
         )}
         style={{ 
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
           minWidth: '44px',
           minHeight: '44px',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          // Force visibility in PWA mode
+          display: isPWA ? 'block !important' : undefined,
+          zIndex: 9999
         }}
         aria-label="Toggle menu"
       >
@@ -119,11 +123,37 @@ export default function Layout({ children, className }: LayoutProps) {
         )}
       </button>
 
+      {/* Fallback PWA button - Always visible in PWA mode */}
+      {isPWA && (
+        <button
+          onClick={toggleSidebar}
+          className="fixed top-4 left-4 z-[9999] p-3 bg-red-500 text-white rounded-lg shadow-lg border-2 border-red-600 hover:bg-red-600 active:bg-red-700 transition-colors"
+          style={{ 
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent',
+            minWidth: '44px',
+            minHeight: '44px',
+            cursor: 'pointer',
+            display: 'block !important'
+          }}
+          aria-label="PWA Toggle menu"
+        >
+          {sidebarOpen ? (
+            <X className="w-5 h-5" />
+          ) : (
+            <Menu className="w-5 h-5" />
+          )}
+        </button>
+      )}
+
       {/* Sidebar */}
       <div className={cn(
         'fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out',
-        isPWA ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'lg:translate-x-0',
-        sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        // In PWA mode, always use mobile behavior (slide in/out)
+        // On desktop, show sidebar by default unless mobile
+        isPWA || isMobile 
+          ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+          : 'lg:translate-x-0'
       )}>
         <Sidebar onClose={closeSidebar} onCollapseChange={setSidebarCollapsed} />
       </div>
@@ -131,7 +161,11 @@ export default function Layout({ children, className }: LayoutProps) {
       {/* Main content */}
       <main className={cn(
         'transition-all duration-300',
-        isMobile ? 'ml-0' : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
+        // In PWA mode or mobile, no left margin (sidebar overlays)
+        // On desktop, add margin based on sidebar state
+        (isPWA || isMobile) 
+          ? 'ml-0' 
+          : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
         className
       )}>
         {/* Header - Mobile Optimized */}

@@ -14,13 +14,32 @@ export function usePWA() {
   useEffect(() => {
     // Check if running as PWA
     const checkPWA = () => {
-      // Check if running in standalone mode
+      // More comprehensive PWA detection
       const isStandaloneMode = window.matchMedia('(display-mode: standalone)').matches ||
                               (window.navigator as any).standalone ||
                               document.referrer.includes('android-app://');
       
+      // Also check for PWA indicators
+      const isPWAIndicator = window.location.protocol === 'https:' && 
+                            ('serviceWorker' in navigator) &&
+                            (window.matchMedia('(display-mode: standalone)').matches || 
+                             (window.navigator as any).standalone);
+      
+      const pwaMode = isStandaloneMode || isPWAIndicator;
+      
       setIsStandalone(isStandaloneMode);
-      setIsPWA(isStandaloneMode);
+      setIsPWA(pwaMode);
+      
+      console.log('🔍 PWA Detection:', {
+        isStandaloneMode,
+        isPWAIndicator,
+        pwaMode,
+        displayMode: window.matchMedia('(display-mode: standalone)').matches,
+        standalone: (window.navigator as any).standalone,
+        referrer: document.referrer,
+        protocol: window.location.protocol,
+        serviceWorker: 'serviceWorker' in navigator
+      });
     };
 
     // Check if app is installable
