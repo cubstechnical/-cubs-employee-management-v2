@@ -51,12 +51,12 @@ export class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error('Error getting session:', error);
+
         return { session: null, error: { message: error.message } };
       }
       return { session, error: null };
     } catch (error) {
-      console.error('Error getting session:', error);
+
       return { session: null, error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -66,12 +66,12 @@ export class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-        console.error('Error handling callback:', error);
+
         return { session: null, error: { message: error.message } };
       }
       return { session, error: null };
     } catch (error) {
-      console.error('Error handling callback:', error);
+
       return { session: null, error: { message: 'An unexpected error occurred' } };
     }
   }

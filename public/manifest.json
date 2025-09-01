@@ -1,0 +1,30 @@
+{
+  "name": "CUBS Visa Management",
+  "short_name": "CUBS Admin",
+  "description": "Employee visa management system for CUBS Technical",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111827",
+  "theme_color": "#111827",
+  "orientation": "portrait",
+  "id": "cubs-visa-management",
+  "version": "1.0.0",
+  "publisher": "CUBS Technical",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity"],
+  "lang": "en",
+  "dir": "ltr"
+}

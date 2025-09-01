@@ -49,6 +49,9 @@ function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: S
     <Link
       href={href}
       onClick={onClose}
+      aria-label={`Navigate to ${children}`}
+      aria-current={isActive ? 'page' : undefined}
+      role="menuitem"
       className={cn(
         'pwa-sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
         'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
@@ -101,7 +104,6 @@ export default function Sidebar({ onClose, onCollapseChange, isPersistent, onTog
       toast.success('Signed out successfully');
       router.push('/login');
     } catch (error) {
-      console.error('Logout error:', error);
       toast.error('An unexpected error occurred');
     }
   };
@@ -123,6 +125,8 @@ export default function Sidebar({ onClose, onCollapseChange, isPersistent, onTog
             setIsCollapsed(newCollapsedState);
             onCollapseChange?.(newCollapsedState);
           }}
+          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-expanded={!isCollapsed}
           className={cn(
             'p-2 rounded-lg transition-all duration-300 ease-in-out',
             'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
@@ -135,7 +139,7 @@ export default function Sidebar({ onClose, onCollapseChange, isPersistent, onTog
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4 space-y-2">
+      <nav className="flex-1 p-4 space-y-2" role="navigation" aria-label="Main navigation">
         {adminItems.map((item) => (
           <SidebarItem
             key={item.href}

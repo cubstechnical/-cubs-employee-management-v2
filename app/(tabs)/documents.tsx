@@ -1,6 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'Documents',
+  description: 'Manage and organize employee documents, visas, and certificates in the CUBS Technical system.',
+  keywords: ['documents', 'file management', 'visa documents', 'employee files', 'document storage'],
+};
 
 // Simple debounce utility
 function debounce<T extends (...args: any[]) => any>(

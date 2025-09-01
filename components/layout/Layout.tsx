@@ -70,6 +70,9 @@ export default function Layout({ children, className }: LayoutProps) {
             zIndex: 50,
             touchAction: 'manipulation'
           }}
+          aria-label="Close sidebar"
+          role="button"
+          tabIndex={0}
         />
       )}
 
@@ -89,7 +92,9 @@ export default function Layout({ children, className }: LayoutProps) {
           minHeight: '48px',
           zIndex: 9999
         }}
-        aria-label="Toggle navigation menu"
+        aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+        aria-expanded={sidebarOpen}
+        aria-controls="main-navigation"
       >
         {sidebarOpen ? (
           <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
@@ -99,14 +104,19 @@ export default function Layout({ children, className }: LayoutProps) {
       </button>
 
       {/* Sidebar */}
-      <div className={cn(
-        'fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out z-[60]',
-        // Simple mobile logic: if mobile, show/hide based on sidebarOpen state
-        // If desktop, always show (translate-x-0)
-        isMobile 
-          ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
-          : 'lg:translate-x-0'
-      )}>
+      <div 
+        id="main-navigation"
+        className={cn(
+          'fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out z-[60]',
+          // Simple mobile logic: if mobile, show/hide based on sidebarOpen state
+          // If desktop, always show (translate-x-0)
+          isMobile 
+            ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+            : 'lg:translate-x-0'
+        )}
+        role="navigation"
+        aria-label="Main navigation"
+      >
         <Sidebar 
           onClose={closeSidebar} 
           onCollapseChange={setSidebarCollapsed}

@@ -7,7 +7,15 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { Metadata } from 'next';
 import { EmployeeService, PaginationParams, EmployeeFilters, FilterOptions } from '@/lib/services/employees';
+
+export const metadata: Metadata = {
+  title: 'Employees',
+  description: 'View and manage employee information, track visa status, and maintain comprehensive employee records.',
+  keywords: ['employees', 'employee management', 'visa tracking', 'employee database', 'HR management'],
+};
 import { Employee } from '@/lib/supabase/client';
 import { formatDate } from '@/utils/date';
 import { useDebounce } from '@/hooks/usePerformance';
@@ -117,7 +125,7 @@ const EmployeeCard = ({ employee, onView, onEdit }: {
 };
 
 // Main Employees component
-export default function EmployeesOptimized() {
+function EmployeesOptimized() {
   const router = useRouter();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
@@ -443,5 +451,13 @@ export default function EmployeesOptimized() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+export default function EmployeesPage() {
+  return (
+    <ErrorBoundary>
+      <EmployeesOptimized />
+    </ErrorBoundary>
   );
 }

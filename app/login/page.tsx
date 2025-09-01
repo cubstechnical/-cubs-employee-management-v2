@@ -67,7 +67,7 @@ export default function LoginPage() {
         router.push('/dashboard');
       }
     } catch (error) {
-      console.error('Login error:', error);
+
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -93,7 +93,7 @@ export default function LoginPage() {
       toast.success('Password reset email sent! Check your inbox.');
       setIsForgotPassword(false);
     } catch (error) {
-      console.error('Forgot password error:', error);
+
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);

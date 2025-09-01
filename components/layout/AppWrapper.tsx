@@ -19,7 +19,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
   // Fast loading mode when Supabase is not available
   useEffect(() => {
     if (!isSupabaseAvailable) {
-      console.log('🚀 Fast loading mode activated - Supabase unavailable');
+
       setFastLoadMode(true);
       setProgress(100);
       setTimeout(() => setAppLoading(false), 500);
@@ -33,7 +33,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
 
     // Add timeout to prevent infinite loading (20 seconds max)
     const timeout = setTimeout(() => {
-      console.warn('⚠️ App initialization timeout - forcing load');
+
       setHasTimedOut(true);
       setProgress(100);
       setTimeout(() => setAppLoading(false), 200);
@@ -73,7 +73,7 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     const forceLoadDelay = fastLoadMode ? 3000 : 8000;
     const forceLoadTimer = setTimeout(() => {
       if (appLoading) {
-        console.log(`🚀 Force loading app after ${forceLoadDelay / 1000} seconds`);
+
         setAppLoading(false);
         setProgress(100);
       }

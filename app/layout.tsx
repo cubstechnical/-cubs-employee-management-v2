@@ -13,12 +13,27 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://cubsgroups.com'),
-  title: 'CUBS Technical - Employee Management',
-  description: 'Comprehensive employee database and document management system for CUBS Technical',
-  keywords: 'employee management, visa tracking, document management, CUBS Technical',
-  authors: [{ name: 'CUBS Technical' }],
-  robots: 'index, follow',
-  manifest: '/manifest.webmanifest',
+  title: {
+    default: 'CUBS Technical - Employee Management',
+    template: '%s | CUBS Technical'
+  },
+  description: 'Comprehensive employee database and document management system for CUBS Technical. Track employee visas, manage documents, and streamline HR processes.',
+  keywords: ['employee management', 'visa tracking', 'document management', 'CUBS Technical', 'HR system', 'employee database', 'visa management', 'document storage'],
+  authors: [{ name: 'CUBS Technical', url: 'https://cubsgroups.com' }],
+  creator: 'CUBS Technical',
+  publisher: 'CUBS Technical',
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  manifest: '/manifest.json',
   icons: {
     icon: [
       { url: '/assets/appicon-512x512.png', sizes: '32x32', type: 'image/png' },
@@ -37,9 +52,11 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: 'CUBS Technical - Employee Management',
-    description: 'Comprehensive employee database and document management system',
+    description: 'Comprehensive employee database and document management system for CUBS Technical. Track employee visas, manage documents, and streamline HR processes.',
     type: 'website',
     locale: 'en_US',
+    url: 'https://cubsgroups.com',
+    siteName: 'CUBS Technical',
     images: [
       {
         url: '/assets/appicon-512x512.png',
@@ -49,6 +66,16 @@ export const metadata: Metadata = {
       },
     ],
   },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'CUBS Technical - Employee Management',
+    description: 'Comprehensive employee database and document management system for CUBS Technical.',
+    images: ['/assets/appicon-512x512.png'],
+  },
+  alternates: {
+    canonical: 'https://cubsgroups.com',
+  },
+  category: 'business',
 }
 
 export default function RootLayout({
@@ -72,7 +99,7 @@ export default function RootLayout({
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://s3.us-east-005.backblazeb2.com" crossOrigin="anonymous" />
-        <link rel="manifest" href="/manifest.webmanifest" />
+        <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/assets/appicon-512x512.png" sizes="32x32" />
         <link rel="icon" href="/assets/appicon-512x512.png" sizes="192x192" />
         <link rel="icon" href="/assets/appicon-512x512.png" sizes="512x512" />
