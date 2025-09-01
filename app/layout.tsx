@@ -8,7 +8,8 @@ const inter = Inter({
   subsets: ['latin'],
   display: 'swap',
   fallback: ['system-ui', 'arial'],
-  preload: false,
+  preload: true, // Enable preload for faster font loading
+  variable: '--font-inter', // CSS variable for better performance
 })
 
 export const metadata: Metadata = {
@@ -95,7 +96,7 @@ export default function RootLayout({
         <meta name="msapplication-TileColor" content="#111827" />
         <meta name="msapplication-tap-highlight" content="no" />
       </head>
-      <body className={inter.className}>
+      <body className={`${inter.variable} font-sans`}>
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://s3.us-east-005.backblazeb2.com" crossOrigin="anonymous" />

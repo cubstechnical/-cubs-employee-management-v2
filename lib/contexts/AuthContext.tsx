@@ -32,7 +32,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         // If Supabase is not available, skip authentication
         if (!isSupabaseAvailable) {
-          console.log('⚠️ Supabase not available, skipping authentication');
           setSession(null);
           setUser(null);
           setIsApproved(false);
@@ -46,20 +45,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (cachedAuth.session) {
           try {
-            const user = await AuthService.getCurrentUser();
+            // Parallel execution for faster loading
+            const [user, approved] = await Promise.all([
+              AuthService.getCurrentUser(),
+              AuthService.isApproved()
+            ]);
             setUser(user);
-            // Check approval status
-            if (user) {
-              const approved = await AuthService.isApproved();
-              setIsApproved(approved);
-            }
+            setIsApproved(approved);
           } catch (userError) {
-            console.error('Error getting user data:', userError);
             // Continue with session but no user data
           }
         }
       } catch (error) {
-        console.error('Error getting initial session:', error);
         // Clear cache on error
         clearAuthCache();
         // Don't fail completely - allow app to load
@@ -76,13 +73,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(session);
         
         if (session) {
-          const user = await AuthService.getCurrentUser();
+          // Parallel execution for faster auth state changes
+          const [user, approved] = await Promise.all([
+            AuthService.getCurrentUser(),
+            AuthService.isApproved()
+          ]);
           setUser(user);
-          // Check approval status
-          if (user) {
-            const approved = await AuthService.isApproved();
-            setIsApproved(approved);
-          }
+          setIsApproved(approved);
         } else {
           setUser(null);
           setIsApproved(false);

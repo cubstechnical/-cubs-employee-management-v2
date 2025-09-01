@@ -31,13 +31,12 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     // Skip loading logic in fast mode
     if (fastLoadMode) return;
 
-    // Add timeout to prevent infinite loading (20 seconds max)
+    // Add timeout to prevent infinite loading (10 seconds max)
     const timeout = setTimeout(() => {
-
       setHasTimedOut(true);
       setProgress(100);
       setTimeout(() => setAppLoading(false), 200);
-    }, 20000);
+    }, 10000);
 
     // Simulate app initialization progress
     const timer = setInterval(() => {
@@ -50,9 +49,9 @@ export default function AppWrapper({ children }: AppWrapperProps) {
         if (prev >= 90) {
           return 90;
         }
-        return prev + 10; // Faster increment
+        return prev + 20; // Much faster increment
       });
-    }, 100);
+    }, 50); // Faster updates
 
     // Complete loading when auth is ready OR if we have a timeout
     if (!loading || hasTimedOut) {
@@ -68,12 +67,11 @@ export default function AppWrapper({ children }: AppWrapperProps) {
     };
   }, [loading, hasTimedOut, fastLoadMode]);
 
-  // Force loading completion after 8 seconds in normal mode, 3 seconds in fast mode
+  // Force loading completion after 3 seconds in normal mode, 1 second in fast mode
   useEffect(() => {
-    const forceLoadDelay = fastLoadMode ? 3000 : 8000;
+    const forceLoadDelay = fastLoadMode ? 1000 : 3000;
     const forceLoadTimer = setTimeout(() => {
       if (appLoading) {
-
         setAppLoading(false);
         setProgress(100);
       }

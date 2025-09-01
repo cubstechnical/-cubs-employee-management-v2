@@ -6,23 +6,18 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
 
 
-// Debug environment variables
-console.log('🔧 Environment check:');
-console.log('NEXT_PUBLIC_SUPABASE_URL:', supabaseUrl ? '✅ Set' : '❌ Missing');
-console.log('NEXT_PUBLIC_SUPABASE_ANON_KEY:', supabaseAnonKey ? '✅ Set' : '❌ Missing');
+// Environment variables check (production optimized)
 
 // Create Supabase client with robust fallback
 let supabase: ReturnType<typeof createClient>;
 let isSupabaseAvailable = true;
 
 if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('⚠️ Missing Supabase environment variables. Using offline mode.');
   isSupabaseAvailable = false;
   // Create a minimal mock client
   supabase = createClient('https://mock.supabase.co', 'mock-key');
 } else {
   try {
-    console.log('✅ Creating Supabase client with real credentials');
     supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
@@ -30,20 +25,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
         detectSessionInUrl: true,
       },
     });
-
-    // Test connection immediately
-    setTimeout(async () => {
-      try {
-        await supabase.auth.getSession();
-        console.log('✅ Supabase connection successful');
-      } catch (error) {
-        console.warn('⚠️ Supabase connection issue detected');
-        isSupabaseAvailable = false;
-      }
-    }, 1000);
-
   } catch (error) {
-    console.error('❌ Error creating Supabase client:', error);
     isSupabaseAvailable = false;
     // Fallback to mock client
     supabase = createClient('https://mock.supabase.co', 'mock-key');
@@ -112,7 +94,7 @@ export const preloadAppData = async () => {
   if (!isSupabaseAvailable) return;
 
   try {
-    console.log('🔄 Preloading critical app data...');
+    // Preloading critical app data...
 
     // Preload common data in background
     const preloadPromises = [
@@ -139,13 +121,10 @@ export const preloadAppData = async () => {
     ];
 
     // Don't wait for preload, just initiate
-    Promise.allSettled(preloadPromises).then(() => {
-      console.log('✅ App data preloading completed');
-    });
+    Promise.allSettled(preloadPromises);
 
   } catch (error) {
-    // Ignore preload errors
-    console.log('⚠️ App data preloading failed, but continuing');
+    // Ignore preload errors - continue silently
   }
 };
 

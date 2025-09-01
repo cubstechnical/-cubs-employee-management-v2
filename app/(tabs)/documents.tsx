@@ -1,7 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import { Metadata } from 'next';
+
+// Lazy load heavy components for faster initial load
+const DocumentPreview = lazy(() => import('@/components/documents/DocumentPreview'));
+const UploadModal = lazy(() => import('@/components/documents/UploadModal'));
 
 export const metadata: Metadata = {
   title: 'Documents',
