@@ -7,6 +7,7 @@ import Logo from '@/components/ui/Logo';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
+import { PWADebugger } from '@/components/ui/PWADebugger';
 
 interface LayoutProps {
   children: ReactNode;
@@ -21,16 +22,29 @@ export default function Layout({ children, className }: LayoutProps) {
 
   useEffect(() => {
     const checkMobile = () => {
-      const mobile = window.innerWidth < 1024;
+      // More comprehensive mobile detection for PWA
+      const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      const isSmallScreen = window.innerWidth < 1024;
+      const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+      
+      // In PWA mode, prioritize touch device detection
+      const mobile = isPWA ? (isMobileDevice || isTouchDevice || isSmallScreen) : isSmallScreen;
+      
       setIsMobile(mobile);
       
       // Debug logging for PWA
       console.log('🔍 Mobile check:', { 
         mobile, 
-        width: window.innerWidth, 
+        width: window.innerWidth,
+        height: window.innerHeight,
         isPWA, 
         isStandalone,
-        userAgent: navigator.userAgent.includes('Mobile')
+        isMobileDevice,
+        isSmallScreen,
+        isTouchDevice,
+        userAgent: navigator.userAgent.includes('Mobile'),
+        touchSupport: 'ontouchstart' in window,
+        maxTouchPoints: navigator.maxTouchPoints
       });
       
       // Close sidebar on mobile when screen size changes
@@ -58,7 +72,10 @@ export default function Layout({ children, className }: LayoutProps) {
       currentState: sidebarOpen, 
       newState: !sidebarOpen, 
       isMobile, 
-      isPWA 
+      isPWA,
+      isStandalone,
+      windowWidth: window.innerWidth,
+      touchSupport: 'ontouchstart' in window
     });
     setSidebarOpen(!sidebarOpen);
   };
@@ -71,28 +88,27 @@ export default function Layout({ children, className }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Mobile sidebar overlay */}
-      {sidebarOpen && isMobile && (
+      {sidebarOpen && (isMobile || isPWA) && (
         <div 
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={closeSidebar}
-          onTouchEnd={closeSidebar}
           style={{ touchAction: 'manipulation' }}
         />
       )}
 
-      {/* Mobile menu button */}
+      {/* Mobile menu button - Always show in PWA mode */}
       <button
         onClick={toggleSidebar}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          toggleSidebar();
-        }}
-        className="fixed top-4 left-4 z-50 lg:hidden p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors touch-manipulation"
+        className={cn(
+          "fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors",
+          isPWA ? "block" : "lg:hidden"
+        )}
         style={{ 
           touchAction: 'manipulation',
           WebkitTapHighlightColor: 'transparent',
           minWidth: '44px',
-          minHeight: '44px'
+          minHeight: '44px',
+          cursor: 'pointer'
         }}
         aria-label="Toggle menu"
       >
@@ -105,7 +121,8 @@ export default function Layout({ children, className }: LayoutProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        'fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-50 transform transition-transform duration-300 ease-in-out',
+        isPWA ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full') : 'lg:translate-x-0',
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         <Sidebar onClose={closeSidebar} onCollapseChange={setSidebarCollapsed} />
@@ -134,6 +151,9 @@ export default function Layout({ children, className }: LayoutProps) {
           {children}
         </div>
       </main>
+      
+      {/* PWA Debugger - Only shows in development or PWA mode */}
+      <PWADebugger />
     </div>
   );
 } 

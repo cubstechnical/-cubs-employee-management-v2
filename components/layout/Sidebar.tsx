@@ -44,11 +44,6 @@ function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: S
     <Link
       href={href}
       onClick={onClose}
-      onTouchEnd={(e) => {
-        // Prevent double-tap zoom on mobile
-        e.preventDefault();
-        onClose?.();
-      }}
       className={cn(
         'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
         'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
