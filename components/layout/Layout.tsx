@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
 import { PWADebugger } from '@/components/ui/PWADebugger';
+import MobileDebugger from '@/components/debug/MobileDebugger';
 
 interface LayoutProps {
   children: ReactNode;
@@ -35,8 +36,9 @@ export default function Layout({ children, className }: LayoutProps) {
       const isSmallScreen = window.innerWidth < 1024;
       const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
       
-      // In PWA mode, prioritize touch device detection
-      const mobile = isPWA ? (isMobileDevice || isTouchDevice || isSmallScreen) : isSmallScreen;
+      // Always consider it mobile if it's a small screen OR mobile device OR touch device
+      // This ensures the menu button shows on all mobile devices
+      const mobile = isSmallScreen || isMobileDevice || isTouchDevice;
       
       setIsMobile(mobile);
       
@@ -115,7 +117,7 @@ export default function Layout({ children, className }: LayoutProps) {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
       {/* Mobile sidebar overlay - Enhanced for PWA */}
-      {sidebarOpen && isMobileBehavior && !persistentSidebar && (
+      {sidebarOpen && isMobile && !persistentSidebar && (
         <div 
           className="pwa-sidebar-overlay pwa-sidebar-backdrop fixed inset-0 bg-black bg-opacity-50 lg:hidden"
           onClick={closeSidebar}
@@ -127,12 +129,12 @@ export default function Layout({ children, className }: LayoutProps) {
         onClick={toggleSidebar}
         className={cn(
           "pwa-sidebar-button pwa-sidebar-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors",
-          // Always show in PWA mode, or on mobile screens
-          isMobileBehavior ? "block" : "lg:hidden"
+          // Always show on small screens (mobile), hide on large screens
+          "block lg:hidden"
         )}
         style={{ 
-          // Force visibility in PWA mode
-          display: isMobileBehavior ? 'flex !important' : undefined,
+          // Always show on mobile screens
+          display: 'flex !important',
           alignItems: 'center',
           justifyContent: 'center',
           // Add visual feedback for PWA
@@ -150,10 +152,9 @@ export default function Layout({ children, className }: LayoutProps) {
       {/* Sidebar - Enhanced for PWA */}
       <div className={cn(
         'pwa-sidebar pwa-sidebar-content pwa-sidebar-transition fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out',
-        // In PWA mode with persistent sidebar, always show
-        // In PWA mode without persistent, use mobile behavior (slide in/out)
-        // On desktop, show sidebar by default unless mobile
-        isMobileBehavior 
+        // On mobile screens, use slide in/out behavior
+        // On desktop, show sidebar by default
+        isMobile 
           ? (persistentSidebar ? 'translate-x-0' : (sidebarOpen ? 'translate-x-0' : '-translate-x-full'))
           : 'lg:translate-x-0',
         // Add backdrop blur for PWA
@@ -171,10 +172,10 @@ export default function Layout({ children, className }: LayoutProps) {
       {/* Main content */}
       <main className={cn(
         'transition-all duration-300',
-        // In PWA mode with persistent sidebar, add margin
-        // In PWA mode without persistent, no margin (sidebar overlays)
+        // On mobile with persistent sidebar, add margin
+        // On mobile without persistent, no margin (sidebar overlays)
         // On desktop, add margin based on sidebar state
-        isMobileBehavior 
+        isMobile 
           ? (persistentSidebar ? (sidebarCollapsed ? 'ml-16' : 'ml-64') : 'ml-0')
           : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
         className
@@ -199,6 +200,9 @@ export default function Layout({ children, className }: LayoutProps) {
       
       {/* PWA Debugger - Only shows in development or PWA mode */}
       <PWADebugger />
+      
+      {/* Mobile Debugger - Shows debug info for mobile issues */}
+      <MobileDebugger />
     </div>
   );
 }

@@ -11,6 +11,15 @@
   user-select: none;
 }
 
+/* Force menu button to be visible on mobile screens */
+@media (max-width: 1023px) {
+  .pwa-sidebar-menu-button {
+    display: flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+  }
+}
+
 /* Enhanced sidebar for PWA */
 .pwa-sidebar {
   -webkit-overflow-scrolling: touch;
