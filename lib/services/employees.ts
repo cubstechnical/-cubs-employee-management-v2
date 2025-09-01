@@ -502,8 +502,17 @@ export class EmployeeService {
         // Apply search filter
         if (filters?.search && filters.search.trim()) {
           const searchTerm = filters.search.trim();
-          console.log(`🔍 Applying search filter: "${searchTerm}"`);
-          query = query.or(`name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,trade.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`);
+
+          // Try multiple field search using OR condition
+          const searchPattern = `%${searchTerm}%`;
+          try {
+            query = query.or(
+              `name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,trade.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`
+            );
+          } catch (error) {
+            // Fallback to name search only if OR fails
+            query = query.ilike('name', searchPattern);
+          }
         }
 
         // Apply company filter
@@ -1195,6 +1204,35 @@ export class EmployeeService {
     } catch (error) {
       console.error('Error in getExpiringVisasSummary:', error);
       throw error;
+    }
+  }
+
+  // Test search functionality
+  static async testEmployeeSearch(searchTerm: string): Promise<{ success: boolean; results: any[]; error?: string }> {
+    try {
+      console.log(`🧪 Testing employee search with term: "${searchTerm}"`);
+
+      const result = await this.getEmployees({ page: 1, pageSize: 10 }, { search: searchTerm });
+
+      if (result.error) {
+        return { success: false, results: [], error: result.error };
+      }
+
+      return {
+        success: true,
+        results: result.employees.map(emp => ({
+          employee_id: emp.employee_id,
+          name: emp.name,
+          company_name: emp.company_name,
+          trade: emp.trade
+        }))
+      };
+    } catch (error) {
+      return {
+        success: false,
+        results: [],
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 

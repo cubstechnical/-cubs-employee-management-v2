@@ -51,6 +51,8 @@ interface FolderItem {
   file_url?: string;
   document_id?: string;
   file_type?: string;
+  employeeName?: string;
+  companyName?: string;
 }
 
 // Mobile-optimized document card component
@@ -132,6 +134,14 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
             {item.type === 'folder' && item.documentCount !== undefined && (
               <p className="text-xs text-gray-500 dark:text-gray-400">
                 {item.documentCount} documents
+              </p>
+            )}
+            {item.type === 'document' && (item.employeeName || item.companyName) && (
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                {item.employeeName && item.companyName 
+                  ? `${item.employeeName} • ${item.companyName}`
+                  : item.employeeName || item.companyName
+                }
               </p>
             )}
           </div>
@@ -228,6 +238,8 @@ function DocumentsContent() {
     documents: false
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchResults, setSearchResults] = useState<FolderItem[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [loadingDocumentId, setLoadingDocumentId] = useState<string | null>(null);
   const shouldBypassCacheRef = useRef(false);
@@ -526,11 +538,77 @@ function DocumentsContent() {
     [loadItems]
   );
 
+  // Debounced search function
+  const debouncedSearch = useCallback(
+    debounce(async (searchValue: string) => {
+      if (!searchValue || searchValue.trim().length === 0) {
+        setSearchResults([]);
+        setIsSearching(false);
+        return;
+      }
+
+      setIsSearching(true);
+      try {
+        console.log(`🔍 Performing document search for: "${searchValue}"`);
+        
+        // Use the new search function from DocumentService
+        const { documents, error } = await DocumentService.searchDocuments(searchValue);
+        
+        if (error) {
+          console.error('❌ Search error:', error);
+          toast.error('Search failed: ' + error);
+          setSearchResults([]);
+          return;
+        }
+
+        if (!documents || documents.length === 0) {
+          console.log('❌ No documents found matching search term');
+          setSearchResults([]);
+          return;
+        }
+
+        // Convert search results to FolderItem format
+        const searchItems: FolderItem[] = documents.map((doc: any) => ({
+          name: doc.file_name,
+          type: 'document',
+          path: doc.file_path,
+          file_size: doc.file_size,
+          file_url: doc.file_url,
+          document_id: doc.id,
+          file_type: doc.mime_type,
+          employeeId: doc.employee_id,
+          employeeName: doc.employee_name,
+          companyName: doc.company_name
+        }));
+
+        console.log(`✅ Found ${searchItems.length} documents matching search`);
+        setSearchResults(searchItems);
+      } catch (error) {
+        console.error('❌ Error in search:', error);
+        toast.error('Search failed');
+        setSearchResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300), // 300ms debounce
+    []
+  );
+
   // Single useEffect for loading items
   useEffect(() => {
     console.log('🔄 useEffect triggered for path:', currentPath);
     debouncedLoadItems();
   }, [currentPath, debouncedLoadItems]);
+
+  // Handle search term changes
+  useEffect(() => {
+    if (searchTerm.trim()) {
+      debouncedSearch(searchTerm);
+    } else {
+      setSearchResults([]);
+      setIsSearching(false);
+    }
+  }, [searchTerm, debouncedSearch]);
 
 
 
@@ -634,9 +712,13 @@ function DocumentsContent() {
   };
 
   const breadcrumbParts = currentPath.split('/').filter(Boolean);
-  const filteredItems = items.filter((item: FolderItem) => 
-    item.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  
+  // Show search results when searching, otherwise show regular filtered items
+  const filteredItems = searchTerm.trim() 
+    ? searchResults 
+    : items.filter((item: FolderItem) => 
+        item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
 
   return (
     <Layout>
@@ -704,11 +786,16 @@ function DocumentsContent() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                 <input
                   type="text"
-                  placeholder="Search documents..."
+                  placeholder="Search documents by name, employee, or company..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                 />
+                {isSearching && (
+                  <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                    <Loader2 className="w-4 h-4 animate-spin text-blue-600" />
+                  </div>
+                )}
             </div>
             
           {/* Quick Back to Root Button */}
@@ -791,7 +878,7 @@ function DocumentsContent() {
 
         {/* Content */}
         <Card>
-          {loading ? (
+          {loading || isSearching ? (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {Array.from({ length: 6 }).map((_, i) => (
@@ -803,15 +890,15 @@ function DocumentsContent() {
             <div className="p-12 text-center">
               <Folder className="w-16 h-16 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                {searchTerm ? 'No matching documents found' : 'No documents found'}
-                           </h3>
+                {searchTerm.trim() ? 'No matching documents found' : 'No documents found'}
+              </h3>
               <p className="text-gray-600 dark:text-gray-400">
-                {searchTerm 
-                  ? 'Try adjusting your search terms' 
+                {searchTerm.trim() 
+                  ? `No documents found matching "${searchTerm}". Try searching by employee name, file name, or company.` 
                   : 'Upload some documents to get started'
                 }
-                </p>
-                     </div>
+              </p>
+            </div>
                    ) : (
             <div className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

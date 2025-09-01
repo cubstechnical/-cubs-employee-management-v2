@@ -527,19 +527,47 @@ export class DocumentService {
     }
   }
 
-  // Get all documents with optional filters
+  // Get all documents with optional filters and pagination
   static async getDocuments(filters?: {
     employee_id?: string;
     company_name?: string;
     document_type?: string;
     is_active?: boolean;
     file_path?: string;
-  }): Promise<{ documents: Document[]; error: string | null }> {
+    search?: string;
+    page?: number;
+    pageSize?: number;
+  }): Promise<{ documents: Document[]; total: number; totalPages: number; page: number; pageSize: number; error: string | null }> {
     try {
+      const page = filters?.page || 1;
+      const pageSize = filters?.pageSize || 20;
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
       let query = supabase
         .from('employee_documents')
-        .select('*')
+        .select('*', { count: 'exact' })
         .order('uploaded_at', { ascending: false });
+
+      // Apply search filter
+      if (filters?.search && filters.search.trim()) {
+        const searchTerm = filters.search.trim();
+        // First, try to find employees with matching names
+        const { data: employees } = await supabase
+          .from('employee_table')
+          .select('employee_id')
+          .ilike('name', `%${searchTerm}%`)
+          .limit(100);
+
+        const employeeIds = employees?.map(emp => emp.employee_id) || [];
+
+        // Search by file name, employee ID, or employee names (via employee IDs)
+        if (employeeIds.length > 0) {
+          query = query.or(`file_name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,employee_id.in.(${employeeIds.join(',')})`);
+        } else {
+          query = query.or(`file_name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%`);
+        }
+      }
 
       // Apply filters
       if (filters?.employee_id) {
@@ -555,15 +583,42 @@ export class DocumentService {
         query = query.ilike('file_path', `${filters.file_path}/%`);
       }
 
-      const { data, error } = await query;
+      // Apply pagination
+      query = query.range(from, to);
+
+      const { data, error, count } = await query;
 
       if (error) {
-        return { documents: [], error: error.message };
+        return {
+          documents: [],
+          total: 0,
+          totalPages: 0,
+          page,
+          pageSize,
+          error: error.message
+        };
       }
 
-      return { documents: data ? (data as unknown as Document[]) : [], error: null };
+      const total = count || 0;
+      const totalPages = Math.ceil(total / pageSize);
+
+      return {
+        documents: data ? (data as unknown as Document[]) : [],
+        total,
+        totalPages,
+        page,
+        pageSize,
+        error: null
+      };
     } catch (error) {
-      return { documents: [], error: 'Failed to fetch documents' };
+      return {
+        documents: [],
+        total: 0,
+        totalPages: 0,
+        page: filters?.page || 1,
+        pageSize: filters?.pageSize || 20,
+        error: 'Failed to fetch documents'
+      };
     }
   }
 
@@ -1069,6 +1124,209 @@ export class DocumentService {
     } catch (error) {
       console.error('❌ Exception in getEmployeeDocuments:', error);
       return { documents: [], error: 'Failed to fetch employee documents' };
+    }
+  }
+
+  // Search employee folders across all companies
+  static async searchEmployeeFolders(searchTerm: string, limit: number = 20): Promise<{ folders: DocumentFolder[]; error: string | null }> {
+    try {
+      if (!searchTerm || searchTerm.trim().length === 0) {
+        return { folders: [], error: null };
+      }
+
+      console.log(`🔍 Searching employee folders for: "${searchTerm}"`);
+
+      // Try RPC function first, fallback to manual query if RPC fails
+      try {
+        const { data, error } = await supabase.rpc('search_employee_folders', {
+          search_term: searchTerm.trim(),
+          limit_count: limit
+        });
+
+        if (error) {
+          console.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
+          throw error; // This will trigger the fallback
+        }
+
+        if (!data || data.length === 0) {
+          console.log('❌ No employee folders found matching search term');
+          return { folders: [], error: null };
+        }
+
+        console.log(`✅ Found ${data.length} employee folders matching search via RPC`);
+
+        // Convert RPC result to DocumentFolder format
+        const folders: DocumentFolder[] = data.map((item: any) => {
+          const displayName = this.resolveEmployeeDisplayName(item.employee_id, item.employee_name);
+
+          return {
+            id: `emp-${item.employee_id}`,
+            name: displayName,
+            type: 'employee' as const,
+            companyName: item.company_name,
+            employeeId: item.employee_id,
+            employeeName: displayName,
+            documentCount: item.document_count || 0,
+            lastModified: item.last_modified || new Date().toISOString(),
+            path: `${item.company_name}/${item.employee_id}`
+          };
+        });
+
+        console.log(`✅ Created ${folders.length} employee folders`);
+        return { folders, error: null };
+
+      } catch (rpcError) {
+        console.log('🔄 Falling back to manual employee folder search...');
+        
+        // Fallback: Manual query without RPC
+        const { data: employees, error: empError } = await supabase
+          .from('employee_table')
+          .select('employee_id, name, company_name')
+          .or(`name.ilike.%${searchTerm}%,employee_id.ilike.%${searchTerm}%,company_name.ilike.%${searchTerm}%`)
+          .limit(100);
+
+        if (empError) {
+          console.error('❌ Error searching employees:', empError);
+          return { folders: [], error: empError.message };
+        }
+
+        if (!employees || employees.length === 0) {
+          console.log('❌ No employees found matching search term');
+          return { folders: [], error: null };
+        }
+
+        console.log(`✅ Found ${employees.length} employees matching search via fallback`);
+
+        // Get document counts for these employees
+        const employeeIds = employees.map(emp => emp.employee_id);
+        const { data: docCounts, error: docError } = await supabase
+          .from('employee_documents')
+          .select('employee_id, created_at')
+          .in('employee_id', employeeIds)
+          .order('created_at', { ascending: false });
+
+        if (docError) {
+          console.error('❌ Error fetching document counts:', docError);
+        }
+
+        // Create document count map
+        const docCountMap = new Map<string, { count: number; lastModified: string }>();
+        (docCounts || []).forEach(doc => {
+          const employeeId = doc.employee_id as string;
+          const existing = docCountMap.get(employeeId);
+          if (existing) {
+            existing.count++;
+            const docDate = new Date(doc.created_at as string).getTime();
+            const existingDate = new Date(existing.lastModified).getTime();
+            if (docDate > existingDate) {
+              existing.lastModified = doc.created_at as string;
+            }
+          } else {
+            docCountMap.set(employeeId, {
+              count: 1,
+              lastModified: doc.created_at as string
+            });
+          }
+        });
+
+        // Create folder objects
+        const folders: DocumentFolder[] = employees.map(employee => {
+          const docInfo = docCountMap.get(employee.employee_id as string) || { count: 0, lastModified: new Date().toISOString() };
+          const displayName = this.resolveEmployeeDisplayName(employee.employee_id as string, employee.name as string);
+
+          return {
+            id: `emp-${employee.employee_id}`,
+            name: displayName,
+            type: 'employee' as const,
+            companyName: employee.company_name as string,
+            employeeId: employee.employee_id as string,
+            employeeName: displayName,
+            documentCount: docInfo.count,
+            lastModified: docInfo.lastModified,
+            path: `${employee.company_name}/${employee.employee_id}`
+          };
+        });
+
+        // Sort by document count (most documents first) and limit results
+        const sortedFolders = folders
+          .sort((a, b) => b.documentCount - a.documentCount)
+          .slice(0, limit);
+
+        console.log(`✅ Created ${sortedFolders.length} employee folders via fallback`);
+        return { folders: sortedFolders, error: null };
+      }
+
+    } catch (error) {
+      console.error('❌ Exception in searchEmployeeFolders:', error);
+      return { folders: [], error: 'Failed to search employee folders' };
+    }
+  }
+
+  // New function to search documents with employee names using RPC
+  static async searchDocuments(searchTerm: string): Promise<{ documents: any[]; error: string | null }> {
+    try {
+      if (!searchTerm || searchTerm.trim().length === 0) {
+        return { documents: [], error: null };
+      }
+
+      console.log(`🔍 Searching documents for: "${searchTerm}"`);
+
+      // Try RPC function first, fallback to manual query if RPC fails
+      try {
+        const { data, error } = await supabase.rpc('search_documents_and_employees', {
+          search_term: searchTerm.trim()
+        });
+
+        if (error) {
+          console.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
+          throw error; // This will trigger the fallback
+        }
+
+        if (!data || data.length === 0) {
+          console.log('❌ No documents found matching search term');
+          return { documents: [], error: null };
+        }
+
+        console.log(`✅ Found ${data.length} documents matching search via RPC`);
+        return { documents: data, error: null };
+
+      } catch (rpcError) {
+        console.log('🔄 Falling back to manual search query...');
+        
+        // Fallback: Manual query without RPC
+        const { data: documents, error: docError } = await supabase
+          .from('employee_documents')
+          .select(`
+            *,
+            employee_table!inner(name, company_name)
+          `)
+          .or(`file_name.ilike.%${searchTerm}%,employee_table.name.ilike.%${searchTerm}%,employee_table.employee_id.ilike.%${searchTerm}%,employee_table.company_name.ilike.%${searchTerm}%`)
+          .order('created_at', { ascending: false });
+
+        if (docError) {
+          console.error('❌ Error in fallback search:', docError);
+          return { documents: [], error: docError.message };
+        }
+
+        if (!documents || documents.length === 0) {
+          console.log('❌ No documents found matching search term');
+          return { documents: [], error: null };
+        }
+
+        // Transform the data to match RPC format
+        const transformedDocuments = documents.map((doc: any) => ({
+          ...doc,
+          employee_name: doc.employee_table?.name,
+          company_name: doc.employee_table?.company_name
+        }));
+
+        console.log(`✅ Found ${transformedDocuments.length} documents matching search via fallback`);
+        return { documents: transformedDocuments, error: null };
+      }
+
+    } catch (error) {
+      console.error('❌ Error in searchDocuments:', error);
+      return { documents: [], error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
 

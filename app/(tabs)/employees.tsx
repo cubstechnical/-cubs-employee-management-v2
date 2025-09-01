@@ -155,7 +155,10 @@ export default function EmployeesOptimized() {
         pageSize: 10
       };
 
-      const result = await EmployeeService.getEmployees(params);
+      const result = await EmployeeService.getEmployees(params, {
+        ...filtersToUse,
+        search: searchToUse
+      });
       
       if (result.employees) {
         setEmployees(result.employees);
