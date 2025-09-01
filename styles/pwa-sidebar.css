@@ -1,72 +1,21 @@
-/* Mobile Sidebar Enhancements */
+/* Simple Mobile Sidebar Styles */
 
-/* Ensure proper touch targets for mobile */
+/* Basic mobile menu button styles */
 .mobile-menu-button {
-  min-width: 48px !important;
-  min-height: 48px !important;
+  min-width: 48px;
+  min-height: 48px;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
-  -webkit-touch-callout: none;
-  -webkit-user-select: none;
-  user-select: none;
   cursor: pointer;
 }
 
-/* CRITICAL: Force menu button to be visible on mobile screens */
+/* Ensure mobile menu button is visible on small screens */
 @media (max-width: 1023px) {
   .mobile-menu-button {
     display: flex !important;
     visibility: visible !important;
     opacity: 1 !important;
-    pointer-events: auto !important;
-    z-index: 9999 !important;
   }
-  
-  /* Override any Tailwind classes that might hide the button */
-  .mobile-menu-button.lg\:hidden {
-    display: flex !important;
-  }
-  
-  /* Nuclear option: Force visibility for any button in top-left */
-  .fixed.top-4.left-4 {
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-  }
-}
-
-/* Additional fallback for very small screens */
-@media (max-width: 768px) {
-  .mobile-menu-button {
-    position: fixed !important;
-    top: 16px !important;
-    left: 16px !important;
-    display: flex !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    z-index: 99999 !important;
-  }
-}
-
-/* EMERGENCY FALLBACK BUTTON - Always visible on mobile */
-.emergency-menu-button {
-  position: fixed !important;
-  top: 16px !important;
-  left: 16px !important;
-  z-index: 99999 !important;
-  display: flex !important;
-  visibility: visible !important;
-  opacity: 1 !important;
-  pointer-events: auto !important;
-  touch-action: manipulation;
-  -webkit-tap-highlight-color: transparent;
-  border: 2px solid white;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
-
-.emergency-menu-button:active {
-  transform: scale(0.95);
-  background-color: #dc2626 !important;
 }
 
 /* Enhanced sidebar for PWA */

@@ -7,8 +7,7 @@ import Logo from '@/components/ui/Logo';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
-import { PWADebugger } from '@/components/ui/PWADebugger';
-import MobileDebugger from '@/components/debug/MobileDebugger';
+
 import { isMobileDevice } from '@/utils/mobileDetection';
 
 interface LayoutProps {
@@ -68,7 +67,12 @@ export default function Layout({ children, className }: LayoutProps) {
       touchSupport: 'ontouchstart' in window,
       persistentSidebar
     });
-    setSidebarOpen(!sidebarOpen);
+    
+    // Force state update
+    setSidebarOpen(prev => {
+      console.log('Setting sidebar from', prev, 'to', !prev);
+      return !prev;
+    });
   };
 
   const closeSidebar = () => {
@@ -95,77 +99,107 @@ export default function Layout({ children, className }: LayoutProps) {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
-      {/* Mobile sidebar overlay - Enhanced for PWA */}
-      {sidebarOpen && isMobile && !persistentSidebar && (
+      {/* Mobile sidebar overlay - Simple */}
+      {sidebarOpen && isMobile && (
         <div 
-          className="mobile-sidebar-overlay fixed inset-0 bg-black bg-opacity-50 lg:hidden"
+          className="fixed inset-0 bg-black bg-opacity-50 z-30"
           onClick={closeSidebar}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            closeSidebar();
-          }}
           style={{
-            zIndex: 50,
             touchAction: 'manipulation'
           }}
         />
       )}
 
-      {/* Mobile menu button - Enhanced for PWA */}
-      <button
-        onClick={toggleSidebar}
-        onTouchEnd={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleSidebar();
-        }}
-        onTouchStart={(e) => {
-          e.preventDefault();
-        }}
-        className={cn(
-          "mobile-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors",
-          // Always show on small screens (mobile), hide on large screens
-          "block lg:hidden"
-        )}
-        style={{ 
-          // Always show on mobile screens
-          display: 'flex !important',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minWidth: '48px',
-          minHeight: '48px',
-          zIndex: 9999,
-          // Add visual feedback for PWA
-          boxShadow: isPWA ? '0 4px 12px rgba(0, 0, 0, 0.15)' : undefined
-        }}
-        aria-label="Toggle navigation menu"
-      >
-        {sidebarOpen ? (
-          <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        ) : (
-          <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        )}
-      </button>
+      {/* Mobile menu button - Simple and reliable */}
+      {isMobile && (
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Menu button clicked, current state:', sidebarOpen);
+            toggleSidebar();
+          }}
+          className="mobile-menu-button fixed top-4 left-4 z-50 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700"
+          style={{ 
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            minWidth: '48px',
+            minHeight: '48px',
+            cursor: 'pointer',
+            touchAction: 'manipulation',
+            WebkitTapHighlightColor: 'transparent'
+          }}
+          aria-label="Toggle navigation menu"
+        >
+          {sidebarOpen ? (
+            <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+          ) : (
+            <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
+          )}
+        </button>
+      )}
 
-      {/* Sidebar - Enhanced for PWA */}
-      <div className={cn(
-        'pwa-sidebar pwa-sidebar-content pwa-sidebar-transition fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out',
-        // On mobile screens, use slide in/out behavior
-        // On desktop, show sidebar by default
-        isMobile 
-          ? (persistentSidebar ? 'translate-x-0' : (sidebarOpen ? 'translate-x-0' : '-translate-x-full'))
-          : 'lg:translate-x-0',
-        // Add backdrop blur for PWA
-        isPWA && sidebarOpen ? 'backdrop-blur-sm' : ''
-      )}>
-        <Sidebar 
-          onClose={persistentSidebar ? undefined : closeSidebar} 
-          onCollapseChange={setSidebarCollapsed}
-          isPersistent={persistentSidebar}
-          onTogglePersistent={togglePersistentSidebar}
-          isPWA={isPWA}
-        />
+      {/* Sidebar - Simple and reliable */}
+      <div 
+        className={cn(
+          'fixed inset-y-0 left-0 z-40 transform transition-transform duration-300 ease-in-out',
+          // On mobile, slide in/out based on sidebarOpen state
+          isMobile 
+            ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+            : 'lg:translate-x-0'
+        )}
+        style={{
+          width: '256px',
+          backgroundColor: 'white',
+          borderRight: '1px solid #e5e7eb'
+        }}
+      >
+        {/* Simple inline sidebar content */}
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-gray-200">
+            <div className="text-lg font-semibold text-gray-800">Menu</div>
+            <button
+              onClick={closeSidebar}
+              className="p-2 rounded-lg hover:bg-gray-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          {/* Navigation */}
+          <nav className="flex-1 p-4 space-y-2">
+            <a href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700">
+              <div className="w-5 h-5 bg-blue-500 rounded"></div>
+              Dashboard
+            </a>
+            <a href="/employees" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700">
+              <div className="w-5 h-5 bg-green-500 rounded"></div>
+              Employees
+            </a>
+            <a href="/documents" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700">
+              <div className="w-5 h-5 bg-purple-500 rounded"></div>
+              Documents
+            </a>
+            <a href="/notifications" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700">
+              <div className="w-5 h-5 bg-yellow-500 rounded"></div>
+              Notifications
+            </a>
+            <a href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-700">
+              <div className="w-5 h-5 bg-gray-500 rounded"></div>
+              Settings
+            </a>
+          </nav>
+          
+          {/* Footer */}
+          <div className="p-4 border-t border-gray-200">
+            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-red-50 text-red-600">
+              <div className="w-5 h-5 bg-red-500 rounded"></div>
+              Sign Out
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Main content */}
@@ -179,6 +213,13 @@ export default function Layout({ children, className }: LayoutProps) {
           : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
         className
       )}>
+        
+        {/* Debug indicator - temporary */}
+        {isMobile && (
+          <div className="fixed top-16 left-4 z-50 p-2 bg-blue-500 text-white text-xs rounded">
+            Sidebar: {sidebarOpen ? 'OPEN' : 'CLOSED'}
+          </div>
+        )}
         {/* Header - Mobile Optimized */}
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
@@ -197,36 +238,7 @@ export default function Layout({ children, className }: LayoutProps) {
         </div>
       </main>
       
-      {/* PWA Debugger - Only shows in development or PWA mode */}
-      <PWADebugger />
-      
-      {/* Mobile Debugger - Shows debug info for mobile issues */}
-      <MobileDebugger />
-      
-      {/* EMERGENCY FALLBACK: Always visible menu button for mobile */}
-      {isMobile && (
-        <button
-          onClick={toggleSidebar}
-          onTouchEnd={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleSidebar();
-          }}
-          className="emergency-menu-button fixed top-4 left-4 z-[99999] p-2 bg-red-500 text-white rounded-full shadow-lg"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            minWidth: '40px',
-            minHeight: '40px',
-            fontSize: '18px',
-            fontWeight: 'bold'
-          }}
-          aria-label="Emergency menu toggle"
-        >
-          {sidebarOpen ? '✕' : '☰'}
-        </button>
-      )}
+
     </div>
   );
 }
