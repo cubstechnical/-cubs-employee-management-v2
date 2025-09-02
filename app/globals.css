@@ -4,6 +4,17 @@
 
 
 
+/* Mobile menu button styles */
+.mobile-menu-btn {
+  min-width: 44px;
+  min-height: 44px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
 /* PWA-specific fixes */
 @layer base {
   /* Prevent zoom on input focus on iOS */

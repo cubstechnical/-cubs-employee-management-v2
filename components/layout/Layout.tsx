@@ -7,7 +7,7 @@ import Logo from '@/components/ui/Logo';
 
 import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
-
+import { Menu, X } from 'lucide-react';
 import { isMobileDevice } from '@/utils/mobileDetection';
 
 interface LayoutProps {
@@ -42,6 +42,10 @@ export default function Layout({ children, className }: LayoutProps) {
       window.removeEventListener('orientationchange', checkMobile);
     };
   }, []); // Remove sidebarOpen dependency!
+
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
 
   const closeSidebar = () => {
     setSidebarOpen(false);
@@ -108,6 +112,22 @@ export default function Layout({ children, className }: LayoutProps) {
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3 lg:space-x-4">
+              {/* Mobile menu button - positioned next to logo */}
+              {isMobile && (
+                <button
+                  onClick={toggleSidebar}
+                  className="mobile-menu-btn p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors lg:hidden"
+                  aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
+                  aria-expanded={sidebarOpen}
+                  aria-controls="main-navigation"
+                >
+                  {sidebarOpen ? (
+                    <X className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  ) : (
+                    <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  )}
+                </button>
+              )}
               <Logo size={isMobile ? "md" : "lg"} showText={!isMobile} />
             </div>
             <div className="flex items-center space-x-3 lg:space-x-4">
