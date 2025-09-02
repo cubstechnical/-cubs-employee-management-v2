@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/utils/cn';
 import {
-  Home,
   Users,
   FileText,
   Bell,
@@ -13,15 +12,7 @@ import {
   ChevronLeft,
   ChevronRight,
   BarChart3,
-  Calendar,
-  Mail,
-  Palette,
-  ClipboardList,
-  Shield,
-  UserPlus,
   LogOut,
-  Pin,
-  PinOff,
 } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Logo from '@/components/ui/Logo';
@@ -39,9 +30,6 @@ interface SidebarItemProps {
 interface SidebarProps {
   onClose?: () => void;
   onCollapseChange?: (collapsed: boolean) => void;
-  isPersistent?: boolean;
-  onTogglePersistent?: () => void;
-  isPWA?: boolean;
 }
 
 function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: SidebarItemProps & { onClose?: () => void; isCollapsed?: boolean }) {
@@ -88,7 +76,7 @@ const adminItems = [
   { href: '/settings', icon: <Settings className="w-5 h-5" />, label: 'Settings' },
 ];
 
-export default function Sidebar({ onClose, onCollapseChange, isPersistent, onTogglePersistent, isPWA }: SidebarProps) {
+export default function Sidebar({ onClose, onCollapseChange }: SidebarProps) {
   const pathname = usePathname();
   const [isCollapsed, setIsCollapsed] = useState(false);
   const { user, signOut } = useAuth();
@@ -156,37 +144,6 @@ export default function Sidebar({ onClose, onCollapseChange, isPersistent, onTog
 
       {/* Footer */}
       <div className="p-4 border-t border-gray-200 dark:border-gray-800 space-y-3">
-        {/* PWA Persistent Sidebar Toggle */}
-        {isPWA && onTogglePersistent && (
-          <button
-            onClick={onTogglePersistent}
-            className={cn(
-              'w-full flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
-              'hover:bg-blue-50 dark:hover:bg-blue-900/20 hover:shadow-sm',
-              isPersistent 
-                ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400' 
-                : 'text-gray-600 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400'
-            )}
-            style={{ 
-              touchAction: 'manipulation',
-              WebkitTapHighlightColor: 'transparent',
-              minHeight: '44px'
-            }}
-          >
-            {isPersistent ? (
-              <Pin className="w-5 h-5" />
-            ) : (
-              <PinOff className="w-5 h-5" />
-            )}
-            <span className={cn(
-              'font-medium transition-all duration-300',
-              isCollapsed ? 'opacity-0 w-0 overflow-hidden' : 'opacity-100'
-            )}>
-              {isPersistent ? 'Unpin Sidebar' : 'Pin Sidebar'}
-            </span>
-          </button>
-        )}
-        
         <ThemeToggle size="sm" variant="minimal" />
         <div className={cn(
           'text-xs text-gray-500 dark:text-gray-400 transition-all duration-300',

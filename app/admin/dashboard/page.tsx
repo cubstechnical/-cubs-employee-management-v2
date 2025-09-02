@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
-import dynamic from 'next/dynamic';
+import { useState, useEffect, useCallback, useRef, memo } from 'react';
+import { lazy, Suspense } from 'react';
 import Link from 'next/link';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
@@ -16,32 +16,33 @@ import {
   Filter,
   RefreshCw,
   Monitor,
-  Play,
-  Pause,
   ArrowUpRight,
   ArrowDownRight,
   UserCheck
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
 import { cn } from '@/utils/cn';
-import Logo from '@/components/ui/Logo';
 import { EmployeeService, DashboardStats, ExpiringVisa, DashboardFilters, CompanyDistribution } from '@/lib/services/employees';
 import { useRealtimeDashboard } from '@/hooks/useRealtimeDashboard';
-import PerformanceDashboard from '@/components/admin/PerformanceDashboard';
 import { AuthService } from '@/lib/services/auth';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import toast from 'react-hot-toast';
+import LoadingTracker from '@/components/performance/LoadingTracker';
 
-// Apple-inspired color palette
+// Lazy load heavy components
+const Chart = lazy(() => import('react-apexcharts'));
+const PerformanceDashboard = lazy(() => import('@/components/admin/PerformanceDashboard'));
+
+// CUBS-inspired magenta color palette
 const colors = {
-  primary: 'from-blue-500 to-purple-600',
-  secondary: 'from-emerald-500 to-teal-600',
-  accent: 'from-orange-500 to-red-500',
-  success: 'from-green-500 to-emerald-600',
-  warning: 'from-yellow-500 to-orange-500',
+  primary: 'from-pink-500 to-purple-600',
+  secondary: 'from-purple-500 to-indigo-600',
+  accent: 'from-rose-500 to-pink-600',
+  success: 'from-emerald-500 to-teal-600',
+  warning: 'from-amber-500 to-orange-500',
   danger: 'from-red-500 to-pink-600',
   neutral: 'from-gray-500 to-slate-600',
-  glass: 'backdrop-blur-xl bg-white/10 dark:bg-black/10 border border-white/20 dark:border-white/10'
+  glass: 'backdrop-blur-xl bg-pink-50/20 dark:bg-pink-900/10 border border-pink-200/30 dark:border-pink-600/30'
 };
 
 // Enhanced urgency colors with gradients
@@ -53,7 +54,7 @@ const urgencyColors = {
 };
 
 // Animated Stat Card with Apple-inspired design
-function AnimatedStatCard({ label, value, change, changeType, icon: Icon, gradient, description, loading = false, delay = 0 }: any) {
+const AnimatedStatCard = memo(function AnimatedStatCard({ label, value, change, changeType, icon: Icon, gradient, description, loading = false, delay = 0 }: any) {
   const [isVisible, setIsVisible] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
@@ -126,7 +127,7 @@ function AnimatedStatCard({ label, value, change, changeType, icon: Icon, gradie
       </div>
     </div>
   );
-}
+});
 
 // Enhanced Chart Card with Apple design
 function EnhancedChartCard({ title, children, className = '', subtitle, loading = false, gradient = colors.primary }: any) {
@@ -180,7 +181,6 @@ function EnhancedChartCard({ title, children, className = '', subtitle, loading 
 
 // Enhanced Company Chart with Apple aesthetics
 function EnhancedCompanyChart({ data, loading }: { data: CompanyDistribution[], loading: boolean }) {
-  const Chart = dynamic(() => import('react-apexcharts'), { ssr: false }) as any;
 
   if (loading) {
     return (
@@ -242,7 +242,9 @@ function EnhancedCompanyChart({ data, loading }: { data: CompanyDistribution[], 
 
   return (
     <div className="w-full">
-      <Chart options={options} series={series} type="donut" height={380} />
+      <Suspense fallback={<div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>}>
+        <Chart options={options} series={series} type="donut" height={380} />
+      </Suspense>
     </div>
   );
 }
@@ -371,10 +373,10 @@ export default function AdminDashboard() {
       // Initial load
       loadPendingApprovals();
 
-      // Set up periodic refresh for pending approvals (every 10 seconds for more responsiveness)
+      // Set up periodic refresh for pending approvals (every 30 seconds to reduce load)
       const interval = setInterval(() => {
         loadPendingApprovals();
-      }, 10000);
+      }, 30000);
 
       // Listen for approval/rejection events from admin approvals page
       const handleStorageChange = (e: StorageEvent) => {
@@ -418,23 +420,31 @@ export default function AdminDashboard() {
       // Phase 1: Fetch only essential stats first for fast initial load
       const statsData = await EmployeeService.getAdminDashboardStats(filters);
       setStats(statsData);
+      setIsLoading(false); // Set loading to false after essential data
 
       // Phase 2: Defer heavy data fetching to avoid blocking initial load
       if (fetchHeavyData) {
-        const [companyDist, visaData] = await Promise.all([
-          EmployeeService.getEmployeeDistributionByCompany(filters),
-          EmployeeService.getExpiringVisasSummary(8)
-        ]);
+        // Use setTimeout to defer heavy operations
+        setTimeout(async () => {
+          try {
+            const [companyDist, visaData] = await Promise.all([
+              EmployeeService.getEmployeeDistributionByCompany(filters),
+              EmployeeService.getExpiringVisasSummary(5) // Reduced from 8 to 5 for better performance
+            ]);
 
-        setCompanyData(companyDist);
-        setVisaAlerts(visaData);
+            setCompanyData(companyDist);
+            setVisaAlerts(visaData);
+          } catch (error) {
+            console.error('Error loading heavy dashboard data:', error);
+          }
+        }, 100); // Small delay to prioritize initial render
       }
 
     } catch (error) {
       toast.error('Failed to load dashboard data');
+      setIsLoading(false);
     } finally {
       setIsRefreshing(false);
-      setIsLoading(false);
     }
   }, [filters]);
 
@@ -457,11 +467,10 @@ export default function AdminDashboard() {
   // Load heavy data after initial load completes
   useEffect(() => {
     if (!isLoading) {
-      const loadHeavyData = async () => {
-        await fetchDashboardData(true);
-      };
-      // Load heavy data with a small delay to prioritize initial render
-      const timeoutId = setTimeout(loadHeavyData, 100);
+      // Load heavy data with a larger delay to prioritize initial render and user interaction
+      const timeoutId = setTimeout(() => {
+        fetchDashboardData(true);
+      }, 500);
       return () => clearTimeout(timeoutId);
     }
   }, [isLoading, fetchDashboardData]);
@@ -482,7 +491,7 @@ export default function AdminDashboard() {
       change: '+12%',
       changeType: 'positive' as const,
       icon: Users,
-      gradient: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+      gradient: 'linear-gradient(135deg, #ec4899 0%, #8b5cf6 100%)',
       description: 'Current headcount'
     },
     {
@@ -491,7 +500,7 @@ export default function AdminDashboard() {
       change: '+8%',
       changeType: 'positive' as const,
       icon: FileText,
-      gradient: 'linear-gradient(135deg, #10b981 0%, #14b8a6 100%)',
+      gradient: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)',
       description: 'All compliance files'
     },
     {
@@ -500,7 +509,7 @@ export default function AdminDashboard() {
       change: '',
       changeType: 'positive' as const,
       icon: Clock,
-      gradient: 'linear-gradient(135deg, #f59e0b 0%, #ef4444 100%)',
+      gradient: 'linear-gradient(135deg, #f97316 0%, #ec4899 100%)',
       description: 'Next 90 days'
     }
   ];
@@ -536,14 +545,31 @@ export default function AdminDashboard() {
 
   return (
     <Layout>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <LoadingTracker />
+      <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-indigo-50 dark:from-pink-900/20 dark:via-purple-900/20 dark:to-indigo-900/20 border-4 border-pink-300 dark:border-pink-600 rounded-3xl m-4">
+        
+        {/* MAGENTA REDESIGN INDICATOR */}
+        <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white text-center py-4 px-6 rounded-2xl shadow-xl border-4 border-pink-300 m-6">
+          <h2 className="text-2xl font-bold"> CUBS Dashboard - Employee Management System</h2>
+          <p className="text-pink-100 mt-1">Automated Visa Monitoring and Document Management</p>
+        </div>
+        
         <div className="space-y-6 p-6">
           {/* Compact Header */}
         <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                Admin Dashboard
-              </h1>
+              <div className="flex items-center space-x-4">
+                <div className="relative w-12 h-12">
+                  <img
+                    src="/assets/CUBS_LOGO.png"
+                    alt="CUBS Group of Companies"
+                    className="w-full h-full object-contain"
+                  />
+                </div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-pink-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent">
+                  CUBS Admin Dashboard
+                </h1>
+              </div>
               <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Welcome back! Here&apos;s your organization overview.
                 {isConnected && (
@@ -652,12 +678,14 @@ export default function AdminDashboard() {
           {/* Performance Dashboard */}
           {showPerformance && (
             <div className="animate-fade-in">
-              <PerformanceDashboard />
-        </div>
+              <Suspense fallback={<div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>}>
+                <PerformanceDashboard />
+              </Suspense>
+            </div>
           )}
 
           {/* Stats Grid: exactly three cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 border-2 border-pink-200 dark:border-pink-700 rounded-2xl bg-gradient-to-r from-pink-50/30 to-purple-50/30 dark:from-pink-900/10 dark:to-purple-900/10">
             {statCards.map((stat, index) => (
             <div 
               key={index} 
@@ -670,7 +698,7 @@ export default function AdminDashboard() {
         </div>
 
           {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 border-2 border-pink-200 dark:border-pink-700 rounded-2xl bg-gradient-to-r from-purple-50/20 to-indigo-50/20 dark:from-purple-900/5 dark:to-indigo-900/5">
             {/* Employees per company */}
             <EnhancedChartCard title="Employees per Company" subtitle="Active employees grouped by company" loading={isRefreshing}>
               <EnhancedCompanyChart data={companyData} loading={isRefreshing} />

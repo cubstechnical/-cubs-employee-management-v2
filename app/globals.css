@@ -2,8 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import PWA sidebar styles */
-@import '../styles/pwa-sidebar.css';
+
 
 /* PWA-specific fixes */
 @layer base {

@@ -4,7 +4,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Logo from '@/components/ui/Logo';
-import { Menu, X } from 'lucide-react';
+
 import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
 
@@ -43,10 +43,6 @@ export default function Layout({ children, className }: LayoutProps) {
     };
   }, []); // Remove sidebarOpen dependency!
 
-  const toggleSidebar = () => {
-    setSidebarOpen(!sidebarOpen);
-  };
-
   const closeSidebar = () => {
     setSidebarOpen(false);
   };
@@ -76,32 +72,7 @@ export default function Layout({ children, className }: LayoutProps) {
         />
       )}
 
-      {/* Mobile menu button */}
-      <button
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          toggleSidebar();
-        }}
-        className="mobile-menu-button fixed top-4 left-4 p-3 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700 active:bg-gray-100 dark:active:bg-gray-600 transition-colors block lg:hidden"
-        style={{ 
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minWidth: '48px',
-          minHeight: '48px',
-          zIndex: 9999
-        }}
-        aria-label={sidebarOpen ? "Close navigation menu" : "Open navigation menu"}
-        aria-expanded={sidebarOpen}
-        aria-controls="main-navigation"
-      >
-        {sidebarOpen ? (
-          <X className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        ) : (
-          <Menu className="w-6 h-6 text-gray-600 dark:text-gray-400" />
-        )}
-      </button>
+
 
       {/* Sidebar */}
       <div 
