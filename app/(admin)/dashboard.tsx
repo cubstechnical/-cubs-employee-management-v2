@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
+import Image from 'next/image';
 import {
   Users,
   FileText,
@@ -17,7 +18,10 @@ import {
   Download,
   Eye,
   ShieldX,
-  Loader2
+  Loader2,
+  Globe,
+  Award,
+  Target
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
 import { useAuth } from '@/lib/contexts/AuthContext';
@@ -38,11 +42,11 @@ interface PendingUser {
 
 // Mock data for non-approval stats (will be replaced with real data later)
 const departmentStats = [
-  { name: 'Engineering', employees: 45, growth: '+15%', color: 'bg-blue-500' },
-  { name: 'Sales', employees: 32, growth: '+8%', color: 'bg-green-500' },
-  { name: 'Marketing', employees: 28, growth: '+12%', color: 'bg-purple-500' },
-  { name: 'HR', employees: 15, growth: '+5%', color: 'bg-orange-500' },
-  { name: 'Finance', employees: 12, growth: '+3%', color: 'bg-red-500' },
+  { name: 'Engineering', employees: 45, growth: '+15%', color: 'bg-gradient-to-r from-blue-500 to-blue-600' },
+  { name: 'Sales', employees: 32, growth: '+8%', color: 'bg-gradient-to-r from-green-500 to-green-600' },
+  { name: 'Marketing', employees: 28, growth: '+12%', color: 'bg-gradient-to-r from-purple-500 to-purple-600' },
+  { name: 'HR', employees: 15, growth: '+5%', color: 'bg-gradient-to-r from-orange-500 to-orange-600' },
+  { name: 'Finance', employees: 12, growth: '+3%', color: 'bg-gradient-to-r from-red-500 to-red-600' },
 ];
 
 const visaAlerts = [
@@ -51,29 +55,41 @@ const visaAlerts = [
   { id: 3, name: 'Robert Garcia', visaType: 'E-3', expiryDate: '2024-02-25', daysLeft: 25 },
 ];
 
-function StatCard({ label, value, change, icon: Icon, color }: any) {
+function StatCard({ label, value, change, icon: Icon, color, gradient }: any) {
   return (
-    <Card className="p-6">
+    <Card className="p-6 bg-white dark:bg-gray-800 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
       <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{label}</p>
-          <div className="text-2xl font-bold text-gray-900 dark:text-white mt-1">{value}</div>
-          <p className="text-sm text-green-600 dark:text-green-400 mt-1">{change} from last month</p>
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-600 dark:text-gray-400 mb-2">{label}</p>
+          <div className="text-3xl font-bold bg-gradient-to-r from-gray-900 to-gray-700 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+            {value}
+          </div>
+          <p className="text-sm text-green-600 dark:text-green-400 mt-2 font-medium">{change}</p>
         </div>
-        <div className={`w-12 h-12 bg-gray-100 dark:bg-gray-700 rounded-lg flex items-center justify-center ${color}`}>
-          <Icon className="w-6 h-6" />
+        <div className={`w-16 h-16 ${gradient} rounded-xl flex items-center justify-center shadow-lg`}>
+          <Icon className="w-8 h-8 text-white" />
         </div>
       </div>
     </Card>
   );
 }
 
-function ChartCard({ title, children, className = '' }: any) {
+function ChartCard({ title, children, className = '', subtitle }: any) {
   return (
-    <Card className={className}>
+    <Card className={`bg-white dark:bg-gray-800 border-0 shadow-lg ${className}`}>
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{title}</h3>
-        <Button variant="outline" size="sm" icon={<Download className="w-4 h-4" />}>
+        <div>
+          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h3>
+          {subtitle && (
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{subtitle}</p>
+          )}
+        </div>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          icon={<Download className="w-4 h-4" />}
+          className="border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700"
+        >
           Export
         </Button>
       </div>
@@ -102,9 +118,9 @@ function ApprovalCard({ approval }: { approval: any }) {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
       <div>
-        <p className="font-medium text-gray-900 dark:text-white">{approval.employee}</p>
+        <p className="font-semibold text-gray-900 dark:text-white">{approval.employee}</p>
         <p className="text-sm text-gray-600 dark:text-gray-400">{approval.type}</p>
       </div>
       <div className="text-right">
@@ -126,12 +142,12 @@ function VisaAlertCard({ alert }: { alert: any }) {
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
       <div>
-        <p className="font-medium text-gray-900 dark:text-white">{alert.name}</p>
+        <p className="font-semibold text-gray-900 dark:text-white">{alert.name}</p>
         <p className="text-sm text-gray-600 dark:text-gray-400">{alert.visaType}</p>
         <p className="text-sm text-gray-600 dark:text-gray-400">{formatDate(alert.expiryDate)}</p>
-        <p className={`text-sm font-medium ${getDaysColor(alert.daysLeft)}`}>
+        <p className={`text-sm font-semibold ${getDaysColor(alert.daysLeft)}`}>
           {alert.daysLeft} days left
         </p>
       </div>
@@ -209,22 +225,47 @@ export default function AdminDashboard() {
 
   return (
     <Layout>
-      <div className="space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
-              Overview of your organization&apos;s performance and key metrics.
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <Button variant="outline" icon={<Download className="w-4 h-4" />}>
-              Export Report
-            </Button>
-            <Button icon={<BarChart3 className="w-4 h-4" />}>
-              Generate Report
-            </Button>
+      <div className="space-y-8">
+        {/* Company Header */}
+        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 text-white shadow-2xl">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <div className="relative w-20 h-20">
+                <Image
+                  src="/assets/CUBS_LOGO.png"
+                  alt="CUBS Group of Companies"
+                  fill
+                  className="object-contain"
+                  priority
+                />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-white to-gray-200 bg-clip-text text-transparent">
+                  CUBS Dashboard
+                </h1>
+                <p className="text-xl text-gray-300 mt-2">
+                  Group of Companies • UAE • Qatar • Oman • KSA
+                </p>
+                <p className="text-gray-400 mt-1">
+                  Comprehensive overview of your organization's performance and key metrics
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <Button 
+                variant="outline" 
+                icon={<Download className="w-4 h-4" />}
+                className="border-white/20 text-white hover:bg-white/10 hover:border-white/30"
+              >
+                Export Report
+              </Button>
+              <Button 
+                icon={<BarChart3 className="w-4 h-4" />}
+                className="bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 border-0 shadow-lg"
+              >
+                Generate Report
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -236,7 +277,7 @@ export default function AdminDashboard() {
             value={statsLoading ? "..." : dashboardStats?.totalEmployees?.toLocaleString() || "0"}
             change={statsLoading ? "Loading..." : "Real-time data"}
             icon={Users}
-            color="text-blue-600 dark:text-blue-400"
+            gradient="bg-gradient-to-r from-blue-500 to-blue-600"
           />
 
           {/* Active Documents */}
@@ -245,7 +286,7 @@ export default function AdminDashboard() {
             value={statsLoading ? "..." : dashboardStats?.totalDocuments?.toLocaleString() || "0"}
             change={statsLoading ? "Loading..." : "Real-time data"}
             icon={FileText}
-            color="text-green-600 dark:text-green-400"
+            gradient="bg-gradient-to-r from-green-500 to-green-600"
           />
 
           {/* Pending Approvals - Only show for main admin with real data */}
@@ -255,7 +296,7 @@ export default function AdminDashboard() {
               value={loading ? "..." : pendingUsers.length.toString()}
               change={loading ? "Loading..." : `Updated ${new Date().toLocaleTimeString()}`}
               icon={Clock}
-              color="text-orange-600 dark:text-orange-400"
+              gradient="bg-gradient-to-r from-orange-500 to-orange-600"
             />
           )}
 
@@ -265,30 +306,33 @@ export default function AdminDashboard() {
             value={statsLoading ? "..." : dashboardStats?.departments?.toString() || "0"}
             change={statsLoading ? "Loading..." : "Real-time data"}
             icon={Building2}
-            color="text-purple-600 dark:text-purple-400"
+            gradient="bg-gradient-to-r from-purple-500 to-purple-600"
           />
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Department Overview */}
           <div className="lg:col-span-2">
-            <ChartCard title="Department Overview">
+            <ChartCard 
+              title="Department Overview" 
+              subtitle="Employee distribution and growth across departments"
+            >
               <div className="space-y-4">
                 {departmentStats.map((dept, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-3 h-3 rounded-full ${dept.color}`}></div>
+                  <div key={index} className="flex items-center justify-between p-5 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-4 h-4 rounded-full ${dept.color} shadow-lg`}></div>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{dept.name}</p>
+                        <p className="font-semibold text-gray-900 dark:text-white text-lg">{dept.name}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{dept.employees} employees</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm font-medium text-green-600 dark:text-green-400">{dept.growth}</p>
-                      <div className="w-24 h-2 bg-gray-200 dark:bg-gray-600 rounded-full mt-1">
+                      <p className="text-lg font-bold text-green-600 dark:text-green-400">{dept.growth}</p>
+                      <div className="w-32 h-3 bg-gray-200 dark:bg-gray-600 rounded-full mt-2">
                         <div 
-                          className={`h-2 rounded-full ${dept.color}`}
+                          className={`h-3 rounded-full ${dept.color} shadow-lg`}
                           style={{ width: `${(dept.employees / 50) * 100}%` }}
                         ></div>
                       </div>
@@ -302,22 +346,27 @@ export default function AdminDashboard() {
           {/* Recent Approvals */}
           <div>
             {isMainAdmin ? (
-              <ChartCard title="Recent Approvals">
+              <ChartCard 
+                title="Recent Approvals" 
+                subtitle="Pending user registrations requiring approval"
+              >
                 <div className="space-y-3">
                   {loading ? (
-                    <div className="text-center py-6">
+                    <div className="text-center py-8">
+                      <Loader2 className="w-8 h-8 text-gray-400 mx-auto mb-3 animate-spin" />
                       <p className="text-gray-600 dark:text-gray-400">Loading approvals...</p>
                     </div>
                   ) : pendingUsers.length === 0 ? (
-                    <div className="text-center py-6">
-                      <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-                      <p className="text-gray-600 dark:text-gray-400">No pending approvals</p>
+                    <div className="text-center py-8">
+                      <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-3" />
+                      <p className="text-gray-600 dark:text-gray-400 font-medium">No pending approvals</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">All users are approved</p>
                     </div>
                   ) : (
                     pendingUsers.slice(0, 4).map((user) => (
-                      <div key={user.id} className="flex items-center justify-between p-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <div key={user.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700 dark:to-gray-800 rounded-xl border border-gray-200 dark:border-gray-600 hover:shadow-md transition-all duration-200">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
+                          <p className="font-semibold text-gray-900 dark:text-white">
                             {user.full_name || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Unknown User'}
                           </p>
                           <p className="text-sm text-gray-600 dark:text-gray-400">New User Registration</p>
@@ -335,10 +384,10 @@ export default function AdminDashboard() {
                 </div>
               </ChartCard>
             ) : (
-              <Card>
-                <div className="text-center py-8">
-                  <ShieldX className="w-12 h-12 text-red-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
+                <div className="text-center py-10">
+                  <ShieldX className="w-16 h-16 text-red-500 mx-auto mb-4" />
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-3">
                     Approval Access Restricted
                   </h3>
                   <p className="text-gray-600 dark:text-gray-400 mb-4">
@@ -354,9 +403,12 @@ export default function AdminDashboard() {
         </div>
 
         {/* Bottom Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Visa Alerts */}
-          <ChartCard title="Visa Expiry Alerts">
+          <ChartCard 
+            title="Visa Expiry Alerts" 
+            subtitle="Critical visa renewals requiring immediate attention"
+          >
             <div className="space-y-3">
               {visaAlerts.map((alert) => (
                 <VisaAlertCard key={alert.id} alert={alert} />
@@ -365,34 +417,68 @@ export default function AdminDashboard() {
           </ChartCard>
 
           {/* Quick Actions */}
-          <Card>
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Quick Actions</h3>
+          <Card className="bg-white dark:bg-gray-800 border-0 shadow-lg">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-r from-red-500 to-pink-600 rounded-lg flex items-center justify-center">
+                <Target className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900 dark:text-white">Quick Actions</h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400">Access frequently used features</p>
+              </div>
+            </div>
             <div className="space-y-3">
-              <Button variant="outline" icon={<Users className="w-4 h-4" />} className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                icon={<Users className="w-4 h-4" />} 
+                className="w-full justify-start border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700"
+              >
                 Manage Employees
               </Button>
-              <Button variant="outline" icon={<FileText className="w-4 h-4" />} className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                icon={<FileText className="w-4 h-4" />} 
+                className="w-full justify-start border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700"
+              >
                 Review Documents
               </Button>
               {isMainAdmin ? (
-                <Button variant="outline" icon={<CheckCircle className="w-4 h-4" />} className="w-full justify-start">
+                <Button 
+                  variant="outline" 
+                  icon={<CheckCircle className="w-4 h-4" />} 
+                  className="w-full justify-start border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700"
+                >
                   Process Approvals
                 </Button>
               ) : (
                 <Button
                   variant="outline"
                   icon={<ShieldX className="w-4 h-4" />}
-                  className="w-full justify-start opacity-50 cursor-not-allowed"
+                  className="w-full justify-start border-gray-200 opacity-50 cursor-not-allowed dark:border-gray-600"
                   disabled
                 >
                   Process Approvals (Restricted)
                 </Button>
               )}
-              <Button variant="outline" icon={<Building2 className="w-4 h-4" />} className="w-full justify-start">
+              <Button 
+                variant="outline" 
+                icon={<Building2 className="w-4 h-4" />} 
+                className="w-full justify-start border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-600 dark:hover:border-gray-500 dark:hover:bg-gray-700"
+              >
                 Department Settings
               </Button>
             </div>
           </Card>
+        </div>
+
+        {/* Company Footer */}
+        <div className="text-center py-6 border-t border-gray-200 dark:border-gray-700">
+          <p className="text-gray-600 dark:text-gray-400">
+            © 2024 CUBS Group of Companies. All rights reserved.
+          </p>
+          <p className="text-sm text-gray-500 dark:text-gray-500 mt-1">
+            Empowering businesses across the Middle East
+          </p>
         </div>
       </div>
     </Layout>
