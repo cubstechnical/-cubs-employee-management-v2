@@ -47,7 +47,7 @@ let authStateCache: {
 const AUTH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 let authPromise: Promise<any> | null = null; // Prevent multiple simultaneous calls
 
-// Enhanced auth state management with timeout
+// OPTIMIZED: Enhanced auth state management with faster timeout and better caching
 export const getAuthState = async () => {
   const now = Date.now();
 
@@ -74,10 +74,10 @@ export const getAuthState = async () => {
   try {
     // Create new auth promise
     authPromise = (async () => {
-      // Add timeout to prevent hanging (reduced from 10s to 5s)
+      // PERFORMANCE: Reduced timeout from 5s to 2s for faster initial load
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Auth timeout')), 5000)
+        setTimeout(() => reject(new Error('Auth timeout')), 2000)
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
@@ -103,7 +103,7 @@ export const getAuthState = async () => {
   } catch (error) {
     console.error('Auth state timeout or error:', error);
     authPromise = null; // Clear the promise on error
-    // Return empty state on timeout
+    // PERFORMANCE: Return empty state on timeout to prevent blocking
     return { user: null, session: null, timestamp: now };
   }
 };

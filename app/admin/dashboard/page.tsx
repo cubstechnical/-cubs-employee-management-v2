@@ -22,16 +22,15 @@ import {
 } from 'lucide-react';
 import { formatDate, timeAgo } from '@/utils/date';
 import { cn } from '@/utils/cn';
-import { EmployeeService, DashboardStats, ExpiringVisa, DashboardFilters, CompanyDistribution } from '@/lib/services/employees';
+import { OptimizedDashboardService, OptimizedDashboardStats } from '@/lib/services/dashboard';
 import { useRealtimeDashboard } from '@/hooks/useRealtimeDashboard';
 import { AuthService } from '@/lib/services/auth';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import toast from 'react-hot-toast';
 import LoadingTracker from '@/components/performance/LoadingTracker';
+import { LazyChart, LazyPerformanceDashboard, ChartLoadingFallback } from '@/components/performance/LazyComponents';
 
-// Lazy load heavy components
-const Chart = lazy(() => import('react-apexcharts'));
-const PerformanceDashboard = lazy(() => import('@/components/admin/PerformanceDashboard'));
+// PERFORMANCE: Using optimized lazy loading components
 
 // CUBS-inspired magenta color palette
 const colors = {
@@ -179,8 +178,8 @@ function EnhancedChartCard({ title, children, className = '', subtitle, loading 
   );
 }
 
-// Enhanced Company Chart with Apple aesthetics
-function EnhancedCompanyChart({ data, loading }: { data: CompanyDistribution[], loading: boolean }) {
+// OPTIMIZED: Enhanced Company Chart with lazy loading
+function EnhancedCompanyChart({ data, loading }: { data: any[], loading: boolean }) {
 
   if (loading) {
     return (
@@ -242,15 +241,13 @@ function EnhancedCompanyChart({ data, loading }: { data: CompanyDistribution[], 
 
   return (
     <div className="w-full">
-      <Suspense fallback={<div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>}>
-        <Chart options={options} series={series} type="donut" height={380} />
-      </Suspense>
+      <LazyChart options={options} series={series} type="donut" height={380} />
     </div>
   );
 }
 
 // Enhanced Visa Alert Card with Apple design
-function EnhancedVisaAlertCard({ alert }: { alert: ExpiringVisa }) {
+function EnhancedVisaAlertCard({ alert }: { alert: any }) {
   const [isHovered, setIsHovered] = useState(false);
 
   const getUrgencyIcon = (urgency: string) => {
@@ -325,20 +322,22 @@ export default function AdminDashboard() {
   const [isRefreshingApprovals, setIsRefreshingApprovals] = useState(false);
   // Auto refresh disabled per requirements
 
-  // Dashboard data state
-  const [stats, setStats] = useState<DashboardStats>({
+  // OPTIMIZED: Single dashboard data state
+  const [dashboardData, setDashboardData] = useState<OptimizedDashboardStats>({
     totalEmployees: 0,
     activeEmployees: 0,
     totalDocuments: 0,
     pendingApprovals: 0,
     visasExpiringSoon: 0,
-    departments: 0
+    departments: 0,
+    companyDistribution: [],
+    departmentDistribution: [],
+    expiringVisas: [],
+    recentActivity: []
   });
-  const [companyData, setCompanyData] = useState<CompanyDistribution[]>([]);
-  const [visaAlerts, setVisaAlerts] = useState<ExpiringVisa[]>([]);
   
   // Filter state
-  const [filters, setFilters] = useState<DashboardFilters>({
+  const [filters, setFilters] = useState<{dateRange: string}>({
     dateRange: '30d'
   });
 
@@ -413,40 +412,28 @@ export default function AdminDashboard() {
     }
   }, [user, loadPendingApprovals]);
 
-  const fetchDashboardData = useCallback(async (fetchHeavyData = false) => {
+  // OPTIMIZED: Single API call for all dashboard data
+  const fetchDashboardData = useCallback(async () => {
     try {
       setIsRefreshing(true);
+      const startTime = performance.now();
 
-      // Phase 1: Fetch only essential stats first for fast initial load
-      const statsData = await EmployeeService.getAdminDashboardStats(filters);
-      setStats(statsData);
-      setIsLoading(false); // Set loading to false after essential data
+      // PERFORMANCE: Single optimized API call
+      const data = await OptimizedDashboardService.getDashboardStats();
+      setDashboardData(data);
+      setIsLoading(false);
 
-      // Phase 2: Defer heavy data fetching to avoid blocking initial load
-      if (fetchHeavyData) {
-        // Use setTimeout to defer heavy operations
-        setTimeout(async () => {
-          try {
-            const [companyDist, visaData] = await Promise.all([
-              EmployeeService.getEmployeeDistributionByCompany(filters),
-              EmployeeService.getExpiringVisasSummary(5) // Reduced from 8 to 5 for better performance
-            ]);
-
-            setCompanyData(companyDist);
-            setVisaAlerts(visaData);
-          } catch (error) {
-            console.error('Error loading heavy dashboard data:', error);
-          }
-        }, 100); // Small delay to prioritize initial render
-      }
+      const endTime = performance.now();
+      console.log(`✅ Dashboard loaded in ${(endTime - startTime).toFixed(2)}ms`);
 
     } catch (error) {
+      console.error('Dashboard fetch error:', error);
       toast.error('Failed to load dashboard data');
       setIsLoading(false);
     } finally {
       setIsRefreshing(false);
     }
-  }, [filters]);
+  }, []);
 
   // Function to refresh pending approvals (can be called from child components)
   const refreshPendingApprovals = () => {
@@ -460,34 +447,25 @@ export default function AdminDashboard() {
   });
 
   useEffect(() => {
-    // Initial load - only essential stats for fast startup
-    fetchDashboardData(false);
-  }, [filters, fetchDashboardData]);
+    // OPTIMIZED: Single load with all data
+    fetchDashboardData();
+  }, [fetchDashboardData]);
 
-  // Load heavy data after initial load completes
-  useEffect(() => {
-    if (!isLoading) {
-      // Load heavy data with a larger delay to prioritize initial render and user interaction
-      const timeoutId = setTimeout(() => {
-        fetchDashboardData(true);
-      }, 500);
-      return () => clearTimeout(timeoutId);
-    }
-  }, [isLoading, fetchDashboardData]);
-
-  const handleFilterChange = (newFilters: Partial<DashboardFilters>) => {
-    setFilters(prev => ({ ...prev, ...newFilters }));
+  const handleFilterChange = (newFilters: Partial<{dateRange: string}>) => {
+    setFilters((prev: {dateRange: string}) => ({ ...prev, ...newFilters }));
   };
 
   const handleManualRefresh = () => {
-    fetchDashboardData(true);
+    // Clear cache to force fresh data
+    OptimizedDashboardService.clearCache();
+    fetchDashboardData();
     toast.success('Dashboard refreshed');
   };
 
   const statCards = [
     {
       label: 'Employees',
-      value: stats.totalEmployees,
+      value: dashboardData.totalEmployees,
       change: '+12%',
       changeType: 'positive' as const,
       icon: Users,
@@ -496,7 +474,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Documents',
-      value: stats.totalDocuments,
+      value: dashboardData.totalDocuments,
       change: '+8%',
       changeType: 'positive' as const,
       icon: FileText,
@@ -505,7 +483,7 @@ export default function AdminDashboard() {
     },
     {
       label: 'Upcoming Visa Expiries',
-      value: visaAlerts.length,
+      value: dashboardData.expiringVisas.length,
       change: '',
       changeType: 'positive' as const,
       icon: Clock,
@@ -678,9 +656,7 @@ export default function AdminDashboard() {
           {/* Performance Dashboard */}
           {showPerformance && (
             <div className="animate-fade-in">
-              <Suspense fallback={<div className="h-64 bg-gray-100 dark:bg-gray-800 rounded-xl animate-pulse"></div>}>
-                <PerformanceDashboard />
-              </Suspense>
+              <LazyPerformanceDashboard />
             </div>
           )}
 
@@ -701,7 +677,7 @@ export default function AdminDashboard() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 p-4 border-2 border-pink-200 dark:border-pink-700 rounded-2xl bg-gradient-to-r from-purple-50/20 to-indigo-50/20 dark:from-purple-900/5 dark:to-indigo-900/5">
             {/* Employees per company */}
             <EnhancedChartCard title="Employees per Company" subtitle="Active employees grouped by company" loading={isRefreshing}>
-              <EnhancedCompanyChart data={companyData} loading={isRefreshing} />
+              <EnhancedCompanyChart data={dashboardData.companyDistribution} loading={isRefreshing} />
             </EnhancedChartCard>
 
             {/* Upcoming visa expiries */}
@@ -712,17 +688,17 @@ export default function AdminDashboard() {
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Next 90 days</p>
                 </div>
               </div>
-              <div>
-                {visaAlerts.length > 0 ? (
+                            <div>
+                {dashboardData.expiringVisas.length > 0 ? (
                 <div className="space-y-6">
                   {/* Summary chips */}
                   <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
                     {[
-                      { label: '≤7d', color: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400', count: visaAlerts.filter(a => (a as any).daysRemaining! <= 7).length },
-                      { label: '≤15d', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 7 && (a as any).daysRemaining! <= 15).length },
-                      { label: '≤30d', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 15 && (a as any).daysRemaining! <= 30).length },
-                      { label: '≤60d', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 30 && (a as any).daysRemaining! <= 60).length },
-                      { label: '≤90d', color: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400', count: visaAlerts.filter(a => (a as any).daysRemaining! > 60 && (a as any).daysRemaining! <= 90).length },
+                      { label: '≤7d', color: 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400', count: dashboardData.expiringVisas.filter(a => a.daysLeft <= 7).length },
+                      { label: '≤15d', color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/20 dark:text-orange-400', count: dashboardData.expiringVisas.filter(a => a.daysLeft > 7 && a.daysLeft <= 15).length },
+                      { label: '≤30d', color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/20 dark:text-amber-400', count: dashboardData.expiringVisas.filter(a => a.daysLeft > 15 && a.daysLeft <= 30).length },
+                      { label: '≤60d', color: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/20 dark:text-yellow-400', count: dashboardData.expiringVisas.filter(a => a.daysLeft > 30 && a.daysLeft <= 60).length },
+                      { label: '≤90d', color: 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400', count: dashboardData.expiringVisas.filter(a => a.daysLeft > 60 && a.daysLeft <= 90).length },
                     ].map((chip, idx) => (
                       <div key={idx} className={cn('rounded-lg px-3 py-2 text-center text-sm font-medium', chip.color)}>
                         {chip.label}: {chip.count}
@@ -734,11 +710,11 @@ export default function AdminDashboard() {
                   <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-3 overflow-hidden">
                     {(() => {
                       const totals = [
-                        visaAlerts.filter(a => (a as any).daysRemaining! <= 7).length,
-                        visaAlerts.filter(a => (a as any).daysRemaining! > 7 && (a as any).daysRemaining! <= 15).length,
-                        visaAlerts.filter(a => (a as any).daysRemaining! > 15 && (a as any).daysRemaining! <= 30).length,
-                        visaAlerts.filter(a => (a as any).daysRemaining! > 30 && (a as any).daysRemaining! <= 60).length,
-                        visaAlerts.filter(a => (a as any).daysRemaining! > 60 && (a as any).daysRemaining! <= 90).length,
+                        dashboardData.expiringVisas.filter(a => a.daysLeft <= 7).length,
+                        dashboardData.expiringVisas.filter(a => a.daysLeft > 7 && a.daysLeft <= 15).length,
+                        dashboardData.expiringVisas.filter(a => a.daysLeft > 15 && a.daysLeft <= 30).length,
+                        dashboardData.expiringVisas.filter(a => a.daysLeft > 30 && a.daysLeft <= 60).length,
+                        dashboardData.expiringVisas.filter(a => a.daysLeft > 60 && a.daysLeft <= 90).length,
                       ];
                       const total = Math.max(1, totals.reduce((a,b)=>a+b,0));
                       const colors = ['#ef4444', '#f97316', '#f59e0b', '#eab308', '#22c55e'];
@@ -749,12 +725,12 @@ export default function AdminDashboard() {
                           ))}
                         </div>
                       );
-                    })()}
+                    })()} 
                   </div>
 
                   {/* Top N list */}
                   <div className="space-y-3">
-                    {visaAlerts.slice(0, 8).map((alert) => (
+                    {dashboardData.expiringVisas.slice(0, 8).map((alert) => (
                   <EnhancedVisaAlertCard key={alert.employee_id} alert={alert} />
                     ))}
                   </div>

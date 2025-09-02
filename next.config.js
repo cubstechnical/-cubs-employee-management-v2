@@ -27,6 +27,11 @@ const withPWA = require('next-pwa')({
   ],
 });
 
+// Bundle analyzer configuration
+const withBundleAnalyzer = require('@next/bundle-analyzer')({
+  enabled: process.env.ANALYZE === 'true',
+});
+
 /** @type {import('next').NextConfig} */
 const baseConfig = {
   // Mobile-optimized build configuration
@@ -46,7 +51,7 @@ const baseConfig = {
   generateEtags: false,
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react'],
+    optimizePackageImports: ['lucide-react', 'react-apexcharts'],
     // Performance optimizations
     turbo: {
       rules: {
@@ -58,6 +63,9 @@ const baseConfig = {
     },
     // Enable SWC minification for better performance
     swcMinify: true,
+    // Enable modern JavaScript features (removed modernBuild as it's not valid)
+    // Optimize package imports
+    optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
   },
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
@@ -93,6 +101,19 @@ const baseConfig = {
               chunks: 'all',
               enforce: true,
             },
+            // Separate heavy libraries
+            charts: {
+              test: /[\\/]node_modules[\\/](apexcharts|react-apexcharts)[\\/]/,
+              name: 'charts',
+              chunks: 'all',
+              enforce: true,
+            },
+            react: {
+              test: /[\\/]node_modules[\\/](react|react-dom)[\\/]/,
+              name: 'react',
+              chunks: 'all',
+              enforce: true,
+            },
           },
         },
       };
@@ -118,4 +139,4 @@ const baseConfig = {
   },
 }
 
-module.exports = withPWA(baseConfig)
+module.exports = withBundleAnalyzer(withPWA(baseConfig))

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
@@ -40,8 +40,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-// Mobile-optimized employee card component
-const EmployeeCard = ({ employee, onView, onEdit }: { 
+// Mobile-optimized employee card component - Memoized for performance
+const EmployeeCard = memo(({ employee, onView, onEdit }: { 
   employee: Employee; 
   onView: () => void; 
   onEdit: () => void; 
@@ -123,7 +123,9 @@ const EmployeeCard = ({ employee, onView, onEdit }: {
       </div>
     </div>
   );
-};
+});
+
+EmployeeCard.displayName = 'EmployeeCard';
 
 // Main Employees component - OPTIMIZED with TanStack Query
 function EmployeesOptimized() {
@@ -172,21 +174,21 @@ function EmployeesOptimized() {
     refreshEmployees();
   }, [refreshEmployees]);
 
-  const handlePageChange = (page: number) => {
+  const handlePageChange = useCallback((page: number) => {
     setCurrentPage(page);
-  };
+  }, []);
 
-  const handleSearch = (value: string) => {
+  const handleSearch = useCallback((value: string) => {
     setSearchTerm(value);
     setCurrentPage(1);
-  };
+  }, []);
 
-  const handleFilterChange = (key: keyof EmployeeFilters, value: string) => {
+  const handleFilterChange = useCallback((key: keyof EmployeeFilters, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
     setCurrentPage(1);
-  };
+  }, []);
 
-  const clearFilters = () => {
+  const clearFilters = useCallback(() => {
     setFilters({
       company_name: '',
       status: '',
@@ -194,7 +196,7 @@ function EmployeesOptimized() {
       nationality: ''
     });
     setCurrentPage(1);
-  };
+  }, []);
 
   if (initialLoading) {
     return (
@@ -389,14 +391,19 @@ function EmployeesOptimized() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {employees.map(employee => (
-                <EmployeeCard
-                  key={employee.employee_id}
-                  employee={employee}
-                  onView={() => router.push(`/admin/employees/${employee.employee_id}`)}
-                  onEdit={() => router.push(`/admin/employees/${employee.employee_id}`)}
-                />
-              ))}
+              {employees.map(employee => {
+                const handleView = () => router.push(`/admin/employees/${employee.employee_id}`);
+                const handleEdit = () => router.push(`/admin/employees/${employee.employee_id}`);
+                
+                return (
+                  <EmployeeCard
+                    key={employee.employee_id}
+                    employee={employee}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                  />
+                );
+              })}
             </div>
           )}
 

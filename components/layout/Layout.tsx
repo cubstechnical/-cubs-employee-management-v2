@@ -4,6 +4,7 @@ import { ReactNode, useState, useEffect } from 'react';
 import Sidebar from './Sidebar';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Logo from '@/components/ui/Logo';
+import RoutePreloader from '@/components/performance/RoutePreloader';
 
 import { cn } from '@/utils/cn';
 import { usePWA } from '@/hooks/usePWA';
@@ -100,12 +101,11 @@ export default function Layout({ children, className }: LayoutProps) {
 
       {/* Main content */}
       <main className={cn(
-        'transition-all duration-300',
-        // On mobile, sidebar overlays (no margin)
-        // On desktop, add margin based on sidebar state
+        'transition-all duration-300 min-h-screen',
+        // MOBILE OPTIMIZED: Better responsive layout
         isMobile 
-          ? 'ml-0'
-          : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
+          ? 'ml-0' // Mobile: full width
+          : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64', // Desktop: account for sidebar
         className
       )}>
         {/* Header - Mobile Optimized */}
@@ -137,11 +137,17 @@ export default function Layout({ children, className }: LayoutProps) {
         </header>
         
         {/* Content - Mobile Optimized */}
-        <div className="p-3 lg:p-6 bg-gray-50 dark:bg-gray-900 min-h-screen">
+        <div className={cn(
+          'bg-gray-50 dark:bg-gray-900 min-h-screen',
+          // MOBILE OPTIMIZED: Responsive padding for better mobile experience
+          isMobile ? 'p-2 sm:p-3' : 'p-4 lg:p-6'
+        )}>
           {children}
         </div>
       </main>
       
+      {/* Route preloader for smooth navigation */}
+      <RoutePreloader />
     </div>
   );
 }
