@@ -1,0 +1,327 @@
+"use client";
+
+import React, { memo, useMemo, useCallback, useState, useEffect } from 'react';
+import { FixedSizeList } from 'react-window';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase/client';
+import Card from '@/components/ui/Card';
+import Badge from '@/components/ui/badge/Badge';
+import Button from '@/components/ui/Button';
+import { 
+  Building, 
+  Calendar, 
+  MapPin, 
+  Edit, 
+  Trash2,
+  Users,
+  Loader2
+} from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+interface Employee {
+  id: string;
+  employee_id: string;
+  name: string;
+  email_id?: string;
+  mobile_number?: string;
+  trade: string;
+  company_name: string;
+  visa_expiry_date: string;
+  is_active: boolean;
+  created_at: string;
+  nationality: string;
+  status: string;
+}
+
+interface VirtualizedEmployeeListProps {
+  searchTerm?: string;
+  filterStatus?: 'all' | 'active' | 'inactive';
+  filterCompany?: string;
+  onDeleteEmployee?: (employee: Employee) => void;
+  height?: number;
+}
+
+// Memoized employee row component for optimal performance
+const EmployeeRow = memo(function EmployeeRow({ 
+  index, 
+  style, 
+  data 
+}: { 
+  index: number; 
+  style: React.CSSProperties; 
+  data: { 
+    employees: Employee[]; 
+    onDelete: (employee: Employee) => void;
+    router: any;
+  } 
+}) {
+  const employee = data.employees[index];
+  
+  if (!employee) {
+    return (
+      <div style={style} className="flex items-center justify-center p-4">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+      </div>
+    );
+  }
+
+  const getInitials = (name: string): string => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  const getVisaStatus = (expiryDate: string) => {
+    if (!expiryDate) return { status: 'unknown', color: 'info' as const };
+    
+    const expiry = new Date(expiryDate);
+    const now = new Date();
+    const daysUntilExpiry = Math.ceil((expiry.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    
+    if (daysUntilExpiry < 0) return { status: 'expired', color: 'error' as const };
+    if (daysUntilExpiry <= 30) return { status: 'expiring', color: 'warning' as const };
+    return { status: 'valid', color: 'success' as const };
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  const visaStatus = getVisaStatus(employee.visa_expiry_date);
+
+  return (
+    <div style={style} className="px-4 py-2">
+      <Card className="p-4 hover:shadow-md transition-shadow">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-4">
+            <div className="w-12 h-12 bg-[#d3194f]/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-lg font-semibold text-[#d3194f]">
+                {getInitials(employee.name)}
+              </span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+                {employee.name}
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                ID: {employee.employee_id}
+              </p>
+              <div className="flex items-center gap-4 mt-1">
+                <div className="flex items-center gap-1 text-sm text-gray-500">
+                  <Building className="w-3 h-3" />
+                  <span className="truncate max-w-[120px]">{employee.company_name}</span>
+                </div>
+                <div className="flex items-center gap-1 text-sm text-gray-500">
+                  <MapPin className="w-3 h-3" />
+                  <span className="truncate max-w-[80px]">{employee.nationality || 'N/A'}</span>
+                </div>
+                {employee.trade && (
+                  <div className="flex items-center gap-1 text-sm text-gray-500">
+                    <span className="w-3 h-3">🔧</span>
+                    <span className="truncate max-w-[100px]">{employee.trade}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <Badge color={employee.is_active ? 'success' : 'error'}>
+                {employee.is_active ? 'Active' : 'Inactive'}
+              </Badge>
+              <div className="mt-1">
+                <Badge color={visaStatus.color}>
+                  Visa {visaStatus.status}
+                </Badge>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => data.router.push(`/employees/${employee.id}`)}
+              >
+                <Edit className="w-4 h-4" />
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="text-red-600 hover:text-red-700"
+                onClick={() => data.onDelete(employee)}
+              >
+                <Trash2 className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+        
+        {employee.visa_expiry_date && (
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center gap-1 text-sm text-gray-500">
+              <Calendar className="w-3 h-3" />
+              Visa expires: {formatDate(employee.visa_expiry_date)}
+            </div>
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+});
+
+export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
+  searchTerm = '',
+  filterStatus = 'all',
+  filterCompany = 'all',
+  onDeleteEmployee,
+  height = 600
+}: VirtualizedEmployeeListProps) {
+  const router = useRouter();
+  const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch all employees with optimized query
+  const { data: employees = [], isLoading: queryLoading } = useQuery({
+    queryKey: ['all-employees'],
+    queryFn: async () => {
+      try {
+        console.log('📊 Fetching all employees for virtualization...');
+        
+        const { data, error } = await supabase
+          .from('employee_table')
+          .select('*')
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('❌ Error fetching employees:', error);
+          throw new Error(`Database query failed: ${error.message}`);
+        }
+        
+        console.log(`✅ Fetched ${data?.length || 0} employees for virtualization`);
+        return (data as unknown) as Employee[];
+      } catch (err) {
+        console.error('❌ Query function error:', err);
+        throw err;
+      }
+    },
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    cacheTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  // Update local state when query data changes
+  useEffect(() => {
+    if (employees.length > 0) {
+      setAllEmployees(employees);
+      setIsLoading(false);
+    }
+  }, [employees]);
+
+  // Filter employees based on search and filters
+  const filteredEmployees = useMemo(() => {
+    if (!allEmployees.length) return [];
+
+    let filtered = allEmployees;
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchPattern = searchTerm.toLowerCase();
+      filtered = filtered.filter(emp => 
+        emp.name.toLowerCase().includes(searchPattern) ||
+        emp.email_id?.toLowerCase().includes(searchPattern) ||
+        emp.company_name.toLowerCase().includes(searchPattern) ||
+        emp.trade.toLowerCase().includes(searchPattern) ||
+        emp.employee_id.toLowerCase().includes(searchPattern)
+      );
+    }
+
+    // Apply status filter
+    if (filterStatus !== 'all') {
+      filtered = filtered.filter(emp => 
+        filterStatus === 'active' ? emp.is_active : !emp.is_active
+      );
+    }
+
+    // Apply company filter
+    if (filterCompany !== 'all') {
+      filtered = filtered.filter(emp => emp.company_name === filterCompany);
+    }
+
+    return filtered;
+  }, [allEmployees, searchTerm, filterStatus, filterCompany]);
+
+  // Memoize row data to prevent unnecessary re-renders
+  const rowData = useMemo(() => ({
+    employees: filteredEmployees,
+    onDelete: onDeleteEmployee || (() => {}),
+    router
+  }), [filteredEmployees, onDeleteEmployee, router]);
+
+  // Loading state
+  if (isLoading || queryLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-[#d3194f] mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading employees...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty state
+  if (filteredEmployees.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+            No Employees Found
+          </h3>
+          <p className="text-gray-600 dark:text-gray-400">
+            {searchTerm ? 'Try adjusting your search criteria' : 'No employees match your current filters'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full">
+      {/* Results summary */}
+      <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+            <span className="text-sm text-blue-800 dark:text-blue-200">
+              Showing {filteredEmployees.length} employee{filteredEmployees.length !== 1 ? 's' : ''}
+            </span>
+          </div>
+          <div className="text-xs text-blue-600 dark:text-blue-400">
+            Virtualized for optimal performance
+          </div>
+        </div>
+      </div>
+
+      {/* Virtualized list */}
+      <FixedSizeList
+        height={height}
+        itemCount={filteredEmployees.length}
+        itemSize={140} // Height of each employee card
+        itemData={rowData}
+        overscanCount={5} // Render 5 extra items for smooth scrolling
+      >
+        {EmployeeRow}
+      </FixedSizeList>
+    </div>
+  );
+});
+
+export default VirtualizedEmployeeList;

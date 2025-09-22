@@ -1,0 +1,90 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Next.js
+.next/
+out/
+build/
+dist/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+test-results/
+playwright-report/
+
+# Build artifacts
+*.zip
+*.aab
+*.apk
+*.ipa
+
+# Temporary files
+*.tmp
+*.temp
+.tmp/
+.temp/
+
+# Cache
+.cache/
+.parcel-cache/
+
+# TypeScript
+*.tsbuildinfo
+
+# Capacitor
+android/app/build/
+ios/App/build/
+
+# Vercel
+.vercel/
+
+# Local development
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Test files (if any remain)
+__tests__/
+e2e/
+tests/
+
+# Old build scripts
+*_OLD.bat
+*_BACKUP.sh
+*_LEGACY.*
+
+# Documentation backups
+*_BACKUP.md
+*_OLD.md
+*_LEGACY.md

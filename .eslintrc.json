@@ -1,0 +1,24 @@
+{
+  "root": true,
+  "extends": ["next/core-web-vitals"],
+  "rules": {
+    "react/no-unescaped-entities": "warn",
+    "react-hooks/exhaustive-deps": "warn",
+    "jsx-a11y/alt-text": "warn",
+    "@next/next/no-img-element": "warn",
+    "@typescript-eslint/no-var-requires": "off",
+    "no-var-requires": "off"
+  },
+  "ignorePatterns": [
+    "expo.json", 
+    "expo-test-app/**", 
+    "*.md", 
+    "scripts/*.js",
+    "node_modules/**",
+    ".next/**",
+    "dist/**",
+    "out/**",
+    "android/**",
+    "ios/**"
+  ]
+}

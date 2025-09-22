@@ -1,0 +1,388 @@
+name: Build Mobile Apps
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Platform to build'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+        - android
+        - ios
+        - both
+
+jobs:
+  build-android:
+    runs-on: ubuntu-latest
+    if: github.event.inputs.platform == 'android' || github.event.inputs.platform == 'both' || (github.event.inputs.platform == null && github.ref == 'refs/heads/main')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup environment variables
+      env:
+        # GitHub Actions secrets - only available in repository context
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        GMAIL_FROM_NAME: ${{ secrets.GMAIL_FROM_NAME }}
+        B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+        B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        B2_BUCKET_NAME: ${{ secrets.B2_BUCKET_NAME }}
+        B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+        B2_BUCKET_ID: ${{ secrets.B2_BUCKET_ID }}
+      run: |
+        cp env.example .env
+        echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}" >> .env
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" >> .env
+        echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}" >> .env
+        echo "GMAIL_USER=${GMAIL_USER:-}" >> .env
+        echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}" >> .env
+        echo "GMAIL_FROM_NAME=${GMAIL_FROM_NAME:-}" >> .env
+        echo "B2_APPLICATION_KEY_ID=${B2_APPLICATION_KEY_ID:-}" >> .env
+        echo "B2_APPLICATION_KEY=${B2_APPLICATION_KEY:-}" >> .env
+        echo "B2_BUCKET_NAME=${B2_BUCKET_NAME:-}" >> .env
+        echo "B2_ENDPOINT=${B2_ENDPOINT:-}" >> .env
+        echo "B2_BUCKET_ID=${B2_BUCKET_ID:-}" >> .env
+        echo "NODE_ENV=production" >> .env
+
+    - name: Build mobile app
+      run: npm run build:mobile
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    - name: Clear Gradle cache and setup Java
+      run: |
+        cd android
+        chmod +x ./gradlew
+        # Clear Gradle cache to remove old Java home settings
+        ./gradlew --stop
+        rm -rf ~/.gradle/caches
+        rm -rf .gradle
+        # Clear any existing Java home settings
+        unset JAVA_HOME
+        unset GRADLE_OPTS
+        # Set proper Java home for Linux
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+
+    - name: Build Android APK
+      run: |
+        cd android
+        export JAVA_HOME=/usr/lib/jvm/temurin-17-jdk-amd64
+        ./gradlew clean
+        ./gradlew assembleDebug --no-daemon
+        ./gradlew bundleRelease --no-daemon
+
+    - name: Upload Android artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-build
+        path: |
+          android/app/build/outputs/apk/debug/
+          android/app/build/outputs/bundle/release/
+        retention-days: 30
+
+  build-ios:
+    runs-on: macos-latest
+    if: github.event.inputs.platform == 'ios' || github.event.inputs.platform == 'both' || (github.event.inputs.platform == null && github.ref == 'refs/heads/main')
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Setup environment variables
+      env:
+        # GitHub Actions secrets - only available in repository context
+        NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+        SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        GMAIL_USER: ${{ secrets.GMAIL_USER }}
+        GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        GMAIL_FROM_NAME: ${{ secrets.GMAIL_FROM_NAME }}
+        B2_APPLICATION_KEY_ID: ${{ secrets.B2_APPLICATION_KEY_ID }}
+        B2_APPLICATION_KEY: ${{ secrets.B2_APPLICATION_KEY }}
+        B2_BUCKET_NAME: ${{ secrets.B2_BUCKET_NAME }}
+        B2_ENDPOINT: ${{ secrets.B2_ENDPOINT }}
+        B2_BUCKET_ID: ${{ secrets.B2_BUCKET_ID }}
+      run: |
+        cp env.example .env
+        echo "NEXT_PUBLIC_SUPABASE_URL=${NEXT_PUBLIC_SUPABASE_URL:-}" >> .env
+        echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${NEXT_PUBLIC_SUPABASE_ANON_KEY:-}" >> .env
+        echo "SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY:-}" >> .env
+        echo "GMAIL_USER=${GMAIL_USER:-}" >> .env
+        echo "GMAIL_APP_PASSWORD=${GMAIL_APP_PASSWORD:-}" >> .env
+        echo "GMAIL_FROM_NAME=${GMAIL_FROM_NAME:-}" >> .env
+        echo "B2_APPLICATION_KEY_ID=${B2_APPLICATION_KEY_ID:-}" >> .env
+        echo "B2_APPLICATION_KEY=${B2_APPLICATION_KEY:-}" >> .env
+        echo "B2_BUCKET_NAME=${B2_BUCKET_NAME:-}" >> .env
+        echo "B2_ENDPOINT=${B2_ENDPOINT:-}" >> .env
+        echo "B2_BUCKET_ID=${B2_BUCKET_ID:-}" >> .env
+        echo "NODE_ENV=production" >> .env
+
+    - name: Build mobile app
+      run: |
+        npm run build
+        node scripts/prepare-capacitor.js
+        # Remove existing android platform if it exists
+        rm -rf android
+        npx cap add android
+        npx cap copy android
+        npx cap sync android
+
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '16.4'  # Use latest stable Xcode version available on runner
+
+    - name: Verify Xcode version and set it explicitly
+      run: |
+        sudo xcode-select -s /Applications/Xcode_16.4.app/Contents/Developer
+        xcodebuild -version
+        xcode-select -p
+
+    # CocoaPods installation skipped - using manual framework management
+
+    - name: Clean iOS build environment and prepare for direct build
+      run: |
+        # Clean Xcode derived data and caches
+        rm -rf ~/Library/Developer/Xcode/DerivedData
+        rm -rf ~/Library/Caches/CocoaPods
+        # Clean iOS project artifacts
+        cd ios/App
+        rm -rf Pods
+        rm -rf Podfile.lock
+        rm -rf build
+        rm -rf *.xcworkspace/xcuserdata
+        rm -rf *.xcodeproj/xcuserdata
+        rm -rf *.xcodeproj/project.xcworkspace
+        # Create minimal Podfile (compatibility only, not used for building)
+        echo 'platform :ios, '\''13.0'\''' > Podfile
+        echo 'use_frameworks!' >> Podfile
+        echo '' >> Podfile
+        echo 'target '\''App'\'' do' >> Podfile
+        echo '  # Capacitor framework handled manually' >> Podfile
+        echo 'end' >> Podfile
+        cd ../..
+        # Remove existing iOS platform if it exists and add fresh
+        rm -rf ios
+        npx cap add ios
+        # Copy web assets after platform addition
+        npx cap copy ios
+        # Build the iOS project using workspace created by CocoaPods
+        cd ios/App
+        # CocoaPods should have created a workspace, use it
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        cd ../..
+        # Now copy the built framework
+        mkdir -p ios/App/Frameworks
+        # Copy from built products if available
+        if [ -d "ios/App/build/Debug-iphoneos" ]; then
+          cp -r ios/App/build/Debug-iphoneos/*.framework ios/App/Frameworks/ 2>/dev/null || true
+        fi
+        echo "iOS platform setup completed"
+
+    - name: Create export options plist
+      env:
+        # GitHub Actions secret - only available in repository context
+        APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      run: |
+        cd ios/App
+        echo '<?xml version="1.0" encoding="UTF-8"?>' > exportOptions.plist
+        echo '<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">' >> exportOptions.plist
+        echo '<plist version="1.0">' >> exportOptions.plist
+        echo '<dict>' >> exportOptions.plist
+        echo '    <key>method</key>' >> exportOptions.plist
+        echo '    <string>development</string>' >> exportOptions.plist
+        echo '    <key>teamID</key>' >> exportOptions.plist
+        echo "    <string>${APPLE_TEAM_ID:-DEVELOPMENT}</string>" >> exportOptions.plist
+        echo '    <key>signingStyle</key>' >> exportOptions.plist
+        echo '    <string>automatic</string>' >> exportOptions.plist
+        echo '    <key>stripSwiftSymbols</key>' >> exportOptions.plist
+        echo '    <true/>' >> exportOptions.plist
+        echo '    <key>uploadBitcode</key>' >> exportOptions.plist
+        echo '    <false/>' >> exportOptions.plist
+        echo '    <key>uploadSymbols</key>' >> exportOptions.plist
+        echo '    <false/>' >> exportOptions.plist
+        echo '    <key>compileBitcode</key>' >> exportOptions.plist
+        echo '    <false/>' >> exportOptions.plist
+        echo '</dict>' >> exportOptions.plist
+        echo '</plist>' >> exportOptions.plist
+
+    - name: Build iOS app (Development)
+      run: |
+        cd ios/App
+        # Build with Capacitor frameworks using workspace
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Debug -destination 'generic/platform=iOS' build -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+
+    - name: Build iOS app (Release Archive)
+      run: |
+        cd ios/App
+        # Archive with Capacitor frameworks using workspace
+        xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -archivePath $PWD/App.xcarchive archive -UseNewBuildSystem=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY=""
+        # Verify archive was created
+        if [ -f "App.xcarchive/Info.plist" ]; then
+          echo "Archive created successfully"
+        else
+          echo "Archive creation failed"
+          exit 1
+        fi
+
+    - name: Prepare iOS App for Distribution
+      run: |
+        cd ios/App
+        echo "🎯 iOS Build Summary:"
+        echo "✅ Archive created successfully at: App.xcarchive"
+
+        # For CI builds without signing, we provide the archive
+        if [ -f "App.xcarchive/Info.plist" ]; then
+          echo "📦 Archive Contents:"
+          ls -la App.xcarchive/
+          echo ""
+          echo "🚀 Deployment Options:"
+          echo "1. Use this archive for local testing with Xcode"
+          echo "2. Sign the archive locally for App Store/TestFlight"
+          echo "3. Use for development builds"
+          echo ""
+          echo "📋 Archive Info:"
+          plutil -p App.xcarchive/Info.plist | head -10
+        else
+          echo "❌ Archive not found"
+        fi
+
+    - name: Upload iOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ios-build
+        path: |
+          ios/App/App.xcarchive/
+          ios/App/exportOptions.plist
+          ios/App/App.xcworkspace/
+          ios/App/App.xcodeproj/
+          ios/App/Podfile
+          ios/App/Podfile.lock
+        retention-days: 30
+
+    - name: iOS Deployment Guide (No Mac Required!)
+      run: |
+        echo "## 🚀 iOS App Deployment - No Mac Needed!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### ☁️ Cloud Build Services (Recommended):" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### 🔧 Codemagic (Free tier available)" >> $GITHUB_STEP_SUMMARY
+        echo "- Visit: https://codemagic.io" >> $GITHUB_STEP_SUMMARY
+        echo "- Connect your GitHub repository" >> $GITHUB_STEP_SUMMARY
+        echo "- Automatic iOS builds and signing" >> $GITHUB_STEP_SUMMARY
+        echo "- TestFlight and App Store deployment" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### 📱 Appcircle (Free for small teams)" >> $GITHUB_STEP_SUMMARY
+        echo "- Visit: https://appcircle.io" >> $GITHUB_STEP_SUMMARY
+        echo "- CI/CD for mobile apps" >> $GITHUB_STEP_SUMMARY
+        echo "- iOS signing and distribution" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### 🚀 Appy Pie (Beginner-friendly)" >> $GITHUB_STEP_SUMMARY
+        echo "- Visit: https://appypie.com" >> $GITHUB_STEP_SUMMARY
+        echo "- No-code app building" >> $GITHUB_STEP_SUMMARY
+        echo "- iOS app store publishing" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 👥 Help from Others:" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### 🤝 Find a Mac User:" >> $GITHUB_STEP_SUMMARY
+        echo "- Ask friends/family with Macs" >> $GITHUB_STEP_SUMMARY
+        echo "- Local computer repair shops" >> $GITHUB_STEP_SUMMARY
+        echo "- University computer labs" >> $GITHUB_STEP_SUMMARY
+        echo "- Freelancers on Upwork/Fiverr" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "#### 💻 Remote Mac Access:" >> $GITHUB_STEP_SUMMARY
+        echo "- MacinCloud: https://www.macincloud.com" >> $GITHUB_STEP_SUMMARY
+        echo "- MacStadium: https://www.macstadium.com" >> $GITHUB_STEP_SUMMARY
+        echo "- AWS Mac instances" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Your Current iOS Files:" >> $GITHUB_STEP_SUMMARY
+        echo "- Download \`ios-build\` artifact" >> $GITHUB_STEP_SUMMARY
+        echo "- Contains complete Xcode project" >> $GITHUB_STEP_SUMMARY
+        echo "- Ready for any Mac with Xcode" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 💡 Alternative Approach:" >> $GITHUB_STEP_SUMMARY
+        echo "#### 🔄 Convert to Cross-Platform:" >> $GITHUB_STEP_SUMMARY
+        echo "- Consider React Native or Flutter" >> $GITHUB_STEP_SUMMARY
+        echo "- Single codebase for iOS & Android" >> $GITHUB_STEP_SUMMARY
+        echo "- No Mac required for development" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📞 Need Help?" >> $GITHUB_STEP_SUMMARY
+        echo "- Post on Stack Overflow" >> $GITHUB_STEP_SUMMARY
+        echo "- Reddit: r/iOSProgramming" >> $GITHUB_STEP_SUMMARY
+        echo "- GitHub Discussions" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🎯 Quick Start:" >> $GITHUB_STEP_SUMMARY
+        echo "1. Choose a cloud service above" >> $GITHUB_STEP_SUMMARY
+        echo "2. Connect your GitHub repo" >> $GITHUB_STEP_SUMMARY
+        echo "3. Let them handle iOS building & signing" >> $GITHUB_STEP_SUMMARY
+        echo "4. Get your app on TestFlight/App Store!" >> $GITHUB_STEP_SUMMARY
+
+  deploy-preview:
+    runs-on: ubuntu-latest
+    needs: [build-android, build-ios]
+    if: github.event_name == 'pull_request'
+    
+    steps:
+    - name: Download Android artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: android-build
+        path: android-artifacts
+
+    - name: Download iOS artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ios-build
+        path: ios-artifacts
+
+    - name: Create deployment summary
+      run: |
+        echo "## Mobile App Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "### Android Build" >> $GITHUB_STEP_SUMMARY
+        echo "- APK: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- AAB: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### iOS Build" >> $GITHUB_STEP_SUMMARY
+        echo "- Archive: Available in artifacts" >> $GITHUB_STEP_SUMMARY
+        echo "- IPA: Available in artifacts (if export successful)" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Download artifacts for testing" >> $GITHUB_STEP_SUMMARY
+        echo "2. Test on physical devices" >> $GITHUB_STEP_SUMMARY
+        echo "3. Submit to app stores when ready" >> $GITHUB_STEP_SUMMARY
