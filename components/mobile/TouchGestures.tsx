@@ -11,6 +11,7 @@ interface TouchGestureProps {
   onLongPress?: () => void;
   children: React.ReactNode;
   className?: string;
+  style?: React.CSSProperties;
   threshold?: number;
   longPressDelay?: number;
 }
@@ -24,6 +25,7 @@ export function TouchGestures({
   onLongPress,
   children,
   className = '',
+  style,
   threshold = 50,
   longPressDelay = 500
 }: TouchGestureProps) {
@@ -167,7 +169,8 @@ export function TouchGestures({
         touchAction: 'manipulation', // Optimize touch performance
         WebkitTouchCallout: 'none', // Disable iOS callout
         WebkitUserSelect: 'none', // Disable text selection
-        userSelect: 'none'
+        userSelect: 'none',
+        ...style // Merge with passed style prop
       }}
     >
       {children}

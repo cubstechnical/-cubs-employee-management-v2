@@ -202,6 +202,15 @@ const baseConfig = {
     // Ignore optional native deps used by ws in Node, not needed for Next builds
     config.externals = config.externals || [];
     
+    // Handle Supabase realtime dependency warnings
+    config.ignoreWarnings = [
+      // Ignore the dynamic require warning from Supabase realtime
+      /Critical dependency: the request of a dependency is an expression/,
+      /Module not found: Can't resolve 'ws'/,
+      /Module not found: Can't resolve 'bufferutil'/,
+      /Module not found: Can't resolve 'utf-8-validate'/,
+    ];
+    
     // For server builds, mark as externals false via fallback so bundler won't try to resolve
     config.resolve.fallback = {
       ...(config.resolve.fallback || {}),

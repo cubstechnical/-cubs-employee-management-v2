@@ -1,7 +1,7 @@
 "use client";
 
 import React, { memo, useMemo, useCallback, useState, useEffect } from 'react';
-import { FixedSizeList } from 'react-window';
+// import { List } from 'react-window'; // Temporarily disabled due to API issues
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase/client';
 import Card from '@/components/ui/Card';
@@ -213,7 +213,7 @@ export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
       }
     },
     staleTime: 5 * 60 * 1000, // 5 minutes
-    cacheTime: 10 * 60 * 1000, // 10 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
   });
 
   // Update local state when query data changes
@@ -310,16 +310,17 @@ export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
         </div>
       </div>
 
-      {/* Virtualized list */}
-      <FixedSizeList
-        height={height}
-        itemCount={filteredEmployees.length}
-        itemSize={140} // Height of each employee card
-        itemData={rowData}
-        overscanCount={5} // Render 5 extra items for smooth scrolling
-      >
-        {EmployeeRow}
-      </FixedSizeList>
+      {/* Regular list (virtualization temporarily disabled) */}
+      <div className="space-y-4">
+        {filteredEmployees.map((employee, index) => (
+          <EmployeeRow
+            key={employee.id}
+            index={index}
+            style={{}}
+            data={rowData}
+          />
+        ))}
+      </div>
     </div>
   );
 });

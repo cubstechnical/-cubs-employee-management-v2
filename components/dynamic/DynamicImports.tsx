@@ -52,7 +52,7 @@ export const DynamicVirtualizedEmployeeList = dynamic(
 );
 
 export const DynamicDocumentViewer = dynamic(
-  () => import('@/components/documents/DocumentViewer'),
+  () => import('@/components/documents/DocumentPreview'),
   {
     loading: () => <LoadingSpinner />,
     ssr: false
@@ -60,7 +60,7 @@ export const DynamicDocumentViewer = dynamic(
 );
 
 export const DynamicAdminPanel = dynamic(
-  () => import('@/components/admin/AdminPanel'),
+  () => import('@/components/admin/PerformanceDashboard'),
   {
     loading: () => <LoadingSpinner />,
     ssr: false
@@ -98,7 +98,7 @@ export const DynamicDocuments = dynamic(() => import('@/app/documents/page'), {
   ssr: false
 });
 
-export const DynamicAdmin = dynamic(() => import('@/app/admin/page'), {
+export const DynamicAdmin = dynamic(() => import('@/app/admin/dashboard/page'), {
   loading: () => <LoadingSpinner />,
   ssr: false
 });
@@ -131,13 +131,14 @@ export const DynamicApexCharts = dynamic(
   }
 );
 
-export const DynamicReactWindow = dynamic(
-  () => import('react-window'),
-  {
-    loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded"></div>,
-    ssr: false
-  }
-);
+// Note: react-window is imported directly in components that need it
+// export const DynamicReactWindow = dynamic(
+//   () => import('react-window'),
+//   {
+//     loading: () => <div className="h-64 bg-gray-100 animate-pulse rounded"></div>,
+//     ssr: false
+//   }
+// );
 
 // Preload critical components
 export function preloadCriticalComponents() {

@@ -98,7 +98,8 @@ export function PerformanceDashboard() {
     // Core Web Vitals
     const lcp = performance.getEntriesByType('largest-contentful-paint')[0]?.startTime || 0;
     const fcp = performance.getEntriesByType('paint').find(entry => entry.name === 'first-contentful-paint')?.startTime || 0;
-    const ttfb = performance.getEntriesByType('navigation')[0]?.responseStart || 0;
+    const navigationEntry = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
+    const ttfb = navigationEntry?.responseStart || 0;
 
     // Memory usage
     const memory = (performance as any).memory;
