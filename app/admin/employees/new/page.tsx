@@ -23,6 +23,7 @@ interface FormData {
   visastamping_date: string;
   visa_expiry_date: string;
   eid: string;
+  leave_date?: string;
   wcc: string;
   lulu_wps_card: string;
   basic_salary: string;
@@ -30,6 +31,19 @@ interface FormData {
   phone?: string;
   email?: string;
   address?: string;
+  passport_number?: string;
+  visa_number?: string;
+  visa_type?: string;
+  visa_status: string;
+  date_of_birth?: string;
+  join_date?: string;
+  salary?: number;
+  mobile_number?: string;
+  home_phone_number?: string;
+  email_id?: string;
+  company_id?: string;
+  status: string;
+  is_active: boolean;
 }
 
 const initialFormData: FormData = {
@@ -45,13 +59,27 @@ const initialFormData: FormData = {
   visastamping_date: '',
   visa_expiry_date: '',
   eid: '',
+  leave_date: '',
   wcc: '',
   lulu_wps_card: '',
   basic_salary: '',
   company_name: '',
   phone: '',
   email: '',
-  address: ''
+  address: '',
+  passport_number: '',
+  visa_number: '',
+  visa_type: '',
+  visa_status: 'active',
+  date_of_birth: '',
+  join_date: '',
+  salary: 0,
+  mobile_number: '',
+  home_phone_number: '',
+  email_id: '',
+  company_id: '',
+  status: 'active',
+  is_active: true
 };
 
 export default function NewEmployee() {
@@ -211,7 +239,7 @@ function NewEmployeeContent() {
     }
   };
 
-  const handleInputChange = (field: keyof FormData, value: string) => {
+  const handleInputChange = (field: keyof FormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     
     // Clear error when user starts typing
@@ -500,6 +528,217 @@ function NewEmployeeContent() {
                 placeholder="WPS123456"
                 error={getFieldError('lulu_wps_card')}
               />
+            </div>
+          </div>
+        </Card>
+
+        {/* Additional Information */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Additional Information</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Leave Date
+              </label>
+              <Input
+                type="date"
+                value={formData.leave_date || ''}
+                onChange={(e) => handleInputChange('leave_date', e.target.value)}
+                error={getFieldError('leave_date')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Passport Number (Alternative)
+              </label>
+              <Input
+                type="text"
+                value={formData.passport_number || ''}
+                onChange={(e) => handleInputChange('passport_number', e.target.value)}
+                placeholder="Alternative passport number"
+                error={getFieldError('passport_number')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Visa Number
+              </label>
+              <Input
+                type="text"
+                value={formData.visa_number || ''}
+                onChange={(e) => handleInputChange('visa_number', e.target.value)}
+                placeholder="Visa number"
+                error={getFieldError('visa_number')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Visa Type
+              </label>
+              <select
+                value={formData.visa_type || ''}
+                onChange={(e) => handleInputChange('visa_type', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  getFieldError('visa_type') ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <option value="">Select visa type</option>
+                <option value="employment">Employment</option>
+                <option value="visit">Visit</option>
+                <option value="transit">Transit</option>
+                <option value="tourist">Tourist</option>
+              </select>
+              {getFieldError('visa_type') && (
+                <p className="text-red-500 text-sm mt-1">{getFieldError('visa_type')}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Visa Status <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.visa_status}
+                onChange={(e) => handleInputChange('visa_status', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  getFieldError('visa_status') ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <option value="active">Active</option>
+                <option value="expired">Expired</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="pending">Pending</option>
+              </select>
+              {getFieldError('visa_status') && (
+                <p className="text-red-500 text-sm mt-1">{getFieldError('visa_status')}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Date of Birth (Alternative)
+              </label>
+              <Input
+                type="date"
+                value={formData.date_of_birth || ''}
+                onChange={(e) => handleInputChange('date_of_birth', e.target.value)}
+                error={getFieldError('date_of_birth')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Join Date (Alternative)
+              </label>
+              <Input
+                type="date"
+                value={formData.join_date || ''}
+                onChange={(e) => handleInputChange('join_date', e.target.value)}
+                error={getFieldError('join_date')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Salary (Numeric)
+              </label>
+              <Input
+                type="number"
+                value={formData.salary || ''}
+                onChange={(e) => handleInputChange('salary', e.target.value)}
+                placeholder="1500"
+                error={getFieldError('salary')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Mobile Number (Alternative)
+              </label>
+              <Input
+                type="tel"
+                value={formData.mobile_number || ''}
+                onChange={(e) => handleInputChange('mobile_number', e.target.value)}
+                placeholder="+971-50-123-4567"
+                error={getFieldError('mobile_number')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Home Phone Number
+              </label>
+              <Input
+                type="tel"
+                value={formData.home_phone_number || ''}
+                onChange={(e) => handleInputChange('home_phone_number', e.target.value)}
+                placeholder="+971-4-123-4567"
+                error={getFieldError('home_phone_number')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Email ID (Alternative)
+              </label>
+              <Input
+                type="email"
+                value={formData.email_id || ''}
+                onChange={(e) => handleInputChange('email_id', e.target.value)}
+                placeholder="employee@example.com"
+                error={getFieldError('email_id')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Company ID
+              </label>
+              <Input
+                type="text"
+                value={formData.company_id || ''}
+                onChange={(e) => handleInputChange('company_id', e.target.value)}
+                placeholder="Company ID"
+                error={getFieldError('company_id')}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Status <span className="text-red-500">*</span>
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleInputChange('status', e.target.value)}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:border-gray-600 dark:text-white ${
+                  getFieldError('status') ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <option value="active">Active</option>
+                <option value="inactive">Inactive</option>
+                <option value="terminated">Terminated</option>
+                <option value="on_leave">On Leave</option>
+              </select>
+              {getFieldError('status') && (
+                <p className="text-red-500 text-sm mt-1">{getFieldError('status')}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={(e) => handleInputChange('is_active', e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Is Active
+                </span>
+              </label>
             </div>
           </div>
         </Card>

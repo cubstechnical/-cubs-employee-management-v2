@@ -2,6 +2,9 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AuthService, type AuthUser } from '@/lib/services/auth'
+import { supabase } from '@/lib/supabase/client'
+import { handleAuthError, isRefreshTokenError } from '@/lib/utils/authErrorHandler'
+import { log } from '@/lib/utils/logger'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -22,8 +25,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
         setUser(currentUser)
+        log.info('AuthContext: Session loaded', { hasUser: !!currentUser })
       } catch (error) {
-        console.error('Error loading session:', error)
+        log.error('Error loading session:', error)
+        await handleAuthError(error)
         setUser(null)
       } finally {
         setIsLoading(false)
@@ -31,6 +36,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     loadSession()
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        log.info('AuthContext: Auth state changed', { event, hasSession: !!session })
+        
+        try {
+          if (event === 'SIGNED_IN' && session) {
+            try {
+              const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
+              setUser(currentUser)
+            } catch (error) {
+              log.error('Error loading user after sign in:', error)
+              await handleAuthError(error)
+              setUser(null)
+            }
+          } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+            // Handle token refresh errors gracefully
+            if (event === 'TOKEN_REFRESHED' && !session) {
+              log.warn('AuthContext: Token refresh failed, signing out')
+              setUser(null)
+            } else if (event === 'SIGNED_OUT') {
+              setUser(null)
+            }
+          } else if (event === 'SIGNED_OUT' || event === 'PASSWORD_RECOVERY') {
+            setUser(null)
+          }
+        } catch (error) {
+          log.error('AuthContext: Error handling auth state change:', error)
+          await handleAuthError(error)
+          // If there's an error with auth state, clear the user
+          setUser(null)
+        } finally {
+          setIsLoading(false)
+        }
+      }
+    )
+
+    return () => subscription.unsubscribe()
   }, [])
 
   const signIn = async (email: string, password: string) => {
@@ -46,7 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(authUser)
       }
     } catch (error) {
-      console.error('Sign in error:', error)
+      log.error('Sign in error:', error)
       throw error
     } finally {
       setIsLoading(false)

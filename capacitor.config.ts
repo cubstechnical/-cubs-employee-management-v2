@@ -7,8 +7,8 @@ const config: CapacitorConfig = {
   webDir: 'public',
   server: {
     androidScheme: 'https',
-    allowNavigation: ['*'],
-    cleartext: true
+    allowNavigation: ['https://cubsgroups.com', 'https://*.cubsgroups.com'],
+    cleartext: false
   },
   plugins: {
     SplashScreen: {

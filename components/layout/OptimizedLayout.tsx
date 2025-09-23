@@ -155,7 +155,7 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex" style={{ contain: 'layout style paint' }}>
       {/* Mobile sidebar overlay */}
       {isMobile && sidebarOpen && (
         <div 
@@ -182,7 +182,10 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
       )}
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-h-screen transition-all duration-300 overflow-hidden">
+      <div className={cn(
+        "flex-1 flex flex-col min-h-screen transition-all duration-300",
+        isMobile ? "overflow-auto" : "overflow-hidden"
+      )}>
         {/* Mobile header - only show if user is authenticated */}
         {isMobile && user && (
           <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between lg:hidden">
@@ -202,6 +205,7 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
         {/* Page content */}
         <main className={cn(
           "flex-1 p-4 lg:p-6 overflow-auto",
+          isMobile ? "p-2 sm:p-3" : "p-4 lg:p-6",
           className
         )}>
           {children}

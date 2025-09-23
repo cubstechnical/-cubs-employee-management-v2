@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
+import { EmployeeService } from '@/lib/services/employees';
 
 // Enhanced Components
 import EmployeeCard from './components/EmployeeCard';
@@ -346,32 +347,14 @@ export default function EnhancedEmployeesPage() {
   // Delete mutation with audit logging
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      const { data: employeeData } = await supabase
-        .from('employee_table')
-        .select('*')
-        .eq('id', employeeId)
-        .single();
-
-      const { error } = await supabase
-        .from('employee_table')
-        .delete()
-        .eq('id', employeeId);
-
-      if (error) throw error;
-
-      // Log audit trail
-      if (employeeData) {
-        const userInfo = await AuditService.getCurrentUserInfo();
-        await AuditService.logAudit({
-          table_name: 'employee_table',
-          record_id: employeeId,
-          action: 'DELETE',
-          old_values: employeeData,
-          new_values: undefined,
-          user_id: userInfo.id,
-          user_email: userInfo.email,
-        });
+      // Use EmployeeService.deleteEmployee which properly handles document deletion
+      const result = await EmployeeService.deleteEmployee(employeeId);
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete employee');
       }
+      
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['employees-combined'] });

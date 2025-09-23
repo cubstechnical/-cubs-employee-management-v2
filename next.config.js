@@ -91,14 +91,14 @@ const baseConfig = {
   },
   compress: true,
   eslint: {
-    ignoreDuringBuilds: true, // Temporarily disable ESLint for mobile build
+    ignoreDuringBuilds: false, // Enable ESLint for production builds
   },
   // Mobile-specific optimizations
   poweredByHeader: false,
   generateEtags: false,
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['lucide-react', 'react-apexcharts'],
+    optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
     // Performance optimizations
     turbo: {
       rules: {
@@ -110,15 +110,12 @@ const baseConfig = {
     },
     // Enable SWC minification for better performance
     swcMinify: true,
-    // Enable modern JavaScript features (removed modernBuild as it's not valid)
-    // Optimize package imports
-    optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
   },
   env: {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    GMAIL_USER: process.env.GMAIL_USER || 'technicalcubs@gmail.com',
-    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || 'kito hkgc ygfp gzjo',
+    GMAIL_USER: process.env.GMAIL_USER || '',
+    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || '',
     GMAIL_FROM_NAME: process.env.GMAIL_FROM_NAME || 'CUBS Technical',
     B2_APPLICATION_KEY_ID: process.env.B2_APPLICATION_KEY_ID || '',
     B2_APPLICATION_KEY: process.env.B2_APPLICATION_KEY || '',
@@ -192,7 +189,7 @@ const baseConfig = {
               chunks: 'all',
               priority: 10,
               enforce: true,
-              maxSize: 50000, // Limit vendor chunk to 50KB
+              maxSize: 300000, // Limit vendor chunk to 300KB
             },
           },
         },

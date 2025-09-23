@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
+import { EmployeeService } from '@/lib/services/employees';
 import VirtualizedEmployeeList from '@/components/employees/VirtualizedEmployeeList';
 
 interface Employee {
@@ -256,38 +257,15 @@ export default function EmployeesPage() {
     mutationFn: async (employeeId: string) => {
       console.log('🗑️ Deleting employee:', employeeId);
       
-      // Get employee data before deletion for audit trail
-      const { data: employeeData } = await supabase
-        .from('employee_table')
-        .select('*')
-        .eq('id', employeeId)
-        .single();
-
-      const { error } = await supabase
-        .from('employee_table')
-        .delete()
-        .eq('id', employeeId);
-
-      if (error) {
-        console.error('❌ Error deleting employee:', error);
-        throw new Error(`Failed to delete employee: ${error.message}`);
-      }
+      // Use EmployeeService.deleteEmployee which properly handles document deletion
+      const result = await EmployeeService.deleteEmployee(employeeId);
       
-      // Log audit trail
-      if (employeeData) {
-        const userInfo = await AuditService.getCurrentUserInfo();
-        await AuditService.logAudit({
-          table_name: 'employee_table',
-          record_id: employeeId,
-          action: 'DELETE',
-          old_values: employeeData,
-          new_values: undefined,
-          user_id: userInfo.id,
-          user_email: userInfo.email,
-        });
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to delete employee');
       }
       
       console.log('✅ Employee deleted successfully');
+      return result;
     },
     onSuccess: () => {
       // Invalidate and refetch all related queries

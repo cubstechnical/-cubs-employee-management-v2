@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useEffect } from 'react';
+import { ReactNode, useState, useEffect, useCallback, useMemo } from 'react';
 import Sidebar from './Sidebar';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Logo from '@/components/ui/Logo';
@@ -44,20 +44,36 @@ export default function Layout({ children, className }: LayoutProps) {
     };
   }, []); // Remove sidebarOpen dependency!
 
-  const toggleSidebar = () => {
+  const toggleSidebar = useCallback(() => {
     setSidebarOpen(!sidebarOpen);
-  };
+  }, [sidebarOpen]);
 
-  const closeSidebar = () => {
+  const closeSidebar = useCallback(() => {
     setSidebarOpen(false);
-  };
+  }, []);
+
+  // Memoize sidebar classes for performance
+  const sidebarClasses = useMemo(() => cn(
+    'fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out z-[60]',
+    isMobile 
+      ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
+      : 'lg:translate-x-0'
+  ), [isMobile, sidebarOpen]);
+
+  const mainClasses = useMemo(() => cn(
+    'transition-all duration-300 min-h-screen',
+    isMobile 
+      ? 'ml-0 w-full'
+      : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',
+    className
+  ), [isMobile, sidebarCollapsed, className]);
 
 
 
 
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200" style={{ contain: 'layout style paint' }}>
       {/* Mobile sidebar overlay */}
       {sidebarOpen && isMobile && (
         <div 
@@ -82,14 +98,12 @@ export default function Layout({ children, className }: LayoutProps) {
       {/* Sidebar */}
       <div 
         id="main-navigation"
-        className={cn(
-          'fixed inset-y-0 left-0 transform transition-transform duration-300 ease-in-out z-[60]',
-          // Simple mobile logic: if mobile, show/hide based on sidebarOpen state
-          // If desktop, always show (translate-x-0)
-          isMobile 
-            ? (sidebarOpen ? 'translate-x-0' : '-translate-x-full')
-            : 'lg:translate-x-0'
-        )}
+        className={sidebarClasses}
+        style={{ 
+          willChange: 'transform',
+          backfaceVisibility: 'hidden',
+          transform: 'translateZ(0)'
+        }}
         role="navigation"
         aria-label="Main navigation"
       >
@@ -100,14 +114,7 @@ export default function Layout({ children, className }: LayoutProps) {
       </div>
 
       {/* Main content */}
-      <main className={cn(
-        'transition-all duration-300 min-h-screen',
-        // MOBILE OPTIMIZED: Better responsive layout
-        isMobile 
-          ? 'ml-0' // Mobile: full width
-          : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64', // Desktop: account for sidebar
-        className
-      )}>
+      <main className={mainClasses}>
         {/* Header - Mobile Optimized */}
         <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 lg:px-6 py-3 lg:py-4">
           <div className="flex items-center justify-between">

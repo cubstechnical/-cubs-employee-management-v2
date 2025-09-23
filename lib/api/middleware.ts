@@ -52,7 +52,8 @@ export async function withAuth(
 
     return await handler(authenticatedRequest);
   } catch (error) {
-    console.error('Auth middleware error:', error);
+    // Log error securely without exposing sensitive information
+    console.error('Auth middleware error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -105,7 +106,8 @@ export async function withAdminAuth(
 
     return await handler(authenticatedRequest);
   } catch (error) {
-    console.error('Admin auth middleware error:', error);
+    // Log error securely without exposing sensitive information
+    console.error('Admin auth middleware error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

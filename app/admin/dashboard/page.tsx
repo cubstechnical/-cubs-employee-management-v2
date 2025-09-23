@@ -10,12 +10,6 @@ const EmployeeGrowthChart = lazy(() => import('@/components/dashboard/EmployeeGr
 const VisaExpiryTrendChart = lazy(() => import('@/components/dashboard/VisaExpiryTrendChart'));
 const VisaComplianceScore = lazy(() => import('@/components/dashboard/VisaComplianceScore'));
 const RecentEmployeeActivities = lazy(() => import('@/components/dashboard/RecentEmployeeActivities'));
-
-// Temporary: Import directly to debug
-import EmployeeGrowthChartDirect from '@/components/dashboard/EmployeeGrowthChart';
-import VisaExpiryTrendChartDirect from '@/components/dashboard/VisaExpiryTrendChart';
-import VisaComplianceScoreDirect from '@/components/dashboard/VisaComplianceScore';
-import RecentEmployeeActivitiesDirect from '@/components/dashboard/RecentEmployeeActivities';
 import { DashboardService, DashboardMetrics, VisaTrendData, RecentActivity } from '@/lib/services/dashboard';
 
 export default function AdminDashboard() {

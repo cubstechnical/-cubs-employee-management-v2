@@ -268,15 +268,36 @@ export class EmployeeService {
           }
         }
 
-        // Choose the most frequent or first observed prefix; fall back to static map
+        // Choose the prefix that matches the company or the most frequent one
+        const expectedPrefix = this.generateCompanyPrefix(companyName);
         let chosen: PrefixStats | null = null;
-        for (const s of statsByPrefix.values()) { chosen = s; break; }
-        const dynamicPrefix = chosen?.prefix ?? this.generateCompanyPrefix(companyName);
+        
+        // First, try to find a prefix that matches the expected company prefix
+        for (const s of statsByPrefix.values()) {
+          if (s.prefix === expectedPrefix) {
+            chosen = s;
+            break;
+          }
+        }
+        
+        // If no matching prefix found, use the one with the highest number (most recent)
+        if (!chosen) {
+          let maxNum = -1;
+          for (const s of statsByPrefix.values()) {
+            if (s.maxNum > maxNum) {
+              maxNum = s.maxNum;
+              chosen = s;
+            }
+          }
+        }
+        
+        // Fallback to expected prefix if still no match
+        const dynamicPrefix = chosen?.prefix ?? expectedPrefix;
         const nextNumber = (chosen?.maxNum ?? 0) + 1;
         const padLen = chosen?.padLen ?? 3;
         const paddedNumber = nextNumber.toString().padStart(padLen, '0');
         const generatedId = `${dynamicPrefix}${paddedNumber}`;
-        console.log('✅ Generated employee ID (with existing employees):', generatedId, { dynamicPrefix, nextNumber, padLen });
+        console.log('✅ Generated employee ID (with existing employees):', generatedId, { dynamicPrefix, nextNumber, padLen, expectedPrefix });
         return generatedId;
       }
 

@@ -12,6 +12,7 @@ import Input from '@/components/ui/Input';
 import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
+import { EmployeeService } from '@/lib/services/employees';
 
 // Validation schema for the employee form - adapted to our schema
 const employeeSchema = z.object({
@@ -93,55 +94,17 @@ export default function NewEmployee() {
     loadCompanies();
   }, []);
 
-  // Generate unique employee ID
-  const generateEmployeeId = (companyName: string): string => {
-    const timestamp = Date.now().toString().slice(-4);
-    const companyPrefix = getCompanyPrefix(companyName);
-    return `${companyPrefix}${timestamp}`;
-  };
-
-  // Generate company prefix from company name
-  const getCompanyPrefix = (companyName: string): string => {
-    const prefixMap: { [key: string]: string } = {
-      'AL HANA TOURS & TRAVELS': 'ALHT',
-      'AL HANA TOURS': 'ALHT',
-      'COMPANY_DOCS': 'COMP',
-      'Company Documents': 'COMP',
-      'AL ASHBAL AJMAN': 'AL ASHBAL',
-      'ASHBAL AL KHALEEJ': 'AAK',
-      'CUBS CONTRACTING': 'CCS',
-      'CUBS CONTRACTING & SERVICES W L L': 'CCS',
-      'FLUID ENGINEERING': 'FE',
-      'GOLDEN CUBS': 'GCGC',
-      'AL MACEN': 'ALM',
-      'RUKIN AL ASHBAL': 'RAA',
-      'CUBS': 'CUB'
-    };
-
-    // Check for exact match first
-    if (prefixMap[companyName]) {
-      return prefixMap[companyName];
+  // Generate unique employee ID using EmployeeService
+  const generateEmployeeId = async (companyName: string, employeeName: string): Promise<string> => {
+    try {
+      return await EmployeeService.generateEmployeeId(companyName, employeeName);
+    } catch (error) {
+      console.error('Error generating employee ID:', error);
+      // Fallback to timestamp-based ID
+      const timestamp = Date.now().toString().slice(-4);
+      const companyPrefix = EmployeeService.generateCompanyPrefix(companyName);
+      return `${companyPrefix}${timestamp}`;
     }
-    
-    // Generate prefix from company name
-    const words = companyName
-      .replace(/[&]/g, 'and')
-      .replace(/[^a-zA-Z0-9\s]/g, '')
-      .trim()
-      .toUpperCase()
-      .split(/\s+/)
-      .filter(word => word.length > 0);
-
-    if (words.length >= 2) {
-      // Take first 2 characters from first 2 words
-      return words.slice(0, 2).map(word => word.substring(0, 2)).join('');
-    } else if (words.length === 1) {
-      // Take first 4 characters from single word
-      return words[0].substring(0, 4);
-    }
-
-    // Fallback
-    return 'EMP';
   };
 
   const onSubmit = async (data: EmployeeFormData) => {
@@ -149,7 +112,7 @@ export default function NewEmployee() {
     
     try {
       // Generate a unique employee ID
-      const employeeId = generateEmployeeId(data.company_name);
+      const employeeId = await generateEmployeeId(data.company_name, data.name);
       
       // Prepare the data for insertion - only use fields that exist in our schema
       const employeeData = {

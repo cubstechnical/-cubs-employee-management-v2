@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import AuthService, { LoginCredentials } from '@/lib/services/auth';
+import { useAuth } from '@/lib/contexts/AuthContext';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -24,6 +25,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function LoginPage() {
   const router = useRouter();
+  const { signIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
@@ -71,29 +73,16 @@ export default function LoginPage() {
         return;
       }
 
-      const credentials: LoginCredentials = {
-        email: data.email,
-        password: data.password,
-      };
-
-      const { user, error } = await AuthService.signIn(credentials);
-
-      if (error) {
-        // Better error messages for mobile users
-        if (error.message.includes('timeout')) {
-          toast.error('Connection timeout. Please check your internet connection and try again.');
-        } else if (error.message.includes('network')) {
-          toast.error('Network error. Please check your connection and try again.');
-        } else {
-          toast.error(error.message);
-        }
-        return;
-      }
-
-      if (user) {
-        toast.success(`Welcome back, ${user.name || user.email}!`);
+      // Use AuthContext signIn method which properly updates the context
+      await signIn(data.email, data.password);
+      
+      toast.success('Login successful! Redirecting...');
+      
+      // Small delay to ensure context is updated before redirect
+      setTimeout(() => {
         router.push('/dashboard');
-      }
+      }, 100);
+      
     } catch (error) {
       console.error('Login error:', error);
       // Better error handling for mobile
@@ -103,10 +92,10 @@ export default function LoginPage() {
         } else if (error.message.includes('network')) {
           toast.error('Network error. Please check your connection.');
         } else {
-          toast.error('Login failed. Please try again.');
+          toast.error(error.message);
         }
       } else {
-        toast.error('An unexpected error occurred');
+        toast.error('Login failed. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -140,9 +129,16 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-start pt-16 pb-8 px-4 login-background-image relative safe-area-all ${
-      backgroundLoaded ? 'loaded' : 'loading'
-    }`}>
+    <div 
+      className={`min-h-screen flex flex-col items-center justify-start pt-16 pb-8 px-4 login-background-image relative safe-area-all overflow-y-auto ${
+        backgroundLoaded ? 'loaded' : 'loading'
+      }`}
+      style={{ 
+        contain: 'layout style paint',
+        willChange: 'transform',
+        transform: 'translateZ(0)'
+      }}
+    >
       <div className="w-full max-w-sm mobile-optimized">
         {/* Logo */}
         <div className="login-logo-container-image mb-8">

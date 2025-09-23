@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { log } from '@/lib/utils/logger';
 
 // Use the correct Supabase URL from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -14,7 +15,7 @@ let isSupabaseAvailable = true;
 
 if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey === '') {
   isSupabaseAvailable = false;
-  console.warn('⚠️ Supabase credentials not configured. Using mock client for development.');
+  log.warn('Supabase credentials not configured. Using mock client for development.');
   // Create a minimal mock client
   supabase = createClient('https://mock.supabase.co', 'mock-key');
 } else {
@@ -24,6 +25,13 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: true,
+        flowType: 'pkce',
+        // Handle refresh token errors gracefully
+        onRefreshTokenError: (error) => {
+          log.warn('Supabase: Refresh token error, clearing session:', error);
+          // Clear the session when refresh token fails
+          supabase.auth.signOut();
+        },
       },
     });
   } catch (error) {
@@ -96,6 +104,17 @@ export const getAuthState = async () => {
 
       if (error) {
         console.error('❌ Supabase: Auth state error:', error);
+        
+        // Handle refresh token errors specifically
+        if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
+          console.warn('🔄 Supabase: Refresh token error detected, clearing session');
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutError) {
+            console.error('Error during sign out:', signOutError);
+          }
+        }
+        
         return { user: null, session: null, timestamp: now };
       }
 
@@ -126,6 +145,17 @@ export const getAuthState = async () => {
 export const clearAuthCache = () => {
   authStateCache = null;
   authPromise = null;
+};
+
+// Clear auth state and sign out when refresh token errors occur
+export const handleRefreshTokenError = async () => {
+  console.warn('🔄 Clearing auth state due to refresh token error');
+  clearAuthCache();
+  try {
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.error('Error during sign out:', error);
+  }
 };
 
 // Preload critical app data

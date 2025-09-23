@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import MobileNetworkStatus from '@/components/mobile/MobileNetworkStatus';
-import MobileErrorBoundary from '@/components/mobile/MobileErrorBoundary';
+import UnifiedErrorBoundary from '@/components/ui/UnifiedErrorBoundary';
 import { isMobileDevice, getScreenSize } from '@/utils/mobileDetection';
 
 interface MobileOptimizedLayoutProps {
@@ -56,12 +56,12 @@ export default function MobileOptimizedLayout({ children }: MobileOptimizedLayou
   }, [pathname]);
 
   return (
-    <MobileErrorBoundary>
+    <UnifiedErrorBoundary context="Mobile Layout" showNetworkStatus={true}>
       <div className={`mobile-optimized-layout ${isMobile ? 'mobile' : 'desktop'} ${screenSize}`}>
         <MobileNetworkStatus showWhenOnline={false} position="top" />
         {children}
       </div>
-    </MobileErrorBoundary>
+    </UnifiedErrorBoundary>
   );
 }
 

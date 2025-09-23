@@ -10,14 +10,8 @@ const EmployeeGrowthChart = lazy(() => import('@/components/dashboard/EmployeeGr
 const VisaExpiryTrendChart = lazy(() => import('@/components/dashboard/VisaExpiryTrendChart'));
 const VisaComplianceScore = lazy(() => import('@/components/dashboard/VisaComplianceScore'));
 const RecentEmployeeActivities = lazy(() => import('@/components/dashboard/RecentEmployeeActivities'));
-
-// Temporary: Import directly to debug
-import EmployeeGrowthChartDirect from '@/components/dashboard/EmployeeGrowthChart';
-import VisaExpiryTrendChartDirect from '@/components/dashboard/VisaExpiryTrendChart';
-import VisaComplianceScoreDirect from '@/components/dashboard/VisaComplianceScore';
-import RecentEmployeeActivitiesDirect from '@/components/dashboard/RecentEmployeeActivities';
 import { DashboardService, DashboardMetrics, VisaTrendData, RecentActivity } from '@/lib/services/dashboard';
-import DashboardErrorBoundary from '@/components/ui/DashboardErrorBoundary';
+import UnifiedErrorBoundary from '@/components/ui/UnifiedErrorBoundary';
 // Temporarily disabled performance monitoring to fix infinite loops
 // import { PerformanceMonitor } from '@/components/performance/PerformanceMonitor';
 // import { CoreWebVitals } from '@/components/performance/CoreWebVitals';
@@ -119,7 +113,7 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <DashboardErrorBoundary>
+    <UnifiedErrorBoundary context="Dashboard" showNetworkStatus={true}>
       <div className="space-y-6" data-testid="dashboard">
         {/* Error Banner */}
         {error && (
@@ -199,6 +193,6 @@ export default function Dashboard() {
         {/* <PerformanceMonitor componentName="Dashboard" />
         <CoreWebVitals /> */}
       </div>
-    </DashboardErrorBoundary>
+    </UnifiedErrorBoundary>
   );
 }

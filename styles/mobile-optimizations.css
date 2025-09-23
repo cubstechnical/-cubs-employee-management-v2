@@ -3,9 +3,33 @@
 /* PERFORMANCE: Hardware acceleration for smooth animations */
 .mobile-sidebar-overlay,
 .mobile-menu-btn,
-[class*="transition-"] {
+[class*="transition-"],
+.animate-spin,
+.animate-pulse,
+.animate-bounce {
   will-change: transform, opacity;
   transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+/* PERFORMANCE: Optimize rendering */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* PERFORMANCE: Reduce paint operations */
+.card,
+.button,
+.input {
+  contain: layout style paint;
+}
+
+/* PERFORMANCE: Optimize images */
+img {
+  content-visibility: auto;
+  contain-intrinsic-size: 300px 200px;
 }
 
 /* MOBILE LAYOUT: Fix grid issues on small screens */
@@ -92,6 +116,75 @@
   /* Form improvements */
   .form-grid {
     grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+  
+  /* MOBILE LAYOUT ALIGNMENT FIXES */
+  /* Fix button groups */
+  .flex.items-center.space-x-3,
+  .flex.items-center.space-x-4 {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Fix card layouts */
+  .grid.grid-cols-1.md\\:grid-cols-2,
+  .grid.grid-cols-1.md\\:grid-cols-3,
+  .grid.grid-cols-1.lg\\:grid-cols-2 {
+    grid-template-columns: 1fr !important;
+    gap: 1rem;
+  }
+  
+  /* Fix spacing issues */
+  .space-x-3 > * + * {
+    margin-left: 0.5rem !important;
+  }
+  
+  .space-x-4 > * + * {
+    margin-left: 0.75rem !important;
+  }
+  
+  .space-y-4 > * + * {
+    margin-top: 1rem !important;
+  }
+  
+  .space-y-6 > * + * {
+    margin-top: 1.5rem !important;
+  }
+  
+  /* Fix padding and margins */
+  .p-4 {
+    padding: 1rem !important;
+  }
+  
+  .p-6 {
+    padding: 1.5rem !important;
+  }
+  
+  .px-4 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  .px-6 {
+    padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important;
+  }
+  
+  /* Fix text alignment */
+  .text-center {
+    text-align: center !important;
+  }
+  
+  /* Fix flex layouts */
+  .flex.justify-between {
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .flex.justify-between.items-center {
+    flex-direction: column;
+    align-items: stretch;
     gap: 1rem;
   }
 }
@@ -192,6 +285,68 @@
     background: white;
     border-bottom: 1px solid #e5e7eb;
   }
+  
+  /* MOBILE SIDEBAR FIXES */
+  /* Ensure main content takes full width on mobile */
+  main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    max-width: 100vw !important;
+  }
+  
+  /* Fix sidebar overlay */
+  .mobile-sidebar-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: 50 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+  
+  /* Fix sidebar positioning */
+  #main-navigation {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100vh !important;
+    width: 280px !important;
+    z-index: 60 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease-in-out !important;
+  }
+  
+  #main-navigation.translate-x-0 {
+    transform: translateX(0) !important;
+  }
+  
+  /* Fix header layout */
+  header {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  
+  /* Fix content area */
+  .bg-gray-50 {
+    width: 100% !important;
+    margin-left: 0 !important;
+    padding: 0.5rem !important;
+  }
+  
+  /* Fix button alignment */
+  .flex.items-center.justify-between {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Fix mobile menu button */
+  .mobile-menu-btn {
+    position: relative !important;
+    z-index: 70 !important;
+  }
 }
 
 /* DARK MODE: Ensure proper contrast on mobile */
@@ -227,6 +382,33 @@
 /* PERFORMANCE: Optimize images */
 img {
   content-visibility: auto;
+  contain-intrinsic-size: 300px 200px;
+}
+
+/* WEB PERFORMANCE: General optimizations */
+@media (min-width: 769px) {
+  /* Optimize desktop performance */
+  .transition-all,
+  .transition-transform,
+  .transition-opacity {
+    transition-duration: 0.15s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  
+  /* Optimize hover effects */
+  .hover\\:scale-105:hover {
+    transform: scale(1.05) translateZ(0);
+  }
+  
+  .hover\\:shadow-lg:hover {
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Optimize scrolling */
+  .overflow-auto,
+  .overflow-y-auto {
+    scroll-behavior: smooth;
+  }
 }
 
 /* PERFORMANCE: Optimize large lists */
@@ -236,4 +418,90 @@ img {
 
 .virtual-list-item {
   contain: layout style;
+}
+
+/* PERFORMANCE: Optimize scrolling performance */
+@media (max-width: 768px) {
+  /* Enable hardware acceleration for scrolling */
+  .overflow-auto,
+  .overflow-y-auto,
+  .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    transform: translateZ(0);
+  }
+  
+  /* Optimize touch interactions */
+  button,
+  .cursor-pointer,
+  [role="button"],
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(59, 130, 246, 0.1);
+  }
+  
+  /* Reduce layout thrashing */
+  .grid,
+  .flex {
+    contain: layout;
+  }
+  
+  /* Optimize animations */
+  .transition-all,
+  .transition-transform,
+  .transition-opacity {
+    transition-duration: 0.2s;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+
+/* MOBILE SCROLLING FIXES */
+@media (max-width: 768px) {
+  /* Ensure all containers can scroll */
+  .overflow-auto,
+  .overflow-y-auto {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Fix any fixed height containers */
+  .h-screen,
+  .min-h-screen {
+    min-height: 100vh;
+    height: auto;
+  }
+  
+  /* Fix flex containers */
+  .flex.flex-col {
+    min-height: auto;
+  }
+  
+  /* Fix grid containers */
+  .grid {
+    gap: 1rem;
+  }
+  
+  /* Fix button containers */
+  .flex.items-center.justify-between {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  
+  /* Fix form containers */
+  .space-y-6 > * + * {
+    margin-top: 1.5rem;
+  }
+  
+  .space-y-4 > * + * {
+    margin-top: 1rem;
+  }
+  
+  /* Fix card containers */
+  .rounded-lg,
+  .rounded-xl,
+  .rounded-2xl {
+    margin: 0.5rem 0;
+  }
 }

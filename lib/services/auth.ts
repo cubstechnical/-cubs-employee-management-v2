@@ -1,6 +1,7 @@
 import { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseAvailable } from '@/lib/supabase/client';
 import { DevAuthService } from './auth-dev';
+import { authRateLimiter } from './rateLimiter';
 
 export interface AuthUser {
   id: string;
@@ -59,12 +60,20 @@ export class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) {
-
+        // Handle refresh token errors specifically
+        if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
+          console.warn('AuthService: Refresh token error, clearing session');
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutError) {
+            console.error('Error during sign out:', signOutError);
+          }
+        }
         return { session: null, error: { message: error.message } };
       }
       return { session, error: null };
     } catch (error) {
-
+      console.error('AuthService: Session error:', error);
       return { session: null, error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -256,8 +265,25 @@ export class AuthService {
 
   // Sign in with email and password
   static async signIn(credentials: LoginCredentials): Promise<{ user: AuthUser | null; error: { message: string } | null }> {
-    if (!isSupabaseAvailable) {
+    // Check rate limiting
+    const identifier = `login:${credentials.email}`;
+    if (!authRateLimiter.isAllowed(identifier)) {
+      const resetTime = authRateLimiter.getResetTime(identifier);
+      const remainingTime = resetTime ? Math.ceil((resetTime - Date.now()) / 60000) : 15;
+      return { 
+        user: null, 
+        error: { 
+          message: `Too many login attempts. Please try again in ${remainingTime} minutes.` 
+        } 
+      };
+    }
+
+    if (!isSupabaseAvailable && process.env.NODE_ENV === 'development') {
       return await DevAuthService.signIn(credentials);
+    }
+    
+    if (!isSupabaseAvailable && process.env.NODE_ENV === 'production') {
+      return { user: null, error: { message: 'Authentication service unavailable' } };
     }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -266,6 +292,7 @@ export class AuthService {
       });
 
       if (error) {
+        // Don't increment rate limit for invalid credentials, only for successful attempts
         return { user: null, error: { message: error.message } };
       }
 
@@ -291,9 +318,13 @@ export class AuthService {
           avatar_url: data.user.user_metadata?.avatar_url,
           approved: profile.approved_by !== null
         };
+        
+        // Clear rate limit on successful login
+        authRateLimiter.clear(identifier);
         return { user: authUser, error: null };
       } else if (profileError) {
-        console.error('Profile fetch error during sign in:', profileError);
+        // Log profile fetch error securely
+        console.error('Profile fetch error during sign in:', profileError?.message || 'Unknown error');
         // Continue with fallback user data
       }
 
@@ -306,6 +337,8 @@ export class AuthService {
         avatar_url: data.user.user_metadata?.avatar_url
       };
 
+      // Clear rate limit on successful login
+      authRateLimiter.clear(identifier);
       return { user: authUser, error: null };
     } catch (error) {
       console.error('Error signing in:', error);
