@@ -165,3 +165,4 @@ FROM notifications;
 -- Grant access to the view
 GRANT SELECT ON notification_stats TO authenticated;
 
+

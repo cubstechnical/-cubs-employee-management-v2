@@ -170,3 +170,4 @@ console.log('   npm run test:visibility       # Test text visibility');
 
 console.log('\n✨ Full-screen background coverage achieved!');
 
+

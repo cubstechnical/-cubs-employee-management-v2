@@ -157,3 +157,4 @@ console.log('   npm run compare:login         # Compare performance options');
 
 console.log('\n✨ Your login page is now optimized with WebP background!');
 
+

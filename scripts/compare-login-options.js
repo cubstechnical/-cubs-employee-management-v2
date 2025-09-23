@@ -170,3 +170,4 @@ console.log('   npm run test:login            # Test login functionality');
 console.log('   npm run build                  # Build for production');
 console.log('   npm run compare:login         # Run this comparison again');
 
+

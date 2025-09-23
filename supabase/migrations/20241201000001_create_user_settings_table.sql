@@ -103,3 +103,4 @@ CREATE TRIGGER update_user_settings_updated_at BEFORE UPDATE ON public.user_sett
 CREATE TRIGGER update_admin_settings_updated_at BEFORE UPDATE ON public.admin_settings
   FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+

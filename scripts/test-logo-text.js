@@ -158,3 +158,4 @@ console.log('   npm run test:webp             # Check WebP optimization');
 
 console.log('\n✨ The logo and text are perfectly positioned and styled!');
 
+
