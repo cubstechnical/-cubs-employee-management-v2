@@ -11,8 +11,8 @@ workflows:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         APP_STORE_APP_ID: "6752909710"  # Your actual App Store Connect App ID
-    # integrations:
-    #   app_store_connect: apple_developer_portal
+    integrations:
+      app_store_connect: appstorekey
     scripts:
       - name: Install Node.js dependencies
         script: |
