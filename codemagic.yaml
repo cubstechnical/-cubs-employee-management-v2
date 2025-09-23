@@ -7,13 +7,13 @@ workflows:
       cocoapods: default
       node: 18.17.0
       vars:
-        BUNDLE_ID: "com.cubstechnical.cubsapp"
+        BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         APP_STORE_APP_ID: "YOUR_APP_STORE_APP_ID"  # Replace with actual App Store Connect App ID
       ios_signing:
         distribution_type: app_store
-        bundle_identifier: "com.cubstechnical.cubsapp"
+        bundle_identifier: "com.cubstechnical.admin"
     integrations:
       app_store_connect: codemagic
     scripts:
@@ -81,7 +81,7 @@ workflows:
       cocoapods: default
       node: 18.17.0
       vars:
-        BUNDLE_ID: "com.cubstechnical.cubsapp"
+        BUNDLE_ID: "com.cubstechnical.admin"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
     scripts:
