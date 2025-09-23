@@ -14,6 +14,7 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: "com.cubstechnical.admin"
+        team_id: "GQCYASP5XS"
     integrations:
       app_store_connect: codemagic
     scripts:
