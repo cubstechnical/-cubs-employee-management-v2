@@ -111,10 +111,10 @@ export class AuthService {
     try {
       console.log('🔍 AuthService: getCurrentUser called');
       
-      // Add timeout to prevent hanging
+      // Add timeout to prevent hanging - increased for mobile networks
       const userPromise = supabase.auth.getUser();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('getUser timeout')), 3000)
+        setTimeout(() => reject(new Error('getUser timeout')), 10000) // Increased to 10 seconds for mobile
       );
       
       const { data: { user }, error } = await Promise.race([userPromise, timeoutPromise]) as any;
@@ -124,7 +124,7 @@ export class AuthService {
         return null;
       }
 
-      // Get user profile from profiles table with timeout
+      // Get user profile from profiles table with timeout - increased for mobile
       console.log('🔍 AuthService: Fetching user profile...');
       const profilePromise = supabase
         .from('profiles')
@@ -132,7 +132,7 @@ export class AuthService {
         .eq('id', user.id)
         .single();
       const profileTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 3000)
+        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000) // Increased to 10 seconds for mobile
       );
       
       const { data: profile, error: profileError } = await Promise.race([profilePromise, profileTimeoutPromise]) as any;

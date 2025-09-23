@@ -36,6 +36,18 @@
     overflow-x: hidden;
   }
   
+  /* Fix login page mobile layout */
+  .login-background-image {
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+  }
+  
+  .mobile-optimized {
+    width: 100%;
+    max-width: 100%;
+    padding: 0 1rem;
+  }
+  
   /* Fix grid layouts on mobile */
   .grid {
     display: flex;
@@ -259,6 +271,31 @@
   transform: translateZ(0);
   backface-visibility: hidden;
   perspective: 1000px;
+}
+
+/* Mobile-specific performance improvements */
+@media (max-width: 768px) {
+  /* Reduce paint complexity on mobile */
+  .mobile-optimized * {
+    will-change: auto;
+  }
+  
+  /* Optimize scrolling performance */
+  .mobile-optimized {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+  
+  /* Reduce animation complexity on mobile */
+  .mobile-optimized .animate-spin {
+    animation-duration: 2s; /* Slower animation for better performance */
+  }
+  
+  /* Optimize image loading */
+  .mobile-optimized img {
+    loading: lazy;
+    decoding: async;
+  }
 }
 
 /* Smooth scrolling */

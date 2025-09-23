@@ -65,6 +65,12 @@ export default function LoginPage() {
     setIsLoading(true);
     
     try {
+      // Check network connectivity for mobile
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        toast.error('No internet connection. Please check your network and try again.');
+        return;
+      }
+
       const credentials: LoginCredentials = {
         email: data.email,
         password: data.password,
@@ -73,7 +79,14 @@ export default function LoginPage() {
       const { user, error } = await AuthService.signIn(credentials);
 
       if (error) {
-        toast.error(error.message);
+        // Better error messages for mobile users
+        if (error.message.includes('timeout')) {
+          toast.error('Connection timeout. Please check your internet connection and try again.');
+        } else if (error.message.includes('network')) {
+          toast.error('Network error. Please check your connection and try again.');
+        } else {
+          toast.error(error.message);
+        }
         return;
       }
 
@@ -83,7 +96,18 @@ export default function LoginPage() {
       }
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('An unexpected error occurred');
+      // Better error handling for mobile
+      if (error instanceof Error) {
+        if (error.message.includes('timeout')) {
+          toast.error('Login timeout. Please try again.');
+        } else if (error.message.includes('network')) {
+          toast.error('Network error. Please check your connection.');
+        } else {
+          toast.error('Login failed. Please try again.');
+        }
+      } else {
+        toast.error('An unexpected error occurred');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -116,10 +140,10 @@ export default function LoginPage() {
   };
 
   return (
-    <div className={`min-h-screen flex flex-col items-center justify-start pt-16 pb-8 px-4 login-background-image relative ${
+    <div className={`min-h-screen flex flex-col items-center justify-start pt-16 pb-8 px-4 login-background-image relative safe-area-all ${
       backgroundLoaded ? 'loaded' : 'loading'
     }`}>
-      <div className="w-full max-w-sm">
+      <div className="w-full max-w-sm mobile-optimized">
         {/* Logo */}
         <div className="login-logo-container-image mb-8">
           <div className="flex justify-center mb-4">
