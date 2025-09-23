@@ -142,19 +142,26 @@ export function PerformanceDashboard() {
     setLastUpdate(new Date());
   }, []);
 
-  // Start monitoring
+  // Start monitoring with proper cleanup
   const startMonitoring = useCallback(() => {
     setIsMonitoring(true);
     collectMetrics();
     
-    // Collect metrics every 5 seconds
-    const interval = setInterval(collectMetrics, 5000);
+    // Collect metrics every 30 seconds (reduced frequency to prevent memory issues)
+    const interval = setInterval(collectMetrics, 30000);
     
     return () => {
       clearInterval(interval);
       setIsMonitoring(false);
     };
   }, [collectMetrics]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      setIsMonitoring(false);
+    };
+  }, []);
 
   // Stop monitoring
   const stopMonitoring = useCallback(() => {

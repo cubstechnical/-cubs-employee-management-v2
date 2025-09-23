@@ -188,16 +188,26 @@ export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch all employees with optimized query
+  // Fetch employees with optimized query - only essential fields
   const { data: employees = [], isLoading: queryLoading } = useQuery({
-    queryKey: ['all-employees'],
+    queryKey: ['all-employees-optimized'],
     queryFn: async () => {
       try {
-        console.log('📊 Fetching all employees for virtualization...');
+        console.log('📊 Fetching employees for virtualization (optimized)...');
         
+        // Only select essential fields to reduce memory usage
         const { data, error } = await supabase
           .from('employee_table')
-          .select('*')
+          .select(`
+            id,
+            name,
+            employee_id,
+            company_name,
+            position,
+            visa_expiry_date,
+            is_active,
+            created_at
+          `)
           .order('created_at', { ascending: false });
 
         if (error) {
@@ -205,15 +215,15 @@ export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
           throw new Error(`Database query failed: ${error.message}`);
         }
         
-        console.log(`✅ Fetched ${data?.length || 0} employees for virtualization`);
+        console.log(`✅ Fetched ${data?.length || 0} employees for virtualization (optimized)`);
         return (data as unknown) as Employee[];
       } catch (err) {
         console.error('❌ Query function error:', err);
         throw err;
       }
     },
-    staleTime: 5 * 60 * 1000, // 5 minutes
-    gcTime: 10 * 60 * 1000, // 10 minutes (formerly cacheTime)
+    staleTime: 10 * 60 * 1000, // 10 minutes - increased for better performance
+    gcTime: 30 * 60 * 1000, // 30 minutes - increased for better caching
   });
 
   // Update local state when query data changes

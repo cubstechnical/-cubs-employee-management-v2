@@ -43,7 +43,7 @@ export interface CompanyStats {
 
 export class DashboardService {
   private static cache = new Map<string, { data: any; timestamp: number }>();
-  private static CACHE_DURATION = 30 * 1000; // 30 seconds - reduced for better memory usage
+  private static CACHE_DURATION = 5 * 60 * 1000; // 5 minutes - optimized for better performance
   private static pendingRequests = new Map<string, Promise<any>>(); // Prevent duplicate requests
 
   private static getCachedData<T>(key: string): T | null {

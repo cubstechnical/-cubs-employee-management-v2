@@ -17,6 +17,7 @@ import VisaExpiryTrendChartDirect from '@/components/dashboard/VisaExpiryTrendCh
 import VisaComplianceScoreDirect from '@/components/dashboard/VisaComplianceScore';
 import RecentEmployeeActivitiesDirect from '@/components/dashboard/RecentEmployeeActivities';
 import { DashboardService, DashboardMetrics, VisaTrendData, RecentActivity } from '@/lib/services/dashboard';
+import DashboardErrorBoundary from '@/components/ui/DashboardErrorBoundary';
 // Temporarily disabled performance monitoring to fix infinite loops
 // import { PerformanceMonitor } from '@/components/performance/PerformanceMonitor';
 // import { CoreWebVitals } from '@/components/performance/CoreWebVitals';
@@ -55,17 +56,7 @@ export default function Dashboard() {
 
         console.log('🚀 Fetching dashboard data...');
 
-        // Load critical metrics first for faster LCP
-        const metricsResult = await DashboardService.getDashboardMetrics();
-        if (!metricsResult.error) {
-          setDashboardData(prev => ({
-            ...prev,
-            metrics: metricsResult.metrics
-          }));
-          setLoading(false); // Show UI faster
-        }
-
-        // Load remaining data in background
+        // Load all data in a single optimized call
         const result = await DashboardService.getAllDashboardData();
         if (!result.error) {
           setDashboardData({
@@ -75,11 +66,14 @@ export default function Dashboard() {
             complianceScore: result.complianceScore
           });
           console.log('✅ All dashboard data loaded successfully');
+        } else {
+          setError('Failed to load dashboard data. Please try again.');
         }
 
       } catch (error) {
         console.error('❌ Error fetching dashboard data:', error);
         setError('Failed to load dashboard data. Please try again.');
+      } finally {
         setLoading(false);
       }
     }, []);
@@ -125,7 +119,8 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <div className="space-y-6" data-testid="dashboard">
+    <DashboardErrorBoundary>
+      <div className="space-y-6" data-testid="dashboard">
         {/* Error Banner */}
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
@@ -204,5 +199,6 @@ export default function Dashboard() {
         {/* <PerformanceMonitor componentName="Dashboard" />
         <CoreWebVitals /> */}
       </div>
+    </DashboardErrorBoundary>
   );
 }

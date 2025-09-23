@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 interface PerformanceMetrics {
   loadTime: number;
@@ -15,12 +15,22 @@ export function PerformanceMonitor({ componentName }: { componentName: string })
     lastRender: 0,
   });
 
+  const renderCountRef = useRef(0);
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
     const startTime = performance.now();
     
+    // Only increment render count after initial mount to prevent memory leak
+    if (!isInitialMount.current) {
+      renderCountRef.current += 1;
+    } else {
+      isInitialMount.current = false;
+    }
+    
     setMetrics(prev => ({
       loadTime: startTime,
-      renderCount: prev.renderCount + 1,
+      renderCount: renderCountRef.current,
       lastRender: Date.now(),
     }));
 
@@ -31,7 +41,17 @@ export function PerformanceMonitor({ componentName }: { componentName: string })
         console.warn(`🐌 ${componentName} render took ${renderTime.toFixed(2)}ms`);
       }
     }
-  }, [componentName]); // Add dependency array to prevent infinite loop
+  }, [componentName]);
+
+  // Reset render count periodically to prevent memory growth
+  useEffect(() => {
+    const resetInterval = setInterval(() => {
+      renderCountRef.current = 0;
+      setMetrics(prev => ({ ...prev, renderCount: 0 }));
+    }, 60000); // Reset every minute
+
+    return () => clearInterval(resetInterval);
+  }, []);
 
   // Only show in development
   if (process.env.NODE_ENV !== 'development') {
