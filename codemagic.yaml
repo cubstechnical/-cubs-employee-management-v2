@@ -11,9 +11,6 @@ workflows:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         APP_STORE_APP_ID: "6752909710"  # Your actual App Store Connect App ID
-      ios_signing:
-        distribution_type: development
-        bundle_identifier: "com.cubstechnical.employee"
     integrations:
       app_store_connect: codemagic
     scripts:
@@ -45,10 +42,16 @@ workflows:
           echo "Setting build number to: $NEW_BUILD"
           agvtool new-version -all $NEW_BUILD
           cd ../..
-      - name: Apply provisioning profiles
+      - name: Force provisioning profile generation
         script: |
-          echo "🔐 Applying provisioning profiles..."
+          echo "🔐 Forcing provisioning profile generation..."
+          # Force Codemagic to generate provisioning profiles
           xcode-project use-profiles
+          # Alternative: try to build without signing first to trigger profile generation
+          echo "Attempting to trigger profile generation..."
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace -scheme App -configuration Release -destination 'generic/platform=iOS' -allowProvisioningUpdates clean
+          cd ../..
       - name: Build and archive iOS app
         script: |
           echo "🏗️ Building and archiving iOS app..."

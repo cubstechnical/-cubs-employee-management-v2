@@ -1,0 +1,108 @@
+workflows:
+  ios-manual-signing:
+    name: iOS Manual Signing Test
+    max_build_duration: 120
+    environment:
+      xcode: latest
+      cocoapods: default
+      node: 18.17.0
+      vars:
+        BUNDLE_ID: "com.cubstechnical.employee"
+        XCODE_WORKSPACE: "ios/App/App.xcworkspace"
+        XCODE_SCHEME: "App"
+    scripts:
+      - name: Install Node.js dependencies
+        script: |
+          echo "📦 Installing Node.js dependencies..."
+          npm ci
+      - name: Build Next.js app
+        script: |
+          echo "🏗️ Building Next.js production app..."
+          npm run build
+      - name: Sync Capacitor iOS
+        script: |
+          echo "🔄 Syncing web assets with Capacitor iOS..."
+          npx cap sync ios
+      - name: Install CocoaPods
+        script: |
+          echo "📱 Installing CocoaPods dependencies..."
+          cd ios/App
+          pod install
+          cd ../..
+      - name: Build iOS app (unsigned)
+        script: |
+          echo "🏗️ Building iOS app (unsigned for manual signing)..."
+          cd ios/App
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/App.xcarchive \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO \
+            -allowProvisioningUpdates \
+            archive
+          cd ../..
+      - name: Export unsigned IPA
+        script: |
+          echo "📦 Exporting unsigned IPA for manual upload..."
+          cd ios/App
+          # Create export options for manual upload
+          cat > exportOptions.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>method</key>
+            <string>app-store-connect</string>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
+            <key>signingStyle</key>
+            <string>manual</string>
+          </dict>
+          </plist>
+          EOF
+          
+          # Create ipa directory
+          mkdir -p build/ipa
+          
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/ipa \
+            -exportOptionsPlist exportOptions.plist \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            CODE_SIGNING_ALLOWED=NO
+          cd ../..
+      - name: Verify IPA creation
+        script: |
+          echo "✅ Verifying IPA creation..."
+          if [ -f "ios/App/build/ipa/App.ipa" ]; then
+            echo "✅ Unsigned IPA created successfully:"
+            ls -la ios/App/build/ipa/
+            echo "📋 Manual upload instructions:"
+            echo "1. Download the App.ipa file from artifacts"
+            echo "2. Go to https://appstoreconnect.apple.com"
+            echo "3. Navigate to TestFlight → Builds"
+            echo "4. Upload the IPA file manually"
+            echo "5. App will appear in TestFlight within 10-15 minutes"
+          else
+            echo "❌ IPA not found. Available files:"
+            find ios/App/build -name "*.ipa" -o -name "*.xcarchive"
+            exit 1
+          fi
+    artifacts:
+      - ios/App/build/ipa/*.ipa
+      - ios/App/build/App.xcarchive
+    publishing:
+      email:
+        recipients:
+          - info@cubstechnical.com
+        notify:
+          success: true
+          failure: true
