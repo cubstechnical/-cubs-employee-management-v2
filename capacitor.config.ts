@@ -2,9 +2,9 @@ import { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
 const config: CapacitorConfig = {
-  appId: 'com.cubstechnical.employee',
+  appId: 'com.cubstechnical.admin',
   appName: 'CUBS Employee Management',
-  webDir: 'public',
+  webDir: 'out',
   server: {
     androidScheme: 'https',
     allowNavigation: ['https://cubsgroups.com', 'https://*.cubsgroups.com'],
