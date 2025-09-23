@@ -46,6 +46,12 @@ export class DashboardService {
   private static CACHE_DURATION = 5 * 60 * 1000; // 5 minutes - optimized for better performance
   private static pendingRequests = new Map<string, Promise<any>>(); // Prevent duplicate requests
 
+  // Smart cache key generation
+  private static getCacheKey(operation: string, params?: any): string {
+    const paramString = params ? JSON.stringify(params) : '';
+    return `${operation}_${paramString}`;
+  }
+
   private static getCachedData<T>(key: string): T | null {
     const cached = this.cache.get(key);
     if (cached && Date.now() - cached.timestamp < this.CACHE_DURATION) {
@@ -415,7 +421,7 @@ export class DashboardService {
           }
         });
 
-        // Get document counts per company - simplified query to avoid 400 errors
+        // Get document counts per company - simplified approach to avoid join issues
         const { data: docData, error: docError } = await supabase
           .from('employee_documents')
           .select('employee_id');
@@ -425,15 +431,9 @@ export class DashboardService {
           // Don't throw error, just continue without document counts
         }
 
+        // For now, skip document counting to avoid complex joins
+        // This can be optimized later with a proper database view or RPC function
         const docCounts = new Map<string, number>();
-        docData?.forEach(doc => {
-          // Skip document counting for now due to type issues
-          // const company = doc.employee_table?.company_name;
-          // if (company) {
-          //   const count = docCounts.get(company) || 0;
-          //   docCounts.set(company, count + 1);
-          // }
-        });
 
         // Build stats array
         const stats: CompanyStats[] = Array.from(companyCounts.entries()).map(([company, employeeCount]) => ({

@@ -82,7 +82,7 @@ export function DynamicComponentWrapper({
   );
 }
 
-// Route-based code splitting
+// Route-based code splitting with optimized loading
 export const DynamicDashboard = dynamic(() => import('@/app/dashboard/page'), {
   loading: () => <LoadingSpinner />,
   ssr: false
@@ -91,6 +91,51 @@ export const DynamicDashboard = dynamic(() => import('@/app/dashboard/page'), {
 export const DynamicEmployees = dynamic(() => import('@/app/employees/page'), {
   loading: () => <LoadingSpinner />,
   ssr: false
+});
+
+// Heavy chart components - lazy load only when needed
+export const DynamicApexChart = dynamic(() => import('react-apexcharts'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-800 rounded-lg">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Loading chart...</p>
+      </div>
+    </div>
+  )
+});
+
+// Admin components - only load for admin users (optimized version)
+export const DynamicAdminPanelOptimized = dynamic(() => import('@/components/admin/PerformanceDashboard'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-32 bg-gray-100 dark:bg-gray-800 rounded-lg">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Loading admin panel...</p>
+      </div>
+    </div>
+  )
+});
+
+// Document viewer - heavy component (optimized version)
+export const DynamicDocumentViewerOptimized = dynamic(() => import('@/components/documents/DocumentPreview'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-96 bg-gray-100 dark:bg-gray-800 rounded-lg">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-600 dark:text-gray-400">Loading document viewer...</p>
+      </div>
+    </div>
+  )
+});
+
+// Performance dashboard - only in development
+export const DynamicPerformanceDashboard = dynamic(() => import('@/components/performance/PerformanceDashboard'), {
+  ssr: false,
+  loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
 });
 
 export const DynamicDocuments = dynamic(() => import('@/app/documents/page'), {

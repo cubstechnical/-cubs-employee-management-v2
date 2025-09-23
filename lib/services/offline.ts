@@ -83,7 +83,7 @@ export class OfflineService {
         if (item.retryCount >= item.maxRetries) {
           console.error(`❌ Max retries reached for operation: ${item.id}`, error);
           this.removeFromQueue(item.id);
-          handleNetworkError(error, `offline_operation_${item.type}`);
+          handleNetworkError(error instanceof Error ? error : new Error(String(error)), `offline_operation_${item.type}`);
         } else {
           console.warn(`⚠️ Retry ${item.retryCount}/${item.maxRetries} for operation: ${item.id}`);
         }
