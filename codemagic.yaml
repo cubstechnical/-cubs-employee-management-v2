@@ -11,8 +11,8 @@ workflows:
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
         APP_STORE_APP_ID: "6752909710"  # Your actual App Store Connect App ID
-    # integrations:
-    #   app_store_connect: codemagic
+    integrations:
+      app_store_connect: codemagic
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -63,6 +63,12 @@ workflows:
       - build/ios/archive.xcarchive
       - build/ios/xcodebuild.log
     publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+        submit_to_app_store: false
+        beta_groups:
+          - "Internal Testing"
       email:
         recipients:
           - info@cubstechnical.com
