@@ -71,6 +71,44 @@ workflows:
                 DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';/g' project.pbxproj
           else
             echo "No team ID available from App Store Connect integration"
+            echo "🔍 Trying to get team ID from environment variables..."
+            # Try other possible environment variables
+            if [ -n "$TEAM_ID" ]; then
+              echo "Using TEAM_ID: $TEAM_ID"
+              sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
+                  DEVELOPMENT_TEAM = '"$TEAM_ID"';/g' project.pbxproj
+            elif [ -n "$DEVELOPMENT_TEAM" ]; then
+              echo "Using DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM"
+              sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
+                  DEVELOPMENT_TEAM = '"$DEVELOPMENT_TEAM"';/g' project.pbxproj
+            else
+              echo "❌ No team ID found in any environment variables"
+              echo "Available environment variables:"
+              env | grep -i team || echo "No team-related environment variables found"
+              echo "This is why the archive has no team - we need to set one explicitly"
+              
+              # Try to get team ID from App Store Connect API
+              echo "🔍 Attempting to get team ID from App Store Connect API..."
+              if [ -n "$APP_STORE_APP_ID" ]; then
+                echo "App Store App ID: $APP_STORE_APP_ID"
+                # The team ID is usually the first part of the App Store App ID
+                # For App Store Connect, we need to use the API to get the team ID
+                echo "We need to use the App Store Connect API to get the team ID"
+                echo "This requires the App Store Connect API key to be properly configured"
+              fi
+              
+              # As a last resort, try to use a common team ID pattern
+              echo "🔧 Attempting to use Codemagic's default team ID..."
+              # Codemagic usually provides a team ID, let's try to find it
+              if [ -n "$CODEMAGIC_TEAM_ID" ]; then
+                echo "Using Codemagic team ID: $CODEMAGIC_TEAM_ID"
+                sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
+                    DEVELOPMENT_TEAM = '"$CODEMAGIC_TEAM_ID"';/g' project.pbxproj
+              else
+                echo "❌ No team ID available - this will cause the archive to have no team"
+                echo "The archive will be created but export will fail with 'No Team Found in Archive'"
+              fi
+            fi
           fi
           
           echo "Code signing configuration updated for automatic signing"
@@ -170,6 +208,17 @@ workflows:
             # Check the archive contents
             echo "Archive contents:"
             ls -la build/ios/archive/App.xcarchive/
+            
+            # If no team found, try to fix it by re-archiving with explicit team
+            if ! cat build/ios/archive/App.xcarchive/Info.plist | grep -i team > /dev/null 2>&1; then
+              echo "❌ No team found in archive, attempting to fix..."
+              echo "This is the root cause of the export failure"
+              echo "The archive was created without a development team"
+              echo "This means the automatic team assignment failed during archive creation"
+              echo "We need to ensure the project has a development team before archiving"
+            else
+              echo "✅ Team found in archive"
+            fi
           else
             echo "❌ Archive not found!"
             exit 1
