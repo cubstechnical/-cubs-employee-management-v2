@@ -126,7 +126,10 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
         {/* Suppress harmless mobile app warnings */}
-        {suppressMobileWarnings()}
+        {(() => {
+          suppressMobileWarnings();
+          return null;
+        })()}
         <PerformanceMonitor />
         <PWARegistration />
         <CapacitorInit />

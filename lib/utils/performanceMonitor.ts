@@ -27,7 +27,7 @@ export class PerformanceMonitor {
             if (entry.entryType === 'navigation') {
               this.recordMetric('navigation', {
                 name: 'pageLoad',
-                value: (entry as PerformanceNavigationTiming).loadEventEnd - (entry as PerformanceNavigationTiming).navigationStart,
+                value: (entry as PerformanceNavigationTiming).loadEventEnd - (entry as PerformanceNavigationTiming).fetchStart,
                 timestamp: Date.now()
               });
             }

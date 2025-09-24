@@ -67,13 +67,13 @@ export default function EmployeeDetailsPage() {
         setEmployee(employeeData.employee);
         // Populate form with existing data
         reset({
-          name: employeeData.name || '',
-          email_id: employeeData.email_id || '',
-          mobile_number: employeeData.mobile_number || '',
-          trade: employeeData.trade || '',
-          company_name: employeeData.company_name || '',
-          nationality: employeeData.nationality || '',
-          visa_expiry_date: employeeData.visa_expiry_date || '',
+          name: employeeData.employee.name || '',
+          email_id: employeeData.employee.email_id || '',
+          mobile_number: employeeData.employee.mobile_number || '',
+          trade: employeeData.employee.trade || '',
+          company_name: employeeData.employee.company_name || '',
+          nationality: employeeData.employee.nationality || '',
+          visa_expiry_date: employeeData.employee.visa_expiry_date || '',
         });
       } else {
         setError('Employee not found');
@@ -99,7 +99,8 @@ export default function EmployeeDetailsPage() {
         return;
       }
 
-      setDocuments(data || []);
+      // Cast the data to the correct type safely
+      setDocuments((data as unknown as EmployeeDocuments[]) || []);
     } catch (error) {
       console.error('Error fetching documents:', error);
     }
@@ -114,7 +115,19 @@ export default function EmployeeDetailsPage() {
     if (!employee) return;
 
     try {
-      const updatedEmployee = await EmployeeService.updateEmployee(employeeId, data);
+      // Create the correct UpdateEmployeeData structure
+      const updateData = {
+        employee_id: employeeId,
+        name: data.name,
+        email_id: data.email_id,
+        mobile_number: data.mobile_number,
+        trade: data.trade,
+        company_name: data.company_name,
+        nationality: data.nationality,
+        visa_expiry_date: data.visa_expiry_date,
+      };
+
+      const updatedEmployee = await EmployeeService.updateEmployee(updateData);
 
       if (updatedEmployee) {
         setEmployee(updatedEmployee);
