@@ -14,9 +14,6 @@ workflows:
         DEVELOPMENT_TEAM: "GQCYASP5XS"
     integrations:
       app_store_connect: appstorekey
-    environment:
-      groups:
-        - ios_certificates
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -141,6 +138,8 @@ workflows:
             echo "❌ P12 certificate or password not available"
             echo "   Make sure you've uploaded the P12 certificate to Codemagic"
             echo "   and set the CERTIFICATE_PASSWORD environment variable"
+            echo "   You can upload the P12 certificate in Codemagic → Environment variables"
+            echo "   and set CERTIFICATE_PASSWORD as a secure variable"
           fi
       - name: Debug Certificate Setup
         script: |
