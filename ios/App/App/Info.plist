@@ -80,8 +80,7 @@
 	<string>UIStatusBarStyleDefault</string>
 	<key>UIBackgroundModes</key>
 	<array>
-		<string>background-fetch</string>
-		<string>background-processing</string>
+		<string>background-app-refresh</string>
 	</array>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
