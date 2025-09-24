@@ -30,7 +30,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         
         const sessionPromise = AuthService.getCurrentUserWithApproval();
         
-        const { user: currentUser } = await Promise.race([sessionPromise, timeoutPromise]);
+        const result = await Promise.race([sessionPromise, timeoutPromise]);
+        const { user: currentUser } = result as { user: any };
         setUser(currentUser)
         log.info('AuthContext: Session loaded', { hasUser: !!currentUser })
       } catch (error) {

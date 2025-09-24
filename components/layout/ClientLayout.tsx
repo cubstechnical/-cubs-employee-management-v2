@@ -3,7 +3,7 @@
 import { ThemeProvider } from '@/lib/theme';
 import { AuthProvider } from '@/lib/contexts/AuthContext';
 import { Toaster } from 'react-hot-toast';
-import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import OfflineIndicator from '@/components/ui/OfflineIndicator';
 import { useMobileApp } from '@/hooks/useMobileApp';
 

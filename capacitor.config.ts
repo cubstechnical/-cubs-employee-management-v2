@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
   webDir: 'out',
-  icon: 'public/assets/appicon1.png',
   server: {
     androidScheme: 'https',
     allowNavigation: ['https://cubsgroups.com', 'https://*.cubsgroups.com'],

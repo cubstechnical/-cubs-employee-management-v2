@@ -6,7 +6,7 @@ import { ThemeProvider } from '@/lib/theme';
 import { AuthProvider, useAuth } from '@/lib/contexts/AuthContext';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { Toaster } from 'react-hot-toast';
-import ErrorBoundary from '@/components/ui/ErrorBoundary';
+import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import OfflineIndicator from '@/components/ui/OfflineIndicator';
 import Sidebar from './Sidebar';
 import { useMobileApp } from '@/hooks/useMobileApp';

@@ -43,7 +43,7 @@ export { default as PerformanceDashboard } from './admin/PerformanceDashboard';
 export { default as MobileDebugger } from './debug/MobileDebugger';
 
 // Error Boundary
-export { default as ErrorBoundary } from './ui/ErrorBoundary';
+export { ErrorBoundary } from './ui/ErrorBoundary';
 
 // Providers
 export { QueryProvider } from './providers/QueryProvider';

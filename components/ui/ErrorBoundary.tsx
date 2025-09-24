@@ -16,7 +16,7 @@ interface State {
   errorInfo: React.ErrorInfo | null;
 }
 
-export class ErrorBoundary extends Component<Props, State> {
+class ErrorBoundaryClass extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
@@ -102,7 +102,7 @@ Please describe what you were doing when this error occurred:
                 Oops! Something went wrong
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
-                We're sorry, but something unexpected happened. Don't worry, your data is safe.
+                We&apos;re sorry, but something unexpected happened. Don&apos;t worry, your data is safe.
               </p>
             </div>
 
@@ -173,6 +173,10 @@ Please describe what you were doing when this error occurred:
     return this.props.children;
   }
 }
+
+// Export the ErrorBoundary as both named and default export
+export const ErrorBoundary = ErrorBoundaryClass;
+export default ErrorBoundaryClass;
 
 // Higher-order component for wrapping components with error boundary
 export function withErrorBoundary<P extends object>(

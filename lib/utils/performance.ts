@@ -107,8 +107,8 @@ export class PerformanceOptimizer {
   // Optimize bundle loading
   static async loadModule(importFn: () => Promise<any>) {
     try {
-      const module = await importFn();
-      return module.default || module;
+      const moduleResult = await importFn();
+      return moduleResult.default || moduleResult;
     } catch (error) {
       console.error('Failed to load module:', error);
       return null;
@@ -204,8 +204,8 @@ if (typeof window !== 'undefined') {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
       console.log('📊 Page Load Performance:', {
         loadTime: `${navigation.loadEventEnd - navigation.loadEventStart}ms`,
-        domReady: `${navigation.domContentLoadedEventEnd - navigation.navigationStart}ms`,
-        totalTime: `${navigation.loadEventEnd - navigation.navigationStart}ms`
+        domReady: `${navigation.domContentLoadedEventEnd - navigation.fetchStart}ms`,
+        totalTime: `${navigation.loadEventEnd - navigation.fetchStart}ms`
       });
     }, 1000);
   });

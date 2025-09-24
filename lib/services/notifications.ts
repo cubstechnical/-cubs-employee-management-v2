@@ -16,7 +16,7 @@ export class NotificationService {
   // Initialize email transporter
   private static getTransporter() {
     if (!this.transporter) {
-      this.transporter = nodemailer.createTransporter({
+      this.transporter = nodemailer.createTransport({
         service: 'gmail',
         auth: {
           user: process.env.GMAIL_USER || 'technicalcubs@gmail.com',
@@ -126,7 +126,7 @@ export class NotificationService {
           .eq('is_active', true)
           .eq(columnName, false);
 
-        if (error) {
+      if (error) {
           console.error(`Error fetching employees for ${days} days:`, error);
           continue;
         }
@@ -143,7 +143,7 @@ export class NotificationService {
             title: `${urgencyLevel}: Visa Expiry Reminder`,
             message: `Your visa will expire in ${days} day${days > 1 ? 's' : ''} (${employee.visa_expiry_date}). Please take necessary action.`,
             type: days <= 7 ? 'error' : days <= 15 ? 'warning' : 'info',
-            recipient: employee.email_id || 'info@cubstechnical.com',
+            recipient: (employee.email_id as string) || 'info@cubstechnical.com',
             category: 'visa'
           };
 
@@ -154,12 +154,12 @@ export class NotificationService {
             await supabase
               .from('employee_table')
               .update({ [columnName]: true })
-              .eq('id', employee.id);
+              .eq('id', employee.id as string);
             
             notificationsSent++;
-            console.log(`✅ Visa expiry notification sent to ${employee.name} (${days} days)`);
+            console.log(`✅ Visa expiry notification sent to ${employee.name as string} (${days} days)`);
           } else {
-            console.error(`❌ Failed to send notification to ${employee.name}:`, result.error);
+            console.error(`❌ Failed to send notification to ${employee.name as string}:`, result.error);
           }
         }
       }
@@ -249,8 +249,8 @@ export class NotificationService {
         sent: data?.filter(n => n.status === 'sent').length || 0,
         pending: data?.filter(n => n.status === 'pending').length || 0,
         failed: data?.filter(n => n.status === 'failed').length || 0,
-        today: data?.filter(n => new Date(n.created_at).toDateString() === today).length || 0,
-        thisWeek: data?.filter(n => new Date(n.created_at) >= weekAgo).length || 0
+        today: data?.filter(n => new Date(n.created_at as string).toDateString() === today).length || 0,
+        thisWeek: data?.filter(n => new Date(n.created_at as string) >= weekAgo).length || 0
       };
 
       return stats;
