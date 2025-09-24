@@ -2,10 +2,11 @@
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Plus, UserCheck } from "lucide-react";
+import { Plus, UserCheck, Sun, Moon } from "lucide-react";
 import { DashboardRefreshButton } from './DashboardRefreshButton';
 import { useAuth } from '@/lib/contexts/AuthContext';
 import { AuthService } from '@/lib/services/auth';
+import { useTheme } from '@/lib/theme';
 
 interface CUBSDashboardHeaderProps {
   onRefresh?: () => Promise<void>;
@@ -15,6 +16,7 @@ interface CUBSDashboardHeaderProps {
 const CUBSDashboardHeader = React.memo(function CUBSDashboardHeader({ onRefresh, lastUpdated }: CUBSDashboardHeaderProps) {
   const router = useRouter();
   const { user } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
@@ -63,6 +65,17 @@ const CUBSDashboardHeader = React.memo(function CUBSDashboardHeader({ onRefresh,
           {onRefresh && (
             <DashboardRefreshButton onRefresh={onRefresh} lastUpdated={lastUpdated} />
           )}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+            title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+          >
+            {theme === 'light' ? (
+              <Moon className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            ) : (
+              <Sun className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            )}
+          </button>
           {user?.role === 'admin' && (
             <button 
               onClick={() => router.push('/admin/approvals')}

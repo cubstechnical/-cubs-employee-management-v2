@@ -26,7 +26,6 @@ import {
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
 import { EmployeeService } from '@/lib/services/employees';
-import VirtualizedEmployeeList from '@/components/employees/VirtualizedEmployeeList';
 
 interface Employee {
   id: string;
@@ -71,7 +70,6 @@ export default function EmployeesPage() {
     employee: null,
     isDeleting: false
   });
-  const [useVirtualizedList, setUseVirtualizedList] = useState(false);
 
   // Debounce search term with longer delay for better performance
   useEffect(() => {
@@ -459,14 +457,6 @@ export default function EmployeesPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setUseVirtualizedList(!useVirtualizedList)}
-            className={useVirtualizedList ? 'bg-blue-50 border-blue-300 text-blue-700' : ''}
-          >
-            {useVirtualizedList ? '📊 Virtualized' : '📋 Standard'}
-          </Button>
           <Button 
             className="bg-[#d3194f] hover:bg-[#b0173a] text-white"
             onClick={() => router.push('/employees/new')}
@@ -688,16 +678,7 @@ export default function EmployeesPage() {
       )}
 
       {/* Employee List */}
-      {useVirtualizedList ? (
-        <VirtualizedEmployeeList
-          searchTerm={debouncedSearchTerm}
-          filterStatus={filterStatus}
-          filterCompany={filterCompany}
-          onDeleteEmployee={handleDeleteEmployee}
-          height={600}
-        />
-      ) : (
-        <div className="grid gap-4">
+      <div className="grid gap-4">
           {employees.length === 0 ? (
             <Card className="p-8 text-center">
               <Users className="w-16 h-16 text-gray-400 mx-auto mb-4" />
@@ -798,7 +779,6 @@ export default function EmployeesPage() {
             })
           )}
         </div>
-      )}
 
       {/* Pagination Controls */}
       {totalPages > 1 && (

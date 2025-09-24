@@ -430,24 +430,31 @@ function DocumentsContent() {
     if (!item.document_id) return;
 
     try {
-    setLoadingDocumentId(item.document_id);
+      setLoadingDocumentId(item.document_id);
 
-      console.log('👁️ Opening document in new tab:', item.document_id);
+      console.log('👁️ Opening document:', item.document_id);
       
-      // Open document in new tab (not window) - this allows multiple documents to be open
-      const newTab = window.open(
-        `/api/documents/${item.document_id}/view`,
-        '_blank'  // Remove window features to open in tab instead of popup window
-      );
+      // Check if mobile device
+      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
       
-      if (newTab) {
-        // Focus the new tab
-        newTab.focus();
-        console.log('✅ Document opened in new tab');
-        toast.success(`Opened ${item.name} in new tab`);
-              } else {
-        console.warn('⚠️ Failed to open document tab (popup blocked?)');
-        toast.error('Failed to open document. Please check popup settings and try again.');
+      if (isMobile) {
+        // For mobile, navigate to the mobile-friendly viewer
+        window.location.href = `/documents/view/${item.document_id}`;
+      } else {
+        // For desktop, open in new tab
+        const newTab = window.open(
+          `/api/documents/${item.document_id}/view`,
+          '_blank'
+        );
+        
+        if (newTab) {
+          newTab.focus();
+          console.log('✅ Document opened in new tab');
+          toast.success(`Opened ${item.name} in new tab`);
+        } else {
+          console.warn('⚠️ Failed to open document tab (popup blocked?)');
+          toast.error('Failed to open document. Please check popup settings and try again.');
+        }
       }
     } catch (error) {
       console.error('❌ Error opening document viewer:', error);
