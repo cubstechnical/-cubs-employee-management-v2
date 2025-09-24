@@ -117,6 +117,7 @@ workflows:
           echo "🔍 Debugging environment variables..."
           echo "CERTIFICATE_P12 available: $(if [ -n "$CERTIFICATE_P12" ]; then echo 'YES'; else echo 'NO'; fi)"
           echo "CERTIFICATE_PASSWORD available: $(if [ -n "$CERTIFICATE_PASSWORD" ]; then echo 'YES'; else echo 'NO'; fi)"
+          echo "PROVISIONING_PROFILE available: $(if [ -n "$PROVISIONING_PROFILE" ]; then echo 'YES'; else echo 'NO'; fi)"
           echo "APP_STORE_CONNECT_API_KEY available: $(if [ -n "$APP_STORE_CONNECT_API_KEY" ]; then echo 'YES'; else echo 'NO'; fi)"
           
           if [ -n "$CERTIFICATE_P12" ]; then
@@ -126,6 +127,11 @@ workflows:
           
           if [ -n "$CERTIFICATE_PASSWORD" ]; then
             echo "CERTIFICATE_PASSWORD length: ${#CERTIFICATE_PASSWORD}"
+          fi
+          
+          if [ -n "$PROVISIONING_PROFILE" ]; then
+            echo "PROVISIONING_PROFILE length: ${#PROVISIONING_PROFILE}"
+            echo "PROVISIONING_PROFILE first 100 chars: ${PROVISIONING_PROFILE:0:100}"
           fi
       - name: Setup Certificates
         script: |
@@ -324,6 +330,11 @@ workflows:
               <string>manual</string>
               <key>signingCertificate</key>
               <string>Apple Distribution</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>com.cubstechnical.employee</key>
+                  <string>CUBS Employee Management Distribution</string>
+              </dict>
           </dict>
           </plist>
           EOF
