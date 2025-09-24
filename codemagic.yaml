@@ -14,6 +14,9 @@ workflows:
         DEVELOPMENT_TEAM: "GQCYASP5XS"
     integrations:
       app_store_connect: appstorekey
+    environment:
+      groups:
+        - ios_certificates
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -110,29 +113,54 @@ workflows:
             echo "❌ Archive not found!"
             exit 1
           fi
-      - name: Debug App Store Connect Setup
+      - name: Setup P12 Certificate
         script: |
-          echo "🔍 Debugging App Store Connect setup..."
+          echo "🔐 Setting up P12 certificate..."
+          
+          # Check if P12 certificate is available
+          if [ -n "$CERTIFICATE_P12" ] && [ -n "$CERTIFICATE_PASSWORD" ]; then
+            echo "✅ P12 certificate and password are available"
+            
+            # Create keychain
+            echo "Creating keychain..."
+            security create-keychain -p "" build.keychain
+            security default-keychain -s build.keychain
+            security unlock-keychain -p "" build.keychain
+            security set-keychain-settings -t 3600 -u build.keychain
+            
+            # Import P12 certificate
+            echo "Importing P12 certificate..."
+            security import $CERTIFICATE_P12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+            
+            # Set certificate trust
+            echo "Setting certificate trust..."
+            security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+            
+            echo "✅ P12 certificate setup completed"
+          else
+            echo "❌ P12 certificate or password not available"
+            echo "   Make sure you've uploaded the P12 certificate to Codemagic"
+            echo "   and set the CERTIFICATE_PASSWORD environment variable"
+          fi
+      - name: Debug Certificate Setup
+        script: |
+          echo "🔍 Debugging certificate setup..."
           echo "Bundle ID: $BUNDLE_ID"
           echo "App Store App ID: $APP_STORE_APP_ID"
           echo "Development Team: $DEVELOPMENT_TEAM"
           
-          # Check if we can access App Store Connect
-          if [ -n "$APP_STORE_CONNECT_API_KEY" ]; then
-            echo "✅ App Store Connect API key is available"
+          # Check if P12 certificate is available
+          if [ -n "$CERTIFICATE_P12" ]; then
+            echo "✅ P12 certificate is available"
           else
-            echo "❌ App Store Connect API key is not available"
-            echo "   This means the App Store Connect integration is not properly configured"
-            echo "   Go to Codemagic → Teams → Integrations → Apple Developer Portal"
-            echo "   Make sure the integration is named 'appstorekey' and properly configured"
+            echo "❌ P12 certificate is not available"
           fi
           
-          # Check environment variables
-          echo "All environment variables containing 'APP_STORE':"
-          env | grep -i app_store || echo "No APP_STORE variables found"
-          
-          echo "All environment variables containing 'TEAM':"
-          env | grep -i team || echo "No TEAM variables found"
+          if [ -n "$CERTIFICATE_PASSWORD" ]; then
+            echo "✅ Certificate password is available"
+          else
+            echo "❌ Certificate password is not available"
+          fi
           
           # Check available certificates
           echo "Available certificates:"
@@ -142,12 +170,8 @@ workflows:
             security find-identity -v -p codesigning
           else
             echo "❌ No valid certificates found"
-            echo "   This is the root cause of the export failure"
-            echo "   The App Store Connect integration is not providing certificates"
-            echo "   Solutions:"
-            echo "   1. Fix App Store Connect integration in Codemagic"
-            echo "   2. Ensure app exists in App Store Connect with bundle ID: $BUNDLE_ID"
-            echo "   3. Check Apple Developer account is active and paid"
+            echo "   This means the P12 certificate import failed"
+            echo "   Check that the certificate and password are correct"
           fi
       - name: Export IPA with fallback options
         script: |
@@ -177,9 +201,9 @@ workflows:
             -verbose; then
             echo "✅ Export successful with automatic signing"
           else
-            echo "❌ Automatic signing failed, trying manual signing..."
+            echo "❌ Automatic signing failed, trying manual signing with P12 certificate..."
             
-            # Create manual signing ExportOptions.plist
+            # Create manual signing ExportOptions.plist for P12 certificate
             cat > ExportOptions_manual.plist << 'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -203,6 +227,8 @@ workflows:
               <string>export</string>
               <key>signingStyle</key>
               <string>manual</string>
+              <key>signingCertificate</key>
+              <string>Apple Distribution</string>
           </dict>
           </plist>
           EOF
@@ -210,14 +236,14 @@ workflows:
             echo "Manual ExportOptions.plist content:"
             cat ExportOptions_manual.plist
             
-            # Try manual signing
-            echo "🔄 Attempting export with manual signing..."
+            # Try manual signing with P12 certificate
+            echo "🔄 Attempting export with manual signing and P12 certificate..."
             if xcodebuild -exportArchive \
               -archivePath ../../build/ios/archive/App.xcarchive \
               -exportPath ../../build/ios/ipa \
               -exportOptionsPlist ExportOptions_manual.plist \
               -verbose; then
-              echo "✅ Export successful with manual signing"
+              echo "✅ Export successful with manual signing and P12 certificate"
             else
               echo "❌ Both automatic and manual signing failed"
               echo "🔍 Debugging information:"
@@ -227,6 +253,8 @@ workflows:
               ls -la ../../build/ios/ipa/ || echo "Export directory not found"
               echo "Available certificates:"
               security find-identity -v -p codesigning || echo "No certificates found"
+              echo "Keychain contents:"
+              security list-keychains
               exit 1
             fi
           fi
