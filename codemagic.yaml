@@ -142,9 +142,11 @@ workflows:
             security unlock-keychain -p "" build.keychain
             security set-keychain-settings -t 3600 -u build.keychain
             
-            # Import P12 certificate
-            echo "Importing P12 certificate..."
-            if security import $CERTIFICATE_P12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign; then
+          # Import P12 certificate
+          echo "Importing P12 certificate..."
+          # Write base64 content to temporary file
+          echo "$CERTIFICATE_P12" | base64 -d > /tmp/certificate.p12
+          if security import /tmp/certificate.p12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign; then
               echo "✅ P12 certificate imported successfully"
             else
               echo "❌ P12 certificate import failed"
@@ -155,11 +157,14 @@ workflows:
               exit 1
             fi
             
-            # Set certificate trust
-            echo "Setting certificate trust..."
-            security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
-            
-            echo "✅ P12 certificate setup completed"
+          # Set certificate trust
+          echo "Setting certificate trust..."
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          
+          # Clean up temporary file
+          rm -f /tmp/certificate.p12
+          
+          echo "✅ P12 certificate setup completed"
           else
             echo "⚠️  P12 certificate not available, trying App Store Connect integration"
             echo "   Make sure you've configured the App Store Connect integration in Codemagic"
