@@ -110,9 +110,9 @@ workflows:
             echo "❌ Archive not found!"
             exit 1
           fi
-      - name: Setup P12 Certificate
+      - name: Setup Certificates
         script: |
-          echo "🔐 Setting up P12 certificate..."
+          echo "🔐 Setting up certificates..."
           
           # Check if P12 certificate is available
           if [ -n "$CERTIFICATE_P12" ] && [ -n "$CERTIFICATE_PASSWORD" ]; then
@@ -135,11 +135,10 @@ workflows:
             
             echo "✅ P12 certificate setup completed"
           else
-            echo "❌ P12 certificate or password not available"
-            echo "   Make sure you've uploaded the P12 certificate to Codemagic"
-            echo "   and set the CERTIFICATE_PASSWORD environment variable"
-            echo "   You can upload the P12 certificate in Codemagic → Environment variables"
-            echo "   and set CERTIFICATE_PASSWORD as a secure variable"
+            echo "⚠️  P12 certificate not available, trying App Store Connect integration"
+            echo "   Make sure you've configured the App Store Connect integration in Codemagic"
+            echo "   Go to Codemagic → Teams → Integrations → Apple Developer Portal"
+            echo "   Set integration name to 'appstorekey' with your API credentials"
           fi
       - name: Debug Certificate Setup
         script: |
@@ -153,12 +152,23 @@ workflows:
             echo "✅ P12 certificate is available"
           else
             echo "❌ P12 certificate is not available"
+            echo "   To fix: Go to Codemagic → Environment variables → Add CERTIFICATE_P12"
           fi
           
           if [ -n "$CERTIFICATE_PASSWORD" ]; then
             echo "✅ Certificate password is available"
           else
             echo "❌ Certificate password is not available"
+            echo "   To fix: Go to Codemagic → Environment variables → Add CERTIFICATE_PASSWORD"
+          fi
+          
+          # Check App Store Connect integration
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ]; then
+            echo "✅ App Store Connect API key is available"
+          else
+            echo "❌ App Store Connect API key is not available"
+            echo "   To fix: Go to Codemagic → Teams → Integrations → Apple Developer Portal"
+            echo "   Set integration name to 'appstorekey' with your API credentials"
           fi
           
           # Check available certificates
@@ -169,8 +179,11 @@ workflows:
             security find-identity -v -p codesigning
           else
             echo "❌ No valid certificates found"
-            echo "   This means the P12 certificate import failed"
-            echo "   Check that the certificate and password are correct"
+            echo "   This means neither P12 certificate nor App Store Connect integration is working"
+            echo "   Solutions:"
+            echo "   1. Set up P12 certificate: CERTIFICATE_P12 and CERTIFICATE_PASSWORD"
+            echo "   2. Set up App Store Connect integration: 'appstorekey' with API credentials"
+            echo "   3. Ensure app exists in App Store Connect with bundle ID: $BUNDLE_ID"
           fi
       - name: Export IPA with fallback options
         script: |
