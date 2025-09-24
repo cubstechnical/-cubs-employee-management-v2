@@ -60,6 +60,19 @@ workflows:
           sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' project.pbxproj
           # Ensure DEVELOPMENT_TEAM is not set (let automatic signing handle it)
           sed -i '' '/DEVELOPMENT_TEAM/d' project.pbxproj
+          
+          # Try to get the team ID from the App Store Connect integration
+          echo "🔍 Attempting to get development team ID..."
+          # This will be set by Codemagic's App Store Connect integration
+          if [ -n "$APP_STORE_CONNECT_TEAM_ID" ]; then
+            echo "Using team ID from App Store Connect integration: $APP_STORE_CONNECT_TEAM_ID"
+            # Add development team to project
+            sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
+                DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';/g' project.pbxproj
+          else
+            echo "No team ID available from App Store Connect integration"
+          fi
+          
           echo "Code signing configuration updated for automatic signing"
           cd ../..
       - name: Use provisioning profiles
@@ -118,6 +131,16 @@ workflows:
           echo "🏗️ Building and archiving iOS app..."
           # Use xcodebuild directly for more control
           cd ios/App
+          
+          # First, try to get the development team from the project or set it explicitly
+          echo "🔍 Checking for development team in project..."
+          if grep -q "DEVELOPMENT_TEAM" project.pbxproj; then
+            echo "Development team found in project"
+            grep "DEVELOPMENT_TEAM" project.pbxproj
+          else
+            echo "No development team found, will use automatic assignment"
+          fi
+          
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
@@ -128,8 +151,29 @@ workflows:
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
-            -allowProvisioningUpdates
+            -allowProvisioningUpdates \
+            -allowProvisioningDeviceRegistration
           cd ../..
+      - name: Verify archive has team
+        script: |
+          echo "🔍 Verifying archive has development team..."
+          if [ -d "build/ios/archive/App.xcarchive" ]; then
+            echo "Archive exists, checking for team information..."
+            # Check if the archive has team information
+            if [ -f "build/ios/archive/App.xcarchive/Info.plist" ]; then
+              echo "Archive Info.plist content:"
+              cat build/ios/archive/App.xcarchive/Info.plist | grep -i team || echo "No team information found in archive"
+            else
+              echo "Archive Info.plist not found"
+            fi
+            
+            # Check the archive contents
+            echo "Archive contents:"
+            ls -la build/ios/archive/App.xcarchive/
+          else
+            echo "❌ Archive not found!"
+            exit 1
+          fi
       - name: Export IPA
         script: |
           echo "📦 Exporting IPA..."
