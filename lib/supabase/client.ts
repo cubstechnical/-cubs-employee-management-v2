@@ -26,12 +26,6 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
         persistSession: true,
         detectSessionInUrl: true,
         flowType: 'pkce',
-        // Handle refresh token errors gracefully
-        onRefreshTokenError: (error) => {
-          log.warn('Supabase: Refresh token error, clearing session:', error);
-          // Clear the session when refresh token fails
-          supabase.auth.signOut();
-        },
       },
     });
   } catch (error) {

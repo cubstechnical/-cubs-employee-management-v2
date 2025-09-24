@@ -60,7 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             } else if (event === 'SIGNED_OUT') {
               setUser(null)
             }
-          } else if (event === 'SIGNED_OUT' || event === 'PASSWORD_RECOVERY') {
+          } else if (event === 'PASSWORD_RECOVERY') {
             setUser(null)
           }
         } catch (error) {

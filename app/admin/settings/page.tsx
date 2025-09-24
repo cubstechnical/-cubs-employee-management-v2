@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 // Layout is now handled by the root layout
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -49,12 +49,7 @@ export default function AdminSettings() {
   const [loading, setLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load settings from API
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await fetch('/api/settings/admin');
@@ -76,7 +71,12 @@ export default function AdminSettings() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [settings.appearance, settings.notifications, settings.security, settings.system]);
+
+  // Load settings from API
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
 
   const handleSave = async () => {
     setLoading(true);

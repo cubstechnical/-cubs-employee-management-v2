@@ -60,7 +60,7 @@ const DocumentCard = React.memo(({ item, onView, onDownload, onDelete, onSelect,
     // Image files
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(extension || '') || 
         mimeType?.includes('image')) {
-      return <Image className="w-8 h-8 text-green-500" alt="Image file" />;
+      return <Image className="w-8 h-8 text-green-500" />;
     }
     
     // Video files

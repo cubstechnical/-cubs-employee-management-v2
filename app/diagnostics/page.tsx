@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 interface DiagnosticResult {
   test: string;
@@ -14,11 +14,11 @@ export default function DiagnosticsPage() {
   const [results, setResults] = useState<DiagnosticResult[]>([]);
   const [isRunning, setIsRunning] = useState(false);
 
-  const addResult = (result: DiagnosticResult) => {
+  const addResult = useCallback((result: DiagnosticResult) => {
     setResults(prev => [...prev, result]);
-  };
+  }, []);
 
-  const runTest = async (testName: string, testFn: () => Promise<any>, timeout = 5000): Promise<DiagnosticResult> => {
+  const runTest = useCallback(async (testName: string, testFn: () => Promise<any>, timeout = 5000): Promise<DiagnosticResult> => {
     const startTime = Date.now();
     addResult({ test: testName, status: 'pending' });
 
@@ -45,9 +45,9 @@ export default function DiagnosticsPage() {
         error: error instanceof Error ? error.message : String(error)
       };
     }
-  };
+  }, [addResult]);
 
-  const runAllDiagnostics = async () => {
+  const runAllDiagnostics = useCallback(async () => {
     setIsRunning(true);
     setResults([]);
 
@@ -164,7 +164,7 @@ export default function DiagnosticsPage() {
     });
 
     setIsRunning(false);
-  };
+  }, [runTest]);
 
   useEffect(() => {
     runAllDiagnostics();

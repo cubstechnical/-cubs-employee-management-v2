@@ -36,7 +36,7 @@ const config: CapacitorConfig = {
       resizeOnFullScreen: true,
     },
     App: {
-      launchUrl: 'https://cubsgroups.com',
+      // App configuration
     }
   },
   ios: {
