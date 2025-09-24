@@ -8,8 +8,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import { DocumentService, Document, DocumentFolder } from '@/lib/services/documents';
-import { EmployeeService } from '@/lib/services/employees';
-import { Employee } from '@/lib/supabase/client';
+import { EmployeeService, Employee } from '@/lib/services/employees';
 import UploadModal from '@/components/documents/UploadModal';
 import DocumentPreview from '@/components/documents/DocumentPreview';
 import { 

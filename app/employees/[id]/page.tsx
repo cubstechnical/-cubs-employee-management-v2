@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,20 +56,15 @@ export default function EmployeeDetailsPage() {
     resolver: zodResolver(employeeSchema),
   });
 
-  useEffect(() => {
-    fetchEmployeeDetails();
-    fetchEmployeeDocuments();
-  }, [employeeId]);
-
-  const fetchEmployeeDetails = async () => {
+  const fetchEmployeeDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
       const employeeData = await EmployeeService.getEmployeeById(employeeId);
 
-      if (employeeData) {
-        setEmployee(employeeData);
+      if (employeeData && employeeData.employee) {
+        setEmployee(employeeData.employee);
         // Populate form with existing data
         reset({
           name: employeeData.name || '',
@@ -89,9 +84,9 @@ export default function EmployeeDetailsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [employeeId, reset]);
 
-  const fetchEmployeeDocuments = async () => {
+  const fetchEmployeeDocuments = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('documents')
@@ -108,7 +103,12 @@ export default function EmployeeDetailsPage() {
     } catch (error) {
       console.error('Error fetching documents:', error);
     }
-  };
+  }, [employeeId]);
+
+  useEffect(() => {
+    fetchEmployeeDetails();
+    fetchEmployeeDocuments();
+  }, [fetchEmployeeDetails, fetchEmployeeDocuments]);
 
   const onSubmit = async (data: EmployeeFormData) => {
     if (!employee) return;
@@ -195,7 +195,7 @@ export default function EmployeeDetailsPage() {
             Employee Not Found
           </h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
-            The employee you're looking for could not be found.
+            The employee you&apos;re looking for could not be found.
           </p>
           <Button onClick={() => router.push('/employees')}>
             <ArrowLeft className="w-4 h-4 mr-2" />

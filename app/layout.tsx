@@ -12,6 +12,7 @@ import { PerformanceMonitor } from '@/components/ui/PerformanceMonitor'
 import { ClientOnly } from '@/components/common/ClientOnly'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
+import { Suspense } from 'react'
 
 const inter = Inter({ 
   subsets: ['latin'],

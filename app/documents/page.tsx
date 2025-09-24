@@ -80,29 +80,29 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
     }
     
     // Image files
-    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(extension || '') || 
+    if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(extension || '') ||
         mimeType?.includes('image')) {
       return <Image className="w-8 h-8 text-green-500" />;
     }
-    
+
     // Video files
-    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension || '') || 
+    if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm'].includes(extension || '') ||
         mimeType?.includes('video')) {
       return <FileVideo className="w-8 h-8 text-purple-500" />;
     }
-    
+
     // Audio files
-    if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(extension || '') || 
+    if (['mp3', 'wav', 'flac', 'aac', 'ogg'].includes(extension || '') ||
         mimeType?.includes('audio')) {
       return <FileAudio className="w-8 h-8 text-blue-500" />;
     }
-    
+
     // Archive files
-    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '') || 
+    if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension || '') ||
         mimeType?.includes('archive') || mimeType?.includes('compressed')) {
       return <Archive className="w-8 h-8 text-orange-500" />;
     }
-    
+
     // Default file icon
     return <File className="w-8 h-8 text-gray-500" />;
   };

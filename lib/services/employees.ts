@@ -1,5 +1,35 @@
 import { supabase } from '../supabase/client';
-import { Employee } from '../supabase/client';
+
+// Define Employee interface locally since it's not exported from supabase client
+// This interface includes the most commonly used fields across the application
+export interface Employee {
+  id: string;
+  employee_id: string;
+  name: string;
+  email_id?: string;
+  mobile_number?: string;
+  trade: string;
+  company_name: string;
+  visa_expiry_date: string;
+  is_active: boolean;
+  created_at: string;
+  nationality: string;
+  status: string;
+  // Additional fields that might be used in admin pages
+  dob?: string;
+  joining_date?: string;
+  passport_no?: string;
+  passport_expiry?: string;
+  labourcard_no?: string;
+  labourcard_expiry?: string;
+  visastamping_date?: string;
+  eid?: string;
+  wcc?: string;
+  lulu_wps_card?: string;
+  basic_salary?: string;
+  visa_status?: string;
+  updated_at?: string;
+}
 
 // Extended Employee interface for the optimized view
 export interface EmployeeWithDocuments extends Employee {

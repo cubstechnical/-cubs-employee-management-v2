@@ -7,8 +7,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import { EmployeeService, PaginationParams, EmployeeFilters, FilterOptions } from '@/lib/services/employees';
-import { Employee } from '@/lib/supabase/client';
+import { EmployeeService, PaginationParams, EmployeeFilters, FilterOptions, Employee } from '@/lib/services/employees';
 import { formatDate, getVisaStatus } from '@/utils/date';
 import { useDebounce } from '@/hooks/usePerformance';
 import { 

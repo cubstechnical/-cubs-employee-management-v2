@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
-import { log } from '@/lib/log';
+import { log } from '@/lib/utils/logger';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const documentId = params.id;
+    const resolvedParams = await params;
+    const documentId = resolvedParams.id;
 
     if (!documentId) {
       return NextResponse.json(
@@ -130,7 +131,8 @@ export async function GET(
     });
 
   } catch (error) {
-    log.error('Error in document view route', { error, documentId: params.id });
+    const resolvedParams = await params;
+    log.error('Error in document view route', { error, documentId: resolvedParams.id });
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
