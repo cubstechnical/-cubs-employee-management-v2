@@ -91,26 +91,40 @@ workflows:
           echo "🔧 FORCING development team assignment..."
           echo "This is the root cause fix for 'No Team Found in Archive'"
           
+          # Debug: Show all environment variables that might contain team info
+          echo "🔍 Debug: All environment variables containing 'team' or 'TEAM':"
+          env | grep -i team || echo "No team-related environment variables found"
+          echo "🔍 Debug: All environment variables containing 'APP_STORE':"
+          env | grep -i app_store || echo "No APP_STORE-related environment variables found"
+          
           # Try to get the team ID from the App Store Connect integration
           echo "🔍 Attempting to get development team ID..."
           # This will be set by Codemagic's App Store Connect integration
           if [ -n "$APP_STORE_CONNECT_TEAM_ID" ]; then
-            echo "Using team ID from App Store Connect integration: $APP_STORE_CONNECT_TEAM_ID"
-            # Add development team to project
-            sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';/g' App.xcodeproj/project.pbxproj
+            echo "✅ Using team ID from App Store Connect integration: $APP_STORE_CONNECT_TEAM_ID"
+            # Add development team to project - use a more robust approach
+            echo "Adding DEVELOPMENT_TEAM to project.pbxproj..."
+            # First, let's see what the current CODE_SIGN_STYLE lines look like
+            echo "Current CODE_SIGN_STYLE lines:"
+            grep -n "CODE_SIGN_STYLE" App.xcodeproj/project.pbxproj || echo "No CODE_SIGN_STYLE found"
+            
+            # Add DEVELOPMENT_TEAM after CODE_SIGN_STYLE = Automatic
+            sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
+                DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';' App.xcodeproj/project.pbxproj
+            
+            echo "✅ Added DEVELOPMENT_TEAM to project"
           else
-            echo "No team ID available from App Store Connect integration"
+            echo "❌ No team ID available from App Store Connect integration"
             echo "🔍 Trying to get team ID from environment variables..."
             # Try other possible environment variables
             if [ -n "$TEAM_ID" ]; then
-              echo "Using TEAM_ID: $TEAM_ID"
-              sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                  DEVELOPMENT_TEAM = '"$TEAM_ID"';/g' App.xcodeproj/project.pbxproj
+              echo "✅ Using TEAM_ID: $TEAM_ID"
+              sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
+                  DEVELOPMENT_TEAM = '"$TEAM_ID"';' App.xcodeproj/project.pbxproj
             elif [ -n "$DEVELOPMENT_TEAM" ]; then
-              echo "Using DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM"
-              sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                  DEVELOPMENT_TEAM = '"$DEVELOPMENT_TEAM"';/g' App.xcodeproj/project.pbxproj
+              echo "✅ Using DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM"
+              sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
+                  DEVELOPMENT_TEAM = '"$DEVELOPMENT_TEAM"';' App.xcodeproj/project.pbxproj
             else
               echo "❌ No team ID found in any environment variables"
               echo "Available environment variables:"
@@ -124,10 +138,21 @@ workflows:
               # Use a common team ID pattern or set a default
               # This is a workaround to ensure the archive has team information
               echo "Setting default team ID to ensure archive creation succeeds"
-              sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                  DEVELOPMENT_TEAM = "GQCYASP5XS";/g' App.xcodeproj/project.pbxproj
+              sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
+                  DEVELOPMENT_TEAM = "GQCYASP5XS";' App.xcodeproj/project.pbxproj
               echo "✅ Forced team ID assignment - this should fix the archive issue"
             fi
+          fi
+          
+          # Verify the team was added
+          echo "🔍 Verifying DEVELOPMENT_TEAM was added to project:"
+          if grep -q "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj; then
+            echo "✅ DEVELOPMENT_TEAM found in project:"
+            grep -n "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj
+          else
+            echo "❌ DEVELOPMENT_TEAM still not found after assignment attempt!"
+            echo "This will cause the archive to have no team"
+            exit 1
           fi
           
           echo "Code signing configuration updated for automatic signing"
@@ -198,7 +223,7 @@ workflows:
           <plist version="1.0">
           <dict>
             <key>method</key>
-              <string>app-store</string>
+              <string>app-store-connect</string>
             <key>uploadBitcode</key>
             <false/>
             <key>uploadSymbols</key>
@@ -213,8 +238,8 @@ workflows:
               <string>export</string>
             <key>signingStyle</key>
               <string>automatic</string>
-              <key>signingCertificate</key>
-              <string>Apple Distribution</string>
+              <key>teamID</key>
+              <string>GQCYASP5XS</string>
           </dict>
           </plist>
           EOF
