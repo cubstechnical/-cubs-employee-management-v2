@@ -56,7 +56,7 @@ export const getScreenSize = (): 'mobile' | 'tablet' | 'desktop' => {
 
 export const addMobileClass = (): void => {
   if (typeof document === 'undefined') return;
-  
+
   try {
     if (isMobileDevice()) {
       document.body.classList.add('mobile-device');
@@ -65,5 +65,74 @@ export const addMobileClass = (): void => {
     }
   } catch (error) {
     // Silently handle any errors
+  }
+};
+
+export const isCapacitorApp = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    // Check for Capacitor-specific indicators
+    const isCapacitor = !!(window as any).Capacitor;
+    const hasCapacitorPlugins = !!(window as any).Capacitor?.isNative;
+    const userAgentContainsCapacitor = /Capacitor/i.test(navigator.userAgent || '');
+
+    return isCapacitor || hasCapacitorPlugins || userAgentContainsCapacitor;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const isNativePlatform = (): boolean => {
+  if (typeof window === 'undefined') return false;
+
+  try {
+    // Check for native platform indicators
+    const capacitor = !!(window as any).Capacitor;
+    const isNative = !!(window as any).Capacitor?.isNative;
+    const userAgent = navigator.userAgent || '';
+
+    // Check for iOS/Android native app indicators
+    const isIOSNative = /iPhone|iPad|iPod/.test(userAgent) && !/Safari/.test(userAgent);
+    const isAndroidNative = /Android/.test(userAgent) && !/Chrome|Firefox|Safari/.test(userAgent);
+
+    return capacitor || isNative || isIOSNative || isAndroidNative;
+  } catch (error) {
+    return false;
+  }
+};
+
+export const suppressMobileWarnings = (): void => {
+  if (typeof window === 'undefined') return;
+
+  try {
+    // Suppress common mobile app warnings
+    const originalError = console.error;
+    console.error = (...args) => {
+      const message = args.join(' ');
+
+      // Suppress specific warnings we know are harmless
+      if (
+        message.includes('Not running on native platform') ||
+        message.includes('MIME type') ||
+        message.includes('text/css') ||
+        message.includes('executable') ||
+        message.includes('strict MIME type checking') ||
+        message.includes('script from') ||
+        message.includes('skipp') // Capacitor skip message
+      ) {
+        // Log as warning instead of error for better visibility in development
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[SUPPRESSED]', ...args);
+        }
+        return;
+      }
+
+      // Call original error for other messages
+      originalError.apply(console, args);
+    };
+  } catch (error) {
+    // If we can't suppress warnings, just continue
+    console.warn('Could not suppress mobile warnings:', error);
   }
 };

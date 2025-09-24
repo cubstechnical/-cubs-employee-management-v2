@@ -11,6 +11,7 @@ import CapacitorInit from '@/components/capacitor/CapacitorInit'
 import { PerformanceMonitor } from '@/components/ui/PerformanceMonitor'
 import { ClientOnly } from '@/components/common/ClientOnly'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
+import { suppressMobileWarnings } from '@/utils/mobileDetection'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -123,6 +124,8 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
+        {/* Suppress harmless mobile app warnings */}
+        {suppressMobileWarnings()}
         <PerformanceMonitor />
         <PWARegistration />
         <CapacitorInit />

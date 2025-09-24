@@ -56,38 +56,68 @@ export default function LoginPage() {
     // Check if user is already logged in with enhanced session persistence
     const checkAuth = async () => {
       try {
-        // Check session persistence flag
+        // First check if we have stored user data in localStorage
         if (typeof window !== 'undefined') {
           const sessionPersisted = localStorage.getItem('cubs_session_persisted');
           const lastLogin = localStorage.getItem('cubs_last_login');
+          const storedUserEmail = localStorage.getItem('cubs_user_email');
+          const storedUserId = localStorage.getItem('cubs_user_id');
 
           // If session was persisted and last login was within 24 hours, try to maintain it
-          if (sessionPersisted === 'true' && lastLogin) {
+          if (sessionPersisted === 'true' && lastLogin && storedUserEmail) {
             const lastLoginTime = new Date(lastLogin);
             const now = new Date();
             const hoursSinceLogin = (now.getTime() - lastLoginTime.getTime()) / (1000 * 60 * 60);
 
             if (hoursSinceLogin < 24) {
+              // Try to get current user from session
               const user = await AuthService.getCurrentUser();
               if (user) {
+                console.log('✅ Found valid session, redirecting to dashboard');
                 router.push('/dashboard');
                 return;
+              } else {
+                // Try to recover session if we have stored user data
+                console.log('🔄 Attempting session recovery with stored data');
+                try {
+                  // If we have stored user data but no active session, try to refresh
+                  const { session } = await AuthService.getSession();
+                  if (session && session.user) {
+                    console.log('✅ Recovered session, redirecting to dashboard');
+                    router.push('/dashboard');
+                    return;
+                  }
+                } catch (recoveryError) {
+                  console.warn('Session recovery failed:', recoveryError);
+                }
               }
+            } else {
+              // Session expired, clear stored data
+              console.log('⏰ Session expired, clearing stored data');
+              localStorage.removeItem('cubs_session_persisted');
+              localStorage.removeItem('cubs_last_login');
+              localStorage.removeItem('cubs_user_email');
+              localStorage.removeItem('cubs_user_id');
             }
           }
         }
 
-        // Fallback to standard auth check
+        // Final fallback: standard auth check
         const user = await AuthService.getCurrentUser();
         if (user) {
+          console.log('✅ Standard auth check found user, redirecting to dashboard');
           router.push('/dashboard');
+        } else {
+          console.log('ℹ️ No authenticated user found, staying on login page');
         }
       } catch (error) {
         console.error('Auth check error:', error);
-        // Clear potentially corrupted session data
+        // Clear potentially corrupted session data but don't redirect
         if (typeof window !== 'undefined') {
           localStorage.removeItem('cubs_session_persisted');
           localStorage.removeItem('cubs_last_login');
+          localStorage.removeItem('cubs_user_email');
+          localStorage.removeItem('cubs_user_id');
         }
       }
     };
@@ -107,10 +137,20 @@ export default function LoginPage() {
       // Use AuthContext signIn method which properly updates the context
       await signIn(data.email, data.password);
 
-      // Enhanced session persistence
+      // Enhanced session persistence with error handling
       if (typeof window !== 'undefined') {
-        localStorage.setItem('cubs_session_persisted', 'true');
-        localStorage.setItem('cubs_last_login', new Date().toISOString());
+        try {
+          localStorage.setItem('cubs_session_persisted', 'true');
+          localStorage.setItem('cubs_last_login', new Date().toISOString());
+          // Store user info for persistence across page refreshes
+          const currentUser = await AuthService.getCurrentUser();
+          if (currentUser) {
+            localStorage.setItem('cubs_user_email', currentUser.email);
+            localStorage.setItem('cubs_user_id', currentUser.id);
+          }
+        } catch (storageError) {
+          console.warn('Failed to save session data to localStorage:', storageError);
+        }
       }
 
       toast.success('Login successful! Redirecting...');
@@ -122,16 +162,18 @@ export default function LoginPage() {
 
     } catch (error) {
       console.error('Login error:', error);
-      // Better error handling for mobile
+      // Better error handling for mobile with more specific messages
       if (error instanceof Error) {
         if (error.message.includes('timeout')) {
-          toast.error('Login timeout. Please try again.');
+          toast.error('Login timeout. Please check your connection and try again.');
         } else if (error.message.includes('network')) {
-          toast.error('Network error. Please check your connection.');
+          toast.error('Network error. Please check your internet connection.');
         } else if (error.message.includes('Invalid login credentials')) {
           toast.error('Invalid email or password. Please check your credentials.');
+        } else if (error.message.includes('Email not confirmed')) {
+          toast.error('Please check your email and click the confirmation link before signing in.');
         } else {
-          toast.error(error.message);
+          toast.error(`Login failed: ${error.message}`);
         }
       } else {
         toast.error('Login failed. Please try again.');

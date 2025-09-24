@@ -20,70 +20,106 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load user session from Supabase
+    // Load user session from Supabase with enhanced error handling
     const loadSession = async () => {
       try {
-        // Add timeout to prevent infinite loading
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session load timeout')), 10000)
+        // Add longer timeout for mobile networks
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session load timeout')), 15000)
         );
-        
+
         const sessionPromise = AuthService.getCurrentUserWithApproval();
-        
+
         const result = await Promise.race([sessionPromise, timeoutPromise]);
         const { user: currentUser } = result as { user: any };
-        setUser(currentUser)
-        log.info('AuthContext: Session loaded', { hasUser: !!currentUser })
+
+        // Only set user if we actually got one, don't clear existing user on errors
+        if (currentUser) {
+          setUser(currentUser);
+          log.info('AuthContext: Session loaded successfully', { hasUser: !!currentUser });
+        } else {
+          // Only clear user if we're certain there's no valid session
+          const { session } = await AuthService.getSession();
+          if (!session) {
+            setUser(null);
+            log.info('AuthContext: No valid session found, clearing user');
+          } else {
+            log.info('AuthContext: Session exists but no user data, keeping current state');
+          }
+        }
       } catch (error) {
-        log.error('Error loading session:', error)
-        await handleAuthError(error)
-        setUser(null)
+        log.warn('AuthContext: Session load warning (not clearing user):', error);
+        // Don't immediately clear user on session load errors
+        // Instead, check if we have a valid session first
+        try {
+          const { session } = await AuthService.getSession();
+          if (!session) {
+            setUser(null);
+          }
+          // If session exists, keep current user state
+        } catch (sessionError) {
+          log.error('AuthContext: Session check failed:', sessionError);
+          setUser(null);
+        }
       } finally {
         // Ensure loading is always set to false
-        setTimeout(() => setIsLoading(false), 100)
+        setTimeout(() => setIsLoading(false), 100);
       }
-    }
+    };
 
-    loadSession()
-    
-    // Listen for auth state changes
+    loadSession();
+
+    // Listen for auth state changes with improved error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        log.info('AuthContext: Auth state changed', { event, hasSession: !!session })
-        
+        log.info('AuthContext: Auth state changed', { event, hasSession: !!session });
+
         try {
           if (event === 'SIGNED_IN' && session) {
             try {
-              const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
-              setUser(currentUser)
+              const { user: currentUser } = await AuthService.getCurrentUserWithApproval();
+              if (currentUser) {
+                setUser(currentUser);
+              } else {
+                // If no user data but session exists, keep current user or clear
+                setUser(null);
+              }
             } catch (error) {
-              log.error('Error loading user after sign in:', error)
-              await handleAuthError(error)
-              setUser(null)
+              log.warn('AuthContext: Error loading user after sign in (keeping session):', error);
+              // Don't clear user immediately, just log the error
             }
-          } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-            // Handle token refresh errors gracefully
-            if (event === 'TOKEN_REFRESHED' && !session) {
-              log.warn('AuthContext: Token refresh failed, signing out')
-              setUser(null)
-            } else if (event === 'SIGNED_OUT') {
-              setUser(null)
+          } else if (event === 'SIGNED_OUT') {
+            setUser(null);
+            log.info('AuthContext: User signed out');
+          } else if (event === 'TOKEN_REFRESHED') {
+            if (!session) {
+              log.warn('AuthContext: Token refresh failed, clearing user');
+              setUser(null);
+            } else {
+              // Token refreshed successfully, try to get fresh user data
+              try {
+                const { user: currentUser } = await AuthService.getCurrentUserWithApproval();
+                if (currentUser) {
+                  setUser(currentUser);
+                }
+              } catch (error) {
+                log.warn('AuthContext: Error refreshing user data:', error);
+              }
             }
           } else if (event === 'PASSWORD_RECOVERY') {
-            setUser(null)
+            // Keep user state for password recovery
+            log.info('AuthContext: Password recovery initiated');
           }
         } catch (error) {
-          log.error('AuthContext: Error handling auth state change:', error)
-          await handleAuthError(error)
-          // If there's an error with auth state, clear the user
-          setUser(null)
+          log.error('AuthContext: Error handling auth state change:', error);
+          // Don't immediately clear user on auth state errors
         } finally {
-          setIsLoading(false)
+          setIsLoading(false);
         }
       }
-    )
+    );
 
-    return () => subscription.unsubscribe()
+    return () => subscription.unsubscribe();
   }, [])
 
   const signIn = async (email: string, password: string) => {
