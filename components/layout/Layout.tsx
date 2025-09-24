@@ -61,7 +61,7 @@ export default function Layout({ children, className }: LayoutProps) {
   ), [isMobile, sidebarOpen]);
 
   const mainClasses = useMemo(() => cn(
-    'transition-all duration-300 min-h-screen',
+    'transition-all duration-300 min-h-screen flex-1',
     isMobile 
       ? 'ml-0 w-full'
       : sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64',

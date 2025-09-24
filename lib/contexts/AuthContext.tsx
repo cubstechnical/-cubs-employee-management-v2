@@ -23,7 +23,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Load user session from Supabase
     const loadSession = async () => {
       try {
-        const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
+        // Add timeout to prevent infinite loading
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session load timeout')), 10000)
+        );
+        
+        const sessionPromise = AuthService.getCurrentUserWithApproval();
+        
+        const { user: currentUser } = await Promise.race([sessionPromise, timeoutPromise]);
         setUser(currentUser)
         log.info('AuthContext: Session loaded', { hasUser: !!currentUser })
       } catch (error) {
@@ -31,7 +38,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await handleAuthError(error)
         setUser(null)
       } finally {
-        setIsLoading(false)
+        // Ensure loading is always set to false
+        setTimeout(() => setIsLoading(false), 100)
       }
     }
 

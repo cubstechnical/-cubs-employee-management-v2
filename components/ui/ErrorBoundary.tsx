@@ -1,9 +1,9 @@
 'use client';
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
-import Card from './Card';
+import React, { Component, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, Home, Bug } from 'lucide-react';
 import Button from './Button';
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import Card from './Card';
 
 interface Props {
   children: ReactNode;
@@ -12,104 +12,158 @@ interface Props {
 
 interface State {
   hasError: boolean;
-  error?: Error;
-  errorInfo?: ErrorInfo;
+  error: Error | null;
+  errorInfo: React.ErrorInfo | null;
 }
 
-export default class ErrorBoundary extends Component<Props, State> {
+export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
     super(props);
-    this.state = { hasError: false };
+    this.state = { hasError: false, error: null, errorInfo: null };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, errorInfo: null };
   }
 
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
-    this.setState({ error, errorInfo });
     
-    // Log error to external service in production
-    if (process.env.NODE_ENV === 'production') {
-      // You can integrate with Sentry, LogRocket, or other error tracking services here
-      console.error('Production error:', { error: error.message, stack: error.stack, errorInfo });
+    this.setState({
+      error,
+      errorInfo
+    });
+
+    // Log to monitoring service if available
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
+      (window as any).Sentry.captureException(error, {
+        contexts: {
+          react: {
+            componentStack: errorInfo.componentStack
+          }
+        }
+      });
+    }
+
+    // Log to console for development
+    if (process.env.NODE_ENV === 'development') {
+      console.group('🚨 React Error Boundary');
+      console.error('Error:', error);
+      console.error('Component Stack:', errorInfo.componentStack);
+      console.groupEnd();
     }
   }
 
-  handleRetry = () => {
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+  handleRefresh = () => {
+    this.setState({ hasError: false, error: null, errorInfo: null });
   };
 
   handleGoHome = () => {
     window.location.href = '/dashboard';
   };
 
+  handleReportBug = () => {
+    const errorDetails = {
+      message: this.state.error?.message,
+      stack: this.state.error?.stack,
+      componentStack: this.state.errorInfo?.componentStack,
+      userAgent: navigator.userAgent,
+      url: window.location.href,
+      timestamp: new Date().toISOString()
+    };
+
+    // Create mailto link with error details
+    const subject = encodeURIComponent('CUBS App Error Report');
+    const body = encodeURIComponent(`
+Error Report:
+${JSON.stringify(errorDetails, null, 2)}
+
+Please describe what you were doing when this error occurred:
+[Your description here]
+    `);
+    
+    window.open(`mailto:info@cubstechnical.com?subject=${subject}&body=${body}`);
+  };
+
   render() {
     if (this.state.hasError) {
+      // Custom fallback UI
       if (this.props.fallback) {
         return this.props.fallback;
       }
 
+      // Default error UI
       return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-          <Card className="max-w-md w-full p-6">
-            <div className="text-center">
-              <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/20 mb-4">
-                <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-400" />
-              </div>
-              
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                Something went wrong
+          <Card className="max-w-lg w-full p-8 text-center">
+            <div className="mb-6">
+              <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+                Oops! Something went wrong
               </h1>
-              
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                We&apos;re sorry, but something unexpected happened. Please try refreshing the page or contact support if the problem persists.
+              <p className="text-gray-600 dark:text-gray-400">
+                We're sorry, but something unexpected happened. Don't worry, your data is safe.
               </p>
+            </div>
 
-              {process.env.NODE_ENV === 'development' && this.state.error && (
-                <div className="mb-6 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg text-left">
-                  <p className="text-xs font-mono text-red-600 dark:text-red-400 mb-2">
-                    Error: {this.state.error.message}
-                  </p>
-                  {this.state.error.stack && (
-                    <pre className="text-xs text-gray-600 dark:text-gray-400 overflow-auto max-h-32">
-                      {this.state.error.stack}
-                    </pre>
-                  )}
+            {/* Error details (only in development) */}
+            {process.env.NODE_ENV === 'development' && this.state.error && (
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-left">
+                <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">
+                  Error Details (Development Only)
+                </h3>
+                <div className="text-sm text-red-700 dark:text-red-300 font-mono overflow-auto max-h-32">
+                  <p className="mb-2"><strong>Message:</strong> {this.state.error.message}</p>
+                  <p><strong>Stack:</strong></p>
+                  <pre className="whitespace-pre-wrap text-xs">
+                    {this.state.error.stack}
+                  </pre>
                 </div>
-              )}
+              </div>
+            )}
 
-              <div className="space-y-3">
+            {/* Action buttons */}
+            <div className="space-y-3">
+              <Button
+                onClick={this.handleRefresh}
+                className="w-full bg-[#d3194f] hover:bg-[#b0173a] text-white"
+              >
+                <RefreshCw className="w-4 h-4 mr-2" />
+                Try Again
+              </Button>
+              
+              <div className="flex gap-3">
                 <Button
-                  onClick={this.handleRetry}
-                  className="w-full"
-                  icon={<RefreshCw className="w-4 h-4" />}
+                  onClick={this.handleGoHome}
+                  variant="outline"
+                  className="flex-1"
                 >
-                  Try Again
+                  <Home className="w-4 h-4 mr-2" />
+                  Go Home
                 </Button>
                 
                 <Button
+                  onClick={this.handleReportBug}
                   variant="outline"
-                  onClick={this.handleGoHome}
-                  className="w-full"
-                  icon={<Home className="w-4 h-4" />}
+                  className="flex-1"
                 >
-                  Go to Dashboard
+                  <Bug className="w-4 h-4 mr-2" />
+                  Report Bug
                 </Button>
               </div>
+            </div>
 
-              <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  If this problem continues, please{' '}
-                  <a
-                    href="/contact"
-                    className="text-[#d3194f] hover:underline"
-                  >
-                    contact support
-                  </a>
-                </p>
-              </div>
+            {/* Additional help */}
+            <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                If this problem persists, please contact{' '}
+                <a 
+                  href="mailto:info@cubstechnical.com" 
+                  className="text-[#d3194f] hover:underline"
+                >
+                  info@cubstechnical.com
+                </a>
+              </p>
             </div>
           </Card>
         </div>
@@ -120,14 +174,37 @@ export default class ErrorBoundary extends Component<Props, State> {
   }
 }
 
-// Hook version for functional components
+// Higher-order component for wrapping components with error boundary
+export function withErrorBoundary<P extends object>(
+  Component: React.ComponentType<P>,
+  fallback?: ReactNode
+) {
+  const WrappedComponent = (props: P) => (
+    <ErrorBoundary fallback={fallback}>
+      <Component {...props} />
+    </ErrorBoundary>
+  );
+
+  WrappedComponent.displayName = `withErrorBoundary(${Component.displayName || Component.name})`;
+  
+  return WrappedComponent;
+}
+
+// Hook for handling errors in functional components
 export function useErrorHandler() {
-  return (error: Error, errorInfo?: ErrorInfo) => {
-    console.error('Error caught by useErrorHandler:', error, errorInfo);
+  return (error: Error, errorInfo?: { componentStack?: string }) => {
+    console.error('Manual error report:', error);
     
-    // You can integrate with error tracking services here
-    if (process.env.NODE_ENV === 'production') {
-      console.error('Production error:', { error: error.message, stack: error.stack, errorInfo });
+    // Log to monitoring service
+    if (typeof window !== 'undefined' && (window as any).Sentry) {
+      (window as any).Sentry.captureException(error, {
+        contexts: {
+          react: errorInfo
+        }
+      });
     }
+    
+    // You could also trigger a state update to show an error message
+    throw error; // Re-throw to trigger error boundary
   };
 }

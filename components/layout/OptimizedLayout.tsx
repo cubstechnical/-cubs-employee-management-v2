@@ -167,13 +167,13 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
       {/* Sidebar - only show if user is authenticated */}
       {user && (
         <div className={cn(
-          "bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out",
+          "bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out overflow-hidden",
           // Desktop: always visible, mobile: toggle based on sidebarOpen
           isMobile 
             ? "fixed inset-y-0 left-0 z-50 transform " + (sidebarOpen ? "translate-x-0" : "-translate-x-full")
             : "relative flex-shrink-0",
           sidebarCollapsed && !isMobile ? "w-16" : "w-64"
-        )}>
+        )} style={{ minWidth: sidebarCollapsed && !isMobile ? '4rem' : '16rem' }}>
           <Sidebar 
             onClose={isMobile ? toggleSidebar : undefined}
             onCollapseChange={setSidebarCollapsed}
