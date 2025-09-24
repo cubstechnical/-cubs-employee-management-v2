@@ -128,7 +128,9 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
             getFileIcon(item.name, item.file_type)
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white break-words leading-tight">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate leading-tight"
+                title={item.name} // Show full filename on hover
+            >
               {item.name}
             </h3>
             {item.type === 'document' && item.file_size && (
@@ -427,30 +429,58 @@ function DocumentsContent() {
   };
 
   const handleDocumentView = async (item: FolderItem) => {
-    if (!item.document_id) return;
+    if (!item.document_id) {
+      toast.error('Document ID not found');
+      return;
+    }
 
     try {
       setLoadingDocumentId(item.document_id);
+      console.log('👁️ Opening document:', item.document_id, item.name);
 
-      console.log('👁️ Opening document:', item.document_id);
-
-      // Always open documents in new tab for consistent behavior
+      // Try to open in new tab
       const newTab = window.open(
         `/api/documents/${item.document_id}/view`,
-        '_blank'
+        '_blank',
+        'noopener,noreferrer'
       );
 
       if (newTab) {
+        // Tab opened successfully
         newTab.focus();
         console.log('✅ Document opened in new tab');
-        toast.success(`Opened ${item.name} in new tab`);
+        toast.success(`Opening ${item.name}...`);
+
+        // Check if tab is blocked after a short delay
+        setTimeout(() => {
+          try {
+            if (newTab.closed) {
+              console.warn('⚠️ Document tab was closed immediately (possibly blocked)');
+              toast.error('Document popup was blocked. Please allow popups for this site and try again.');
+            }
+          } catch (e) {
+            // Ignore errors when checking if tab is closed
+          }
+        }, 1000);
       } else {
         console.warn('⚠️ Failed to open document tab (popup blocked?)');
-        toast.error('Failed to open document. Please check popup settings and try again.');
+
+        // Fallback: try to open directly (might work for some browsers)
+        try {
+          const link = document.createElement('a');
+          link.href = `/api/documents/${item.document_id}/view`;
+          link.target = '_blank';
+          link.rel = 'noopener noreferrer';
+          link.click();
+          toast.success(`Opening ${item.name}...`);
+        } catch (fallbackError) {
+          console.error('❌ Fallback opening also failed:', fallbackError);
+          toast.error('Failed to open document. Please check popup settings and try again.');
+        }
       }
     } catch (error) {
       console.error('❌ Error opening document viewer:', error);
-      toast.error('Failed to open document viewer');
+      toast.error('Failed to open document viewer. Please try again.');
     } finally {
       setLoadingDocumentId(null);
     }
@@ -528,13 +558,13 @@ function DocumentsContent() {
   return (
     <div className="p-6 max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between mb-6 gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Documents</h1>
-            <p className="text-gray-600 dark:text-gray-400">Manage employee documents and files</p>
-        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6 gap-4">
+          <div className="flex-1">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">Documents</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">Manage employee documents and files</p>
+          </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          <div className="flex flex-col sm:flex-row gap-3 sm:ml-4">
             {selectedIds.size > 0 && (
                 <>
                   <Button
@@ -615,7 +645,7 @@ function DocumentsContent() {
 
           {/* Enhanced Breadcrumb Navigation */}
           {currentPath !== '/' && (
-            <nav className="flex items-center space-x-2 text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700">
+            <nav className="flex items-start space-x-2 text-sm bg-gray-50 dark:bg-gray-800 p-3 rounded-lg border border-gray-200 dark:border-gray-700 overflow-x-auto">
               {/* Back Button */}
               <button
                 onClick={() => {
@@ -656,7 +686,8 @@ function DocumentsContent() {
                         setCurrentPath(newPath);
                         setSelectedIds(new Set());
                       }}
-                      className="text-blue-600 hover:text-blue-800 hover:underline max-w-40 break-all font-medium"
+                      className="text-blue-600 hover:text-blue-800 hover:underline max-w-48 truncate font-medium"
+                      title={part} // Show full text on hover
                     >
                       {part}
                     </button>
@@ -671,7 +702,7 @@ function DocumentsContent() {
         <Card>
           {loading || isSearching ? (
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                 {Array.from({ length: 6 }).map((_, i) => (
                 <DocumentSkeleton key={i} />
               ))}
@@ -692,7 +723,7 @@ function DocumentsContent() {
             </div>
                    ) : (
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 lg:gap-6">
                 {filteredItems.map((item: FolderItem, index: number) => (
                   <div key={index} onClick={() => handleItemClick(item)} className="cursor-pointer">
                      <DocumentCard
