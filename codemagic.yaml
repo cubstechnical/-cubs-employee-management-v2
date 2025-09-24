@@ -13,8 +13,6 @@ workflows:
         APP_STORE_APP_ID: "6752909710"  # Your actual App Store Connect App ID
     integrations:
       app_store_connect: appstorekey
-    ios_signing:
-      distribution_type: app_store
     scripts:
       - name: Install Node.js dependencies
         script: |
