@@ -49,16 +49,28 @@ workflows:
           export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
           # Ensure proper code signing configuration
           cd ios/App
-          # Set development team for automatic signing
+          # Force automatic signing in project file
+          sed -i '' 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' project.pbxproj
           sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
           sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Distribution";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
-          # Ensure automatic signing is enabled
+          # Remove any manual provisioning profile settings
+          sed -i '' '/PROVISIONING_PROFILE/d' project.pbxproj
+          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' project.pbxproj
           echo "Code signing configuration updated for automatic signing"
           cd ../..
       - name: Use provisioning profiles
         script: |
           echo "🔐 Using provisioning profiles..."
           xcode-project use-profiles
+      - name: Verify code signing configuration
+        script: |
+          echo "🔍 Verifying code signing configuration..."
+          cd ios/App
+          echo "Checking project code signing settings:"
+          grep -n "CODE_SIGN_STYLE" project.pbxproj || echo "No CODE_SIGN_STYLE found"
+          grep -n "CODE_SIGN_IDENTITY" project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
+          grep -n "PROVISIONING_PROFILE" project.pbxproj || echo "No PROVISIONING_PROFILE found"
+          cd ../..
       - name: Prepare build directory
         script: |
           echo "📁 Preparing build directory..."
@@ -72,7 +84,8 @@ workflows:
           echo "🏗️ Building and archiving iOS app..."
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME"
+            --scheme "$XCODE_SCHEME" \
+            --archive-xcargs "CODE_SIGN_STYLE=Automatic CODE_SIGN_IDENTITY= PROVISIONING_PROFILE= PROVISIONING_PROFILE_SPECIFIER="
       - name: Verify build artifacts
         script: |
           echo "✅ Verifying build artifacts..."
