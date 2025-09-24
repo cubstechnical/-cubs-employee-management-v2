@@ -185,6 +185,21 @@ workflows:
             echo "   Create new integration named 'appstorekey'"
           fi
           
+          # Check for manual provisioning profile
+          echo "🔍 Checking for manual provisioning profile..."
+          if [ -n "$PROVISIONING_PROFILE" ]; then
+            echo "✅ Manual provisioning profile is available"
+            echo "Installing manual provisioning profile..."
+            echo "$PROVISIONING_PROFILE" | base64 -d > /tmp/profile.mobileprovision
+            mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+            cp /tmp/profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+            echo "✅ Manual provisioning profile installed"
+            rm -f /tmp/profile.mobileprovision
+          else
+            echo "❌ Manual provisioning profile not available"
+            echo "   To fix: Add PROVISIONING_PROFILE environment variable with base64 content"
+          fi
+          
           # Check for provisioning profiles
           echo "🔍 Checking for provisioning profiles..."
           echo "Available provisioning profiles:"
