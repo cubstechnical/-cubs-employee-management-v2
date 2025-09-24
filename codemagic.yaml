@@ -10,7 +10,8 @@ workflows:
         BUNDLE_ID: "com.cubstechnical.employee"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
         XCODE_SCHEME: "App"
-        APP_STORE_APP_ID: "6752909710"  # Your actual App Store Connect App ID
+        APP_STORE_APP_ID: "6752909710"
+        DEVELOPMENT_TEAM: "GQCYASP5XS"
     integrations:
       app_store_connect: appstorekey
     scripts:
@@ -45,226 +46,46 @@ workflows:
       - name: Configure code signing
         script: |
           echo "🔐 Configuring code signing..."
-          # Set up code signing environment
-          export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-          
-          echo "Current directory: $(pwd)"
-          echo "Checking if ios/App directory exists:"
-          ls -la ios/ || echo "ios directory not found"
-          
-          if [ ! -d "ios/App" ]; then
-            echo "❌ ios/App directory not found!"
-            echo "This means the Capacitor iOS project was not created properly"
-            echo "Available directories:"
-            ls -la
-            exit 1
-          fi
-          
           cd ios/App
-          echo "Changed to ios/App directory: $(pwd)"
           
-          if [ ! -f "App.xcodeproj/project.pbxproj" ]; then
-            echo "❌ project.pbxproj not found in App.xcodeproj directory!"
-            echo "This means the iOS project structure is incorrect"
-            echo "Available files in ios/App:"
-            ls -la
-            echo "Available files in App.xcodeproj:"
-            ls -la App.xcodeproj/ || echo "App.xcodeproj directory not found"
-            exit 1
-          fi
-          
-          echo "✅ Found project.pbxproj in App.xcodeproj, configuring code signing..."
-          
-          # Force automatic signing in project file
-          sed -i '' 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' App.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Distribution";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Distribution";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
-          # Remove any manual provisioning profile settings
-          sed -i '' '/PROVISIONING_PROFILE/d' App.xcodeproj/project.pbxproj
-          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' App.xcodeproj/project.pbxproj
-          # Ensure DEVELOPMENT_TEAM is not set (let automatic signing handle it)
-          sed -i '' '/DEVELOPMENT_TEAM/d' App.xcodeproj/project.pbxproj
-          
-          # FORCE SET A DEVELOPMENT TEAM - This is the critical fix
-          echo "🔧 FORCING development team assignment..."
-          echo "This is the root cause fix for 'No Team Found in Archive'"
-          
-          # Debug: Show all environment variables that might contain team info
-          echo "🔍 Debug: All environment variables containing 'team' or 'TEAM':"
-          env | grep -i team || echo "No team-related environment variables found"
-          echo "🔍 Debug: All environment variables containing 'APP_STORE':"
-          env | grep -i app_store || echo "No APP_STORE-related environment variables found"
-          
-          # Try to get the team ID from the App Store Connect integration
-          echo "🔍 Attempting to get development team ID..."
-          # This will be set by Codemagic's App Store Connect integration
-          if [ -n "$APP_STORE_CONNECT_TEAM_ID" ]; then
-            echo "✅ Using team ID from App Store Connect integration: $APP_STORE_CONNECT_TEAM_ID"
-            # Add development team to project - use a more robust approach
-            echo "Adding DEVELOPMENT_TEAM to project.pbxproj..."
-            # First, let's see what the current CODE_SIGN_STYLE lines look like
-            echo "Current CODE_SIGN_STYLE lines:"
-            grep -n "CODE_SIGN_STYLE" App.xcodeproj/project.pbxproj || echo "No CODE_SIGN_STYLE found"
-            
-            # Add DEVELOPMENT_TEAM after CODE_SIGN_STYLE = Automatic
-            sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
-                DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';' App.xcodeproj/project.pbxproj
-            
-            echo "✅ Added DEVELOPMENT_TEAM to project"
-          else
-            echo "❌ No team ID available from App Store Connect integration"
-            echo "🔍 Trying to get team ID from environment variables..."
-            # Try other possible environment variables
-            if [ -n "$TEAM_ID" ]; then
-              echo "✅ Using TEAM_ID: $TEAM_ID"
-              sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
-                  DEVELOPMENT_TEAM = '"$TEAM_ID"';' App.xcodeproj/project.pbxproj
-            elif [ -n "$DEVELOPMENT_TEAM" ]; then
-              echo "✅ Using DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM"
-              sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
-                  DEVELOPMENT_TEAM = '"$DEVELOPMENT_TEAM"';' App.xcodeproj/project.pbxproj
-            else
-              echo "❌ No team ID found in any environment variables"
-              echo "Available environment variables:"
-              env | grep -i team || echo "No team-related environment variables found"
-              echo "This is why the archive has no team - we need to set one explicitly"
-              
-              # FORCE SET A TEAM ID - This is the critical fix
-              echo "🔧 FORCING team ID assignment to fix 'No Team Found in Archive'..."
-              echo "Setting a default team ID to ensure archive has team information"
-              
-              # Use a common team ID pattern or set a default
-              # This is a workaround to ensure the archive has team information
-              echo "Setting default team ID to ensure archive creation succeeds"
-              sed -i '' '/CODE_SIGN_STYLE = Automatic;/a\
-                  DEVELOPMENT_TEAM = "GQCYASP5XS";' App.xcodeproj/project.pbxproj
-              echo "✅ Forced team ID assignment - this should fix the archive issue"
-            fi
-          fi
-          
-          # Verify the team was added
-          echo "🔍 Verifying DEVELOPMENT_TEAM was added to project:"
-          if grep -q "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj; then
-            echo "✅ DEVELOPMENT_TEAM found in project:"
+          # Verify the project has the correct team ID
+          echo "🔍 Verifying DEVELOPMENT_TEAM in project:"
+          if grep -q "DEVELOPMENT_TEAM = GQCYASP5XS" App.xcodeproj/project.pbxproj; then
+            echo "✅ DEVELOPMENT_TEAM found in project"
             grep -n "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj
           else
-            echo "❌ DEVELOPMENT_TEAM still not found after assignment attempt!"
+            echo "❌ DEVELOPMENT_TEAM not found in project!"
             echo "This will cause the archive to have no team"
             exit 1
           fi
           
-          echo "Code signing configuration updated for automatic signing"
+          # Ensure CODE_SIGN_STYLE is set to Automatic
+          echo "🔍 Verifying CODE_SIGN_STYLE is Automatic:"
+          if grep -q "CODE_SIGN_STYLE = Automatic" App.xcodeproj/project.pbxproj; then
+            echo "✅ CODE_SIGN_STYLE is set to Automatic"
+          else
+            echo "❌ CODE_SIGN_STYLE is not set to Automatic!"
+            exit 1
+          fi
+          
           cd ../..
       - name: Use provisioning profiles
         script: |
           echo "🔐 Using provisioning profiles..."
           xcode-project use-profiles
-      - name: Verify code signing configuration
-        script: |
-          echo "🔍 Verifying code signing configuration..."
-          echo "Current directory: $(pwd)"
-          echo "Checking if ios/App directory exists:"
-          ls -la ios/ || echo "ios directory not found"
-          ls -la ios/App/ || echo "ios/App directory not found"
-          
-          if [ -d "ios/App" ]; then
-            cd ios/App
-            echo "Changed to ios/App directory: $(pwd)"
-            echo "Checking project code signing settings:"
-            if [ -f "App.xcodeproj/project.pbxproj" ]; then
-              echo "✅ project.pbxproj found in App.xcodeproj"
-              grep -n "CODE_SIGN_STYLE" App.xcodeproj/project.pbxproj || echo "No CODE_SIGN_STYLE found"
-              grep -n "CODE_SIGN_IDENTITY" App.xcodeproj/project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
-              grep -n "PROVISIONING_PROFILE" App.xcodeproj/project.pbxproj || echo "No PROVISIONING_PROFILE found"
-              echo "🔍 CRITICAL: Checking for DEVELOPMENT_TEAM in project:"
-              if grep -q "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj; then
-                echo "✅ DEVELOPMENT_TEAM found in project:"
-                grep -n "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj
-                echo "This should fix the 'No Team Found in Archive' error"
-              else
-                echo "❌ DEVELOPMENT_TEAM NOT FOUND in project!"
-                echo "This will cause 'No Team Found in Archive' error"
-                echo "The archive will be created but export will fail"
-                exit 1
-              fi
-            else
-              echo "❌ project.pbxproj not found in App.xcodeproj directory!"
-              echo "This means the iOS project structure is incorrect"
-              echo "Available files in ios/App:"
-              ls -la
-              echo "Available files in App.xcodeproj:"
-              ls -la App.xcodeproj/ || echo "App.xcodeproj directory not found"
-              exit 1
-            fi
-            cd ../..
-          else
-            echo "❌ ios/App directory not found!"
-            echo "This means the Capacitor iOS project was not created properly"
-            echo "Available directories:"
-            ls -la
-            exit 1
-          fi
-      - name: Prepare build directory
-        script: |
-          echo "📁 Preparing build directory..."
-          mkdir -p build/ios/ipa
-          mkdir -p build/ios/archive
-          # Clean previous builds
-          rm -rf build/ios/ipa/*
-          rm -rf build/ios/archive/*
-      - name: Create ExportOptions.plist
-        script: |
-          echo "📄 Creating ExportOptions.plist..."
-          cat > ios/App/ExportOptions.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-              <string>app-store-connect</string>
-            <key>uploadBitcode</key>
-            <false/>
-            <key>uploadSymbols</key>
-            <true/>
-            <key>compileBitcode</key>
-            <false/>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>thinning</key>
-              <string>&lt;none&gt;</string>
-              <key>destination</key>
-              <string>export</string>
-            <key>signingStyle</key>
-              <string>automatic</string>
-              <key>teamID</key>
-              <string>GQCYASP5XS</string>
-          </dict>
-          </plist>
-          EOF
-          echo "ExportOptions.plist created successfully"
       - name: Build and archive iOS app
         script: |
           echo "🏗️ Building and archiving iOS app..."
-          # Use xcodebuild directly for more control
           cd ios/App
           
-          # First, try to get the development team from the project or set it explicitly
-          echo "🔍 Checking for development team in project..."
-          if grep -q "DEVELOPMENT_TEAM" project.pbxproj; then
-            echo "Development team found in project"
-            grep "DEVELOPMENT_TEAM" project.pbxproj
-          else
-            echo "No development team found, will use automatic assignment"
-          fi
-          
+          # Build and archive with explicit team and signing settings
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -destination generic/platform=iOS \
             -archivePath ../../build/ios/archive/App.xcarchive \
             archive \
+            DEVELOPMENT_TEAM=GQCYASP5XS \
             CODE_SIGN_STYLE=Automatic \
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE="" \
@@ -276,28 +97,14 @@ workflows:
         script: |
           echo "🔍 Verifying archive has development team..."
           if [ -d "build/ios/archive/App.xcarchive" ]; then
-            echo "Archive exists, checking for team information..."
+            echo "✅ Archive created successfully"
+            echo "Archive contents:"
+            ls -la build/ios/archive/App.xcarchive/
+            
             # Check if the archive has team information
             if [ -f "build/ios/archive/App.xcarchive/Info.plist" ]; then
               echo "Archive Info.plist content:"
               cat build/ios/archive/App.xcarchive/Info.plist | grep -i team || echo "No team information found in archive"
-            else
-              echo "Archive Info.plist not found"
-            fi
-            
-            # Check the archive contents
-            echo "Archive contents:"
-            ls -la build/ios/archive/App.xcarchive/
-            
-            # If no team found, try to fix it by re-archiving with explicit team
-            if ! cat build/ios/archive/App.xcarchive/Info.plist | grep -i team > /dev/null 2>&1; then
-              echo "❌ No team found in archive, attempting to fix..."
-              echo "This is the root cause of the export failure"
-              echo "The archive was created without a development team"
-              echo "This means the automatic team assignment failed during archive creation"
-              echo "We need to ensure the project has a development team before archiving"
-            else
-              echo "✅ Team found in archive"
             fi
           else
             echo "❌ Archive not found!"
@@ -319,76 +126,23 @@ workflows:
           echo "Export path: ../../build/ios/ipa"
           echo "ExportOptions.plist exists: $(test -f ExportOptions.plist && echo 'Yes' || echo 'No')"
           
-          # Create a simpler ExportOptions.plist if needed
-          if [ ! -f ExportOptions.plist ]; then
-            echo "Creating ExportOptions.plist..."
-            cat > ExportOptions.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store-connect</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
-              <key>compileBitcode</key>
-              <false/>
-              <key>stripSwiftSymbols</key>
-              <true/>
-              <key>thinning</key>
-              <string>&lt;none&gt;</string>
-              <key>destination</key>
-              <string>export</string>
-              <key>signingStyle</key>
-              <string>automatic</string>
-          </dict>
-          </plist>
-          EOF
-          fi
-          
           echo "ExportOptions.plist content:"
           cat ExportOptions.plist || echo "Cannot read ExportOptions.plist"
           
-          # Try export with error handling
+          # Export with the corrected ExportOptions.plist
           echo "Attempting export with ExportOptions.plist..."
           if xcodebuild -exportArchive \
             -archivePath ../../build/ios/archive/App.xcarchive \
             -exportPath ../../build/ios/ipa \
             -exportOptionsPlist ExportOptions.plist \
-            -verbose 2>&1; then
-            echo "✅ Export completed successfully with ExportOptions.plist"
+            -verbose; then
+            echo "✅ Export completed successfully"
           else
-            echo "❌ Export with ExportOptions.plist failed, trying alternative approach..."
-            # Try with a simpler ExportOptions.plist
-            echo "Attempting export with simplified ExportOptions.plist..."
-            cat > ExportOptions_simple.plist << 'EOF'
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-              <key>method</key>
-              <string>app-store-connect</string>
-              <key>signingStyle</key>
-              <string>automatic</string>
-          </dict>
-          </plist>
-          EOF
-            
-            if xcodebuild -exportArchive \
-              -archivePath ../../build/ios/archive/App.xcarchive \
-              -exportPath ../../build/ios/ipa \
-              -exportOptionsPlist ExportOptions_simple.plist \
-              -verbose 2>&1; then
-              echo "✅ Export completed successfully with simplified ExportOptions.plist"
-            else
-              echo "❌ All export methods failed"
-              echo "Checking what files exist:"
-              ls -la ../../build/ios/ipa/ || echo "Export directory not found"
-              find ../../build/ios/ipa/ -name "*" || echo "No files in export directory"
-              exit 1
-            fi
+            echo "❌ Export failed"
+            echo "Checking what files exist:"
+            ls -la ../../build/ios/ipa/ || echo "Export directory not found"
+            find ../../build/ios/ipa/ -name "*" || echo "No files in export directory"
+            exit 1
           fi
           
           echo "Export completed. Checking results:"
@@ -400,18 +154,11 @@ workflows:
           echo "✅ Verifying build artifacts..."
           echo "Checking build directory structure:"
           find build -type f -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null || echo "No build artifacts found in build directory"
-          echo "Checking ios/App directory:"
-          find ios/App -type f -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null || echo "No build artifacts found in ios/App directory"
-          echo "Checking current directory:"
-          find . -maxdepth 3 -type f -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null || echo "No build artifacts found in current directory"
           
           # Check for IPA files in common locations
           if [ -d "build/ios/ipa" ] && [ "$(ls -A build/ios/ipa/*.ipa 2>/dev/null)" ]; then
             echo "✅ IPA file found in build/ios/ipa/"
             ls -la build/ios/ipa/*.ipa
-          elif [ -d "ios/App" ] && [ "$(find ios/App -name "*.ipa" 2>/dev/null)" ]; then
-            echo "✅ IPA file found in ios/App/"
-            find ios/App -name "*.ipa" -exec ls -la {} \;
           else
             echo "❌ IPA file not found in expected locations"
             echo "Checking all possible locations:"
@@ -423,9 +170,6 @@ workflows:
           if [ -d "build/ios/archive" ] && [ "$(ls -A build/ios/archive/*.xcarchive 2>/dev/null)" ]; then
             echo "✅ Archive found in build/ios/archive/"
             ls -la build/ios/archive/*.xcarchive
-          elif [ -d "ios/App" ] && [ "$(find ios/App -name "*.xcarchive" 2>/dev/null)" ]; then
-            echo "✅ Archive found in ios/App/"
-            find ios/App -name "*.xcarchive" -exec ls -la {} \;
           else
             echo "❌ Archive not found in expected locations"
             echo "Checking all possible locations:"
@@ -435,7 +179,6 @@ workflows:
     artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/archive/*.xcarchive
-      - build/ios/xcodebuild.log
     publishing:
       app_store_connect:
         auth: integration
