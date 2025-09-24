@@ -91,21 +91,21 @@ workflows:
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-              <key>method</key>
+            <key>method</key>
               <string>app-store</string>
-              <key>uploadBitcode</key>
-              <false/>
-              <key>uploadSymbols</key>
-              <true/>
-              <key>compileBitcode</key>
-              <false/>
+            <key>uploadBitcode</key>
+            <false/>
+            <key>uploadSymbols</key>
+            <true/>
+            <key>compileBitcode</key>
+            <false/>
               <key>stripSwiftSymbols</key>
               <true/>
               <key>thinning</key>
               <string>&lt;none&gt;</string>
               <key>destination</key>
               <string>export</string>
-              <key>signingStyle</key>
+            <key>signingStyle</key>
               <string>automatic</string>
               <key>signingCertificate</key>
               <string>Apple Distribution</string>
@@ -132,27 +132,61 @@ workflows:
       - name: Export IPA
         script: |
           echo "📦 Exporting IPA..."
+          echo "Checking if archive exists before export:"
+          ls -la ../../build/ios/archive/ || echo "Archive directory not found"
+          ls -la ../../build/ios/archive/*.xcarchive || echo "No .xcarchive files found"
+          
           cd ios/App
+          echo "Current directory: $(pwd)"
+          echo "Archive path: ../../build/ios/archive/App.xcarchive"
+          echo "Export path: ../../build/ios/ipa"
+          echo "ExportOptions.plist exists: $(test -f ExportOptions.plist && echo 'Yes' || echo 'No')"
+          
           xcodebuild -exportArchive \
             -archivePath ../../build/ios/archive/App.xcarchive \
             -exportPath ../../build/ios/ipa \
-            -exportOptionsPlist ExportOptions.plist
+            -exportOptionsPlist ExportOptions.plist \
+            -verbose
+          
+          echo "Export completed. Checking results:"
+          ls -la ../../build/ios/ipa/ || echo "Export directory not found"
+          find ../../build/ios/ipa/ -name "*.ipa" || echo "No IPA files in export directory"
           cd ../..
       - name: Verify build artifacts
         script: |
           echo "✅ Verifying build artifacts..."
+          echo "Checking build directory structure:"
+          find build -type f -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null || echo "No build artifacts found in build directory"
+          echo "Checking ios/App directory:"
+          find ios/App -type f -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null || echo "No build artifacts found in ios/App directory"
+          echo "Checking current directory:"
+          find . -maxdepth 3 -type f -name "*.ipa" -o -name "*.xcarchive" 2>/dev/null || echo "No build artifacts found in current directory"
+          
+          # Check for IPA files in common locations
           if [ -d "build/ios/ipa" ] && [ "$(ls -A build/ios/ipa/*.ipa 2>/dev/null)" ]; then
-            echo "✅ IPA file created successfully!"
+            echo "✅ IPA file found in build/ios/ipa/"
             ls -la build/ios/ipa/*.ipa
+          elif [ -d "ios/App" ] && [ "$(find ios/App -name "*.ipa" 2>/dev/null)" ]; then
+            echo "✅ IPA file found in ios/App/"
+            find ios/App -name "*.ipa" -exec ls -la {} \;
           else
-            echo "❌ IPA file not found"
+            echo "❌ IPA file not found in expected locations"
+            echo "Checking all possible locations:"
+            find . -name "*.ipa" 2>/dev/null || echo "No IPA files found anywhere"
             exit 1
           fi
+          
+          # Check for archive files
           if [ -d "build/ios/archive" ] && [ "$(ls -A build/ios/archive/*.xcarchive 2>/dev/null)" ]; then
-            echo "✅ Archive created successfully!"
+            echo "✅ Archive found in build/ios/archive/"
             ls -la build/ios/archive/*.xcarchive
+          elif [ -d "ios/App" ] && [ "$(find ios/App -name "*.xcarchive" 2>/dev/null)" ]; then
+            echo "✅ Archive found in ios/App/"
+            find ios/App -name "*.xcarchive" -exec ls -la {} \;
           else
-            echo "❌ Archive not found"
+            echo "❌ Archive not found in expected locations"
+            echo "Checking all possible locations:"
+            find . -name "*.xcarchive" 2>/dev/null || echo "No archive files found anywhere"
             exit 1
           fi
     artifacts:
