@@ -70,7 +70,7 @@ export default function Settings() {
     loadSettings();
   }, [user, loadSettings]);
 
-  const loadSettings = async () => {
+  const loadSettings = useCallback(async () => {
     if (!user?.id) return;
     
     setIsLoading(true);
@@ -92,7 +92,7 @@ export default function Settings() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [user]);
 
   const handleSave = async () => {
     if (!user?.id) return;

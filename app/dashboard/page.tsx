@@ -156,14 +156,14 @@ export default function Dashboard() {
         <div className="grid grid-cols-12 gap-4">
             {/* Company Chart - Reduced */}
             <div className="col-span-12 lg:col-span-7">
-              <EmployeeGrowthChartDirect 
+              <EmployeeGrowthChart 
                 loading={loading} 
               />
             </div>
 
             {/* Visa Compliance Score - Moved here */}
             <div className="col-span-12 lg:col-span-5">
-              <VisaComplianceScoreDirect 
+              <VisaComplianceScore 
                 score={dashboardData.complianceScore}
                 loading={loading}
               />
@@ -174,7 +174,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-12 gap-4">
           {/* Visa Expiry Trends */}
           <div className="col-span-12 xl:col-span-7">
-            <VisaExpiryTrendChartDirect 
+            <VisaExpiryTrendChart 
               data={dashboardData.visaTrendData} 
               loading={loading} 
             />
@@ -182,7 +182,7 @@ export default function Dashboard() {
 
           {/* Recent Activities */}
           <div className="col-span-12 xl:col-span-5">
-            <RecentEmployeeActivitiesDirect 
+            <RecentEmployeeActivities 
               data={dashboardData.recentActivities}
               loading={loading} 
             />

@@ -130,7 +130,7 @@ const EnhancedSearch = memo(({
             {searchState.suggestions.length >= 8 && (
               <div className="p-4 border-t border-gray-100 dark:border-gray-700 bg-gradient-to-r from-gray-50 to-gray-100 dark:from-gray-700/50 dark:to-gray-800/50">
                 <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                  Press Enter to see all results for "{searchState.term}"
+                  Press Enter to see all results for &quot;{searchState.term}&quot;
                 </p>
               </div>
             )}
@@ -151,7 +151,7 @@ const EnhancedSearch = memo(({
             <div className="text-center">
               <Search className="w-8 h-8 text-gray-400 mx-auto mb-3" />
               <p className="text-sm text-gray-600 dark:text-gray-400">
-                No employees found for "{searchState.term}"
+                No employees found for &quot;{searchState.term}&quot;
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                 Try a different search term

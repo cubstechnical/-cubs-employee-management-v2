@@ -168,7 +168,7 @@ export default function DiagnosticsPage() {
 
   useEffect(() => {
     runAllDiagnostics();
-  }, []);
+  }, [runAllDiagnostics]);
 
   const getStatusColor = (status: DiagnosticResult['status']) => {
     switch (status) {

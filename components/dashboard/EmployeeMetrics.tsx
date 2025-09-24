@@ -19,26 +19,6 @@ interface EmployeeMetricsProps {
 }
 
 const EmployeeMetricsComponent = ({ data, loading = false }: EmployeeMetricsProps) => {
-  if (loading) {
-    return (
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {[...Array(2)].map((_, i) => (
-          <div key={i} className="relative overflow-hidden rounded-xl p-3 animate-pulse">
-            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"></div>
-            <div className="relative">
-              <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-lg mb-3"></div>
-              <div className="space-y-2">
-                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
-                <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
-                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
   const metrics = useMemo(() => [
     {
       label: "TOTAL EMPLOYEES",
@@ -65,6 +45,26 @@ const EmployeeMetricsComponent = ({ data, loading = false }: EmployeeMetricsProp
       subtitle: `Across ${data?.totalCompanies || 0} companies`
     }
   ], [data?.totalEmployees, data?.employeeGrowth, data?.activeEmployees, data?.inactiveEmployees, data?.totalDocuments, data?.documentGrowth, data?.totalCompanies]);
+
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className="relative overflow-hidden rounded-xl p-3 animate-pulse">
+            <div className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800 dark:to-gray-900"></div>
+            <div className="relative">
+              <div className="w-10 h-10 bg-gray-300 dark:bg-gray-600 rounded-lg mb-3"></div>
+              <div className="space-y-2">
+                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-3/4"></div>
+                <div className="h-5 bg-gray-300 dark:bg-gray-600 rounded w-1/2"></div>
+                <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">

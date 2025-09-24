@@ -215,7 +215,7 @@ export default function EmployeeDetailPage() {
             Employee Not Found
           </h3>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
-            The employee you're looking for doesn't exist or has been removed.
+            The employee you&apos;re looking for doesn&apos;t exist or has been removed.
           </p>
           <Button onClick={() => router.push('/employees')}>
             Back to Employees
