@@ -63,27 +63,29 @@ workflows:
           cd ios/App
           echo "Changed to ios/App directory: $(pwd)"
           
-          if [ ! -f "project.pbxproj" ]; then
-            echo "❌ project.pbxproj not found in ios/App directory!"
+          if [ ! -f "App.xcodeproj/project.pbxproj" ]; then
+            echo "❌ project.pbxproj not found in App.xcodeproj directory!"
             echo "This means the iOS project structure is incorrect"
             echo "Available files in ios/App:"
             ls -la
+            echo "Available files in App.xcodeproj:"
+            ls -la App.xcodeproj/ || echo "App.xcodeproj directory not found"
             exit 1
           fi
           
-          echo "✅ Found project.pbxproj, configuring code signing..."
+          echo "✅ Found project.pbxproj in App.xcodeproj, configuring code signing..."
           
           # Force automatic signing in project file
-          sed -i '' 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Distribution";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
-          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Distribution";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
+          sed -i '' 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Distribution";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Development";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
+          sed -i '' 's/CODE_SIGN_IDENTITY = "Apple Distribution";/CODE_SIGN_IDENTITY = "";/g' App.xcodeproj/project.pbxproj
           # Remove any manual provisioning profile settings
-          sed -i '' '/PROVISIONING_PROFILE/d' project.pbxproj
-          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' project.pbxproj
+          sed -i '' '/PROVISIONING_PROFILE/d' App.xcodeproj/project.pbxproj
+          sed -i '' '/PROVISIONING_PROFILE_SPECIFIER/d' App.xcodeproj/project.pbxproj
           # Ensure DEVELOPMENT_TEAM is not set (let automatic signing handle it)
-          sed -i '' '/DEVELOPMENT_TEAM/d' project.pbxproj
+          sed -i '' '/DEVELOPMENT_TEAM/d' App.xcodeproj/project.pbxproj
           
           # FORCE SET A DEVELOPMENT TEAM - This is the critical fix
           echo "🔧 FORCING development team assignment..."
@@ -96,7 +98,7 @@ workflows:
             echo "Using team ID from App Store Connect integration: $APP_STORE_CONNECT_TEAM_ID"
             # Add development team to project
             sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';/g' project.pbxproj
+                DEVELOPMENT_TEAM = '"$APP_STORE_CONNECT_TEAM_ID"';/g' App.xcodeproj/project.pbxproj
           else
             echo "No team ID available from App Store Connect integration"
             echo "🔍 Trying to get team ID from environment variables..."
@@ -104,11 +106,11 @@ workflows:
             if [ -n "$TEAM_ID" ]; then
               echo "Using TEAM_ID: $TEAM_ID"
               sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                  DEVELOPMENT_TEAM = '"$TEAM_ID"';/g' project.pbxproj
+                  DEVELOPMENT_TEAM = '"$TEAM_ID"';/g' App.xcodeproj/project.pbxproj
             elif [ -n "$DEVELOPMENT_TEAM" ]; then
               echo "Using DEVELOPMENT_TEAM: $DEVELOPMENT_TEAM"
               sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                  DEVELOPMENT_TEAM = '"$DEVELOPMENT_TEAM"';/g' project.pbxproj
+                  DEVELOPMENT_TEAM = '"$DEVELOPMENT_TEAM"';/g' App.xcodeproj/project.pbxproj
             else
               echo "❌ No team ID found in any environment variables"
               echo "Available environment variables:"
@@ -123,7 +125,7 @@ workflows:
               # This is a workaround to ensure the archive has team information
               echo "Setting default team ID to ensure archive creation succeeds"
               sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                  DEVELOPMENT_TEAM = "GQCYASP5XS";/g' project.pbxproj
+                  DEVELOPMENT_TEAM = "GQCYASP5XS";/g' App.xcodeproj/project.pbxproj
               echo "✅ Forced team ID assignment - this should fix the archive issue"
             fi
           fi
@@ -146,15 +148,15 @@ workflows:
             cd ios/App
             echo "Changed to ios/App directory: $(pwd)"
             echo "Checking project code signing settings:"
-            if [ -f "project.pbxproj" ]; then
-              echo "✅ project.pbxproj found"
-              grep -n "CODE_SIGN_STYLE" project.pbxproj || echo "No CODE_SIGN_STYLE found"
-              grep -n "CODE_SIGN_IDENTITY" project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
-              grep -n "PROVISIONING_PROFILE" project.pbxproj || echo "No PROVISIONING_PROFILE found"
+            if [ -f "App.xcodeproj/project.pbxproj" ]; then
+              echo "✅ project.pbxproj found in App.xcodeproj"
+              grep -n "CODE_SIGN_STYLE" App.xcodeproj/project.pbxproj || echo "No CODE_SIGN_STYLE found"
+              grep -n "CODE_SIGN_IDENTITY" App.xcodeproj/project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
+              grep -n "PROVISIONING_PROFILE" App.xcodeproj/project.pbxproj || echo "No PROVISIONING_PROFILE found"
               echo "🔍 CRITICAL: Checking for DEVELOPMENT_TEAM in project:"
-              if grep -q "DEVELOPMENT_TEAM" project.pbxproj; then
+              if grep -q "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj; then
                 echo "✅ DEVELOPMENT_TEAM found in project:"
-                grep -n "DEVELOPMENT_TEAM" project.pbxproj
+                grep -n "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj
                 echo "This should fix the 'No Team Found in Archive' error"
               else
                 echo "❌ DEVELOPMENT_TEAM NOT FOUND in project!"
@@ -163,10 +165,12 @@ workflows:
                 exit 1
               fi
             else
-              echo "❌ project.pbxproj not found in ios/App directory!"
+              echo "❌ project.pbxproj not found in App.xcodeproj directory!"
               echo "This means the iOS project structure is incorrect"
               echo "Available files in ios/App:"
               ls -la
+              echo "Available files in App.xcodeproj:"
+              ls -la App.xcodeproj/ || echo "App.xcodeproj directory not found"
               exit 1
             fi
             cd ../..
