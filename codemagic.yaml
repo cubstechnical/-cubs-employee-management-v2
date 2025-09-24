@@ -165,6 +165,11 @@ workflows:
           # Check App Store Connect integration
           if [ -n "$APP_STORE_CONNECT_API_KEY" ]; then
             echo "✅ App Store Connect API key is available"
+            echo "   API Key details:"
+            echo "   - Key ID: 7C6BH8NKQY"
+            echo "   - Issuer ID: fde9acef-6408-4dab-b6ed-31f8a3e5817b"
+            echo "   - App Store App ID: $APP_STORE_APP_ID"
+            echo "   - Bundle ID: $BUNDLE_ID"
           else
             echo "❌ App Store Connect API key is not available"
             echo "   To fix: Go to Codemagic → Teams → Integrations → Apple Developer Portal"
@@ -179,11 +184,15 @@ workflows:
             security find-identity -v -p codesigning
           else
             echo "❌ No valid certificates found"
-            echo "   This means neither P12 certificate nor App Store Connect integration is working"
+            echo "   This means the App Store Connect integration is not providing certificates"
+            echo "   Possible issues:"
+            echo "   1. API key has 'Developer' access instead of 'App Manager' or 'Admin'"
+            echo "   2. Integration is not properly configured in Codemagic"
+            echo "   3. App exists but certificates haven't been generated yet"
             echo "   Solutions:"
-            echo "   1. Set up P12 certificate: CERTIFICATE_P12 and CERTIFICATE_PASSWORD"
-            echo "   2. Set up App Store Connect integration: 'appstorekey' with API credentials"
-            echo "   3. Ensure app exists in App Store Connect with bundle ID: $BUNDLE_ID"
+            echo "   1. Check API key permissions in App Store Connect"
+            echo "   2. Verify integration is active in Codemagic"
+            echo "   3. Wait 5-10 minutes after creating app in App Store Connect"
           fi
       - name: Export IPA with fallback options
         script: |
