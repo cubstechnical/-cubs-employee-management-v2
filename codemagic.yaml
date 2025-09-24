@@ -110,6 +110,21 @@ workflows:
             echo "❌ Archive not found!"
             exit 1
           fi
+      - name: Debug Environment Variables
+        script: |
+          echo "🔍 Debugging environment variables..."
+          echo "CERTIFICATE_P12 available: $(if [ -n "$CERTIFICATE_P12" ]; then echo 'YES'; else echo 'NO'; fi)"
+          echo "CERTIFICATE_PASSWORD available: $(if [ -n "$CERTIFICATE_PASSWORD" ]; then echo 'YES'; else echo 'NO'; fi)"
+          echo "APP_STORE_CONNECT_API_KEY available: $(if [ -n "$APP_STORE_CONNECT_API_KEY" ]; then echo 'YES'; else echo 'NO'; fi)"
+          
+          if [ -n "$CERTIFICATE_P12" ]; then
+            echo "CERTIFICATE_P12 length: ${#CERTIFICATE_P12}"
+            echo "CERTIFICATE_P12 first 100 chars: ${CERTIFICATE_P12:0:100}"
+          fi
+          
+          if [ -n "$CERTIFICATE_PASSWORD" ]; then
+            echo "CERTIFICATE_PASSWORD length: ${#CERTIFICATE_PASSWORD}"
+          fi
       - name: Setup Certificates
         script: |
           echo "🔐 Setting up certificates..."
@@ -127,7 +142,16 @@ workflows:
             
             # Import P12 certificate
             echo "Importing P12 certificate..."
-            security import $CERTIFICATE_P12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign
+            if security import $CERTIFICATE_P12 -k build.keychain -P $CERTIFICATE_PASSWORD -T /usr/bin/codesign; then
+              echo "✅ P12 certificate imported successfully"
+            else
+              echo "❌ P12 certificate import failed"
+              echo "   Possible issues:"
+              echo "   1. Invalid P12 file or corrupted base64"
+              echo "   2. Wrong password"
+              echo "   3. Certificate expired or revoked"
+              exit 1
+            fi
             
             # Set certificate trust
             echo "Setting certificate trust..."
