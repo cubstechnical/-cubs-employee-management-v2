@@ -39,11 +39,13 @@ workflows:
         script: |
           echo "🔢 Setting build number..."
           cd ios/App
-          # Get latest build number from App Store Connect and increment
-          LATEST_BUILD=$(agvtool what-version -terse)
-          NEW_BUILD=$((LATEST_BUILD + 1))
-          echo "Setting build number to: $NEW_BUILD"
+          # Get current build number and increment it
+          CURRENT_BUILD=$(agvtool what-version -terse)
+          NEW_BUILD=$((CURRENT_BUILD + 1))
+          echo "Current build number: $CURRENT_BUILD"
+          echo "Setting new build number to: $NEW_BUILD"
           agvtool new-version -all $NEW_BUILD
+          echo "✅ Build number updated to: $NEW_BUILD"
           cd ../..
       - name: Configure code signing
         script: |
@@ -334,7 +336,7 @@ workflows:
               <dict>
                   <key>com.cubstechnical.employee</key>
                   <string>CUBS Employee Management Distribution</string>
-              </dict>
+          </dict>
           </dict>
           </plist>
           EOF
