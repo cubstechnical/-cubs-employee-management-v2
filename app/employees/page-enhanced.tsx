@@ -55,7 +55,6 @@ const EmployeeCardSkeleton = () => (
   </div>
 );
 
-export const dynamic = 'force-dynamic';
 
 export default function EnhancedEmployeesPage() {
   const router = useRouter();

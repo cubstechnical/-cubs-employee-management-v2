@@ -55,7 +55,6 @@ interface DeleteConfirmationState {
   isDeleting: boolean;
 }
 
-export const dynamic = 'force-dynamic';
 
 export default function EmployeesPage() {
   const router = useRouter();

@@ -83,7 +83,8 @@ export const OptimizedEmployeeCard = memo(function OptimizedEmployeeCard({
     if (onEdit) {
       onEdit(employee.id);
     } else {
-      router.push(`/employees/${employee.id}/edit`);
+      // Redirect to employees page since edit route was removed for static export
+      router.push('/employees');
     }
   }, [employee.id, onEdit, router]);
 
