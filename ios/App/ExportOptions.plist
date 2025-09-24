@@ -3,7 +3,7 @@
 <plist version="1.0">
 <dict>
     <key>method</key>
-    <string>app-store-connect</string>
+    <string>app-store</string>
     <key>teamID</key>
     <string>GQCYASP5XS</string>
     <key>uploadBitcode</key>
@@ -20,5 +20,10 @@
     <string>export</string>
     <key>signingStyle</key>
     <string>automatic</string>
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.cubstechnical.employee</key>
+        <string>match AppStore com.cubstechnical.employee</string>
+    </dict>
 </dict>
 </plist>
