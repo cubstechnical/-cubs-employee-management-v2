@@ -15,7 +15,6 @@ workflows:
       app_store_connect: appstorekey
     ios_signing:
       distribution_type: app_store
-      bundle_identifier: com.cubstechnical.employee
     scripts:
       - name: Install Node.js dependencies
         script: |
