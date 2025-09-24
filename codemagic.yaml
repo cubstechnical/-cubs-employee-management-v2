@@ -5,7 +5,7 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
-      node: 18.17.0
+      node: 20.11.0
       vars:
         BUNDLE_ID: "com.cubstechnical.employee"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
@@ -82,7 +82,7 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
-      node: 18.17.0
+      node: 20.11.0
       vars:
         BUNDLE_ID: "com.cubstechnical.employee"
         XCODE_WORKSPACE: "ios/App/App.xcworkspace"
