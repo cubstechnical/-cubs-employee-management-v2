@@ -59,14 +59,37 @@ workflows:
         script: |
           echo "🔐 Using provisioning profiles..."
           xcode-project use-profiles
+      - name: Prepare build directory
+        script: |
+          echo "📁 Preparing build directory..."
+          mkdir -p build/ios/ipa
+          mkdir -p build/ios/archive
+          # Clean previous builds
+          rm -rf build/ios/ipa/*.ipa
+          rm -rf build/ios/archive/*.xcarchive
       - name: Build and archive iOS app
         script: |
           echo "🏗️ Building and archiving iOS app..."
           xcode-project build-ipa \
             --workspace "$XCODE_WORKSPACE" \
-            --scheme "$XCODE_SCHEME" \
-            --archive \
-            --export-method app-store
+            --scheme "$XCODE_SCHEME"
+      - name: Verify build artifacts
+        script: |
+          echo "✅ Verifying build artifacts..."
+          if [ -d "build/ios/ipa" ] && [ "$(ls -A build/ios/ipa/*.ipa 2>/dev/null)" ]; then
+            echo "✅ IPA file created successfully!"
+            ls -la build/ios/ipa/*.ipa
+          else
+            echo "❌ IPA file not found"
+            exit 1
+          fi
+          if [ -d "build/ios/archive" ] && [ "$(ls -A build/ios/archive/*.xcarchive 2>/dev/null)" ]; then
+            echo "✅ Archive created successfully!"
+            ls -la build/ios/archive/*.xcarchive
+          else
+            echo "❌ Archive not found"
+            exit 1
+          fi
     artifacts:
       - build/ios/ipa/*.ipa
       - build/ios/archive.xcarchive
