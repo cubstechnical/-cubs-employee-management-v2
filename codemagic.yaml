@@ -144,24 +144,64 @@ workflows:
           echo "Archive path: ../../build/ios/archive/App.xcarchive"
           echo "Export path: ../../build/ios/ipa"
           echo "ExportOptions.plist exists: $(test -f ExportOptions.plist && echo 'Yes' || echo 'No')"
+          
+          # Create a simpler ExportOptions.plist if needed
+          if [ ! -f ExportOptions.plist ]; then
+            echo "Creating ExportOptions.plist..."
+            cat > ExportOptions.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>thinning</key>
+              <string>&lt;none&gt;</string>
+              <key>destination</key>
+              <string>export</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+          fi
+          
           echo "ExportOptions.plist content:"
           cat ExportOptions.plist || echo "Cannot read ExportOptions.plist"
           
           # Try export with error handling
+          echo "Attempting export with ExportOptions.plist..."
           if xcodebuild -exportArchive \
             -archivePath ../../build/ios/archive/App.xcarchive \
             -exportPath ../../build/ios/ipa \
             -exportOptionsPlist ExportOptions.plist \
-            -verbose; then
-            echo "✅ Export completed successfully"
+            -verbose 2>&1; then
+            echo "✅ Export completed successfully with ExportOptions.plist"
           else
-            echo "❌ Export failed, trying alternative approach..."
+            echo "❌ Export with ExportOptions.plist failed, trying alternative approach..."
             # Try without ExportOptions.plist
-            xcodebuild -exportArchive \
+            echo "Attempting export without ExportOptions.plist..."
+            if xcodebuild -exportArchive \
               -archivePath ../../build/ios/archive/App.xcarchive \
               -exportPath ../../build/ios/ipa \
               -exportMethod app-store \
-              -verbose
+              -verbose 2>&1; then
+              echo "✅ Export completed successfully without ExportOptions.plist"
+            else
+              echo "❌ All export methods failed"
+              echo "Checking what files exist:"
+              ls -la ../../build/ios/ipa/ || echo "Export directory not found"
+              find ../../build/ios/ipa/ -name "*" || echo "No files in export directory"
+              exit 1
+            fi
           fi
           
           echo "Export completed. Checking results:"
