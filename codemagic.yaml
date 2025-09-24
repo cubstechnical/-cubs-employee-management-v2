@@ -127,7 +127,8 @@ workflows:
             CODE_SIGN_STYLE=Automatic \
             CODE_SIGN_IDENTITY="" \
             PROVISIONING_PROFILE="" \
-            PROVISIONING_PROFILE_SPECIFIER=""
+            PROVISIONING_PROFILE_SPECIFIER="" \
+            -allowProvisioningUpdates
           cd ../..
       - name: Export IPA
         script: |
@@ -154,7 +155,7 @@ workflows:
           <plist version="1.0">
           <dict>
               <key>method</key>
-              <string>app-store</string>
+              <string>app-store-connect</string>
               <key>uploadBitcode</key>
               <false/>
               <key>uploadSymbols</key>
@@ -187,14 +188,27 @@ workflows:
             echo "✅ Export completed successfully with ExportOptions.plist"
           else
             echo "❌ Export with ExportOptions.plist failed, trying alternative approach..."
-            # Try without ExportOptions.plist
-            echo "Attempting export without ExportOptions.plist..."
+            # Try with a simpler ExportOptions.plist
+            echo "Attempting export with simplified ExportOptions.plist..."
+            cat > ExportOptions_simple.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+            
             if xcodebuild -exportArchive \
               -archivePath ../../build/ios/archive/App.xcarchive \
               -exportPath ../../build/ios/ipa \
-              -exportMethod app-store \
+              -exportOptionsPlist ExportOptions_simple.plist \
               -verbose 2>&1; then
-              echo "✅ Export completed successfully without ExportOptions.plist"
+              echo "✅ Export completed successfully with simplified ExportOptions.plist"
             else
               echo "❌ All export methods failed"
               echo "Checking what files exist:"
