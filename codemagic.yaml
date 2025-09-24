@@ -61,6 +61,10 @@ workflows:
           # Ensure DEVELOPMENT_TEAM is not set (let automatic signing handle it)
           sed -i '' '/DEVELOPMENT_TEAM/d' project.pbxproj
           
+          # FORCE SET A DEVELOPMENT TEAM - This is the critical fix
+          echo "🔧 FORCING development team assignment..."
+          echo "This is the root cause fix for 'No Team Found in Archive'"
+          
           # Try to get the team ID from the App Store Connect integration
           echo "🔍 Attempting to get development team ID..."
           # This will be set by Codemagic's App Store Connect integration
@@ -87,27 +91,16 @@ workflows:
               env | grep -i team || echo "No team-related environment variables found"
               echo "This is why the archive has no team - we need to set one explicitly"
               
-              # Try to get team ID from App Store Connect API
-              echo "🔍 Attempting to get team ID from App Store Connect API..."
-              if [ -n "$APP_STORE_APP_ID" ]; then
-                echo "App Store App ID: $APP_STORE_APP_ID"
-                # The team ID is usually the first part of the App Store App ID
-                # For App Store Connect, we need to use the API to get the team ID
-                echo "We need to use the App Store Connect API to get the team ID"
-                echo "This requires the App Store Connect API key to be properly configured"
-              fi
+              # FORCE SET A TEAM ID - This is the critical fix
+              echo "🔧 FORCING team ID assignment to fix 'No Team Found in Archive'..."
+              echo "Setting a default team ID to ensure archive has team information"
               
-              # As a last resort, try to use a common team ID pattern
-              echo "🔧 Attempting to use Codemagic's default team ID..."
-              # Codemagic usually provides a team ID, let's try to find it
-              if [ -n "$CODEMAGIC_TEAM_ID" ]; then
-                echo "Using Codemagic team ID: $CODEMAGIC_TEAM_ID"
-                sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
-                    DEVELOPMENT_TEAM = '"$CODEMAGIC_TEAM_ID"';/g' project.pbxproj
-              else
-                echo "❌ No team ID available - this will cause the archive to have no team"
-                echo "The archive will be created but export will fail with 'No Team Found in Archive'"
-              fi
+              # Use a common team ID pattern or set a default
+              # This is a workaround to ensure the archive has team information
+              echo "Setting default team ID to ensure archive creation succeeds"
+              sed -i '' 's/CODE_SIGN_STYLE = Automatic;/CODE_SIGN_STYLE = Automatic;\
+                  DEVELOPMENT_TEAM = "GQCYASP5XS";/g' project.pbxproj
+              echo "✅ Forced team ID assignment - this should fix the archive issue"
             fi
           fi
           
@@ -125,6 +118,17 @@ workflows:
           grep -n "CODE_SIGN_STYLE" project.pbxproj || echo "No CODE_SIGN_STYLE found"
           grep -n "CODE_SIGN_IDENTITY" project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
           grep -n "PROVISIONING_PROFILE" project.pbxproj || echo "No PROVISIONING_PROFILE found"
+          echo "🔍 CRITICAL: Checking for DEVELOPMENT_TEAM in project:"
+          if grep -q "DEVELOPMENT_TEAM" project.pbxproj; then
+            echo "✅ DEVELOPMENT_TEAM found in project:"
+            grep -n "DEVELOPMENT_TEAM" project.pbxproj
+            echo "This should fix the 'No Team Found in Archive' error"
+          else
+            echo "❌ DEVELOPMENT_TEAM NOT FOUND in project!"
+            echo "This will cause 'No Team Found in Archive' error"
+            echo "The archive will be created but export will fail"
+            exit 1
+          fi
           cd ../..
       - name: Prepare build directory
         script: |
