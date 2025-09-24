@@ -122,6 +122,9 @@ workflows:
             echo "✅ App Store Connect API key is available"
           else
             echo "❌ App Store Connect API key is not available"
+            echo "   This means the App Store Connect integration is not properly configured"
+            echo "   Go to Codemagic → Teams → Integrations → Apple Developer Portal"
+            echo "   Make sure the integration is named 'appstorekey' and properly configured"
           fi
           
           # Check environment variables
@@ -130,6 +133,22 @@ workflows:
           
           echo "All environment variables containing 'TEAM':"
           env | grep -i team || echo "No TEAM variables found"
+          
+          # Check available certificates
+          echo "Available certificates:"
+          CERT_COUNT=$(security find-identity -v -p codesigning | grep -c "valid identities found" || echo "0")
+          if [ "$CERT_COUNT" -gt 0 ]; then
+            echo "✅ Found $CERT_COUNT valid certificates:"
+            security find-identity -v -p codesigning
+          else
+            echo "❌ No valid certificates found"
+            echo "   This is the root cause of the export failure"
+            echo "   The App Store Connect integration is not providing certificates"
+            echo "   Solutions:"
+            echo "   1. Fix App Store Connect integration in Codemagic"
+            echo "   2. Ensure app exists in App Store Connect with bundle ID: $BUNDLE_ID"
+            echo "   3. Check Apple Developer account is active and paid"
+          fi
       - name: Export IPA with fallback options
         script: |
           echo "📦 Exporting IPA with fallback options..."
