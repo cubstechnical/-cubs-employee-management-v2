@@ -47,8 +47,32 @@ workflows:
           echo "🔐 Configuring code signing..."
           # Set up code signing environment
           export DEVELOPER_DIR="/Applications/Xcode.app/Contents/Developer"
-          # Ensure proper code signing configuration
+          
+          echo "Current directory: $(pwd)"
+          echo "Checking if ios/App directory exists:"
+          ls -la ios/ || echo "ios directory not found"
+          
+          if [ ! -d "ios/App" ]; then
+            echo "❌ ios/App directory not found!"
+            echo "This means the Capacitor iOS project was not created properly"
+            echo "Available directories:"
+            ls -la
+            exit 1
+          fi
+          
           cd ios/App
+          echo "Changed to ios/App directory: $(pwd)"
+          
+          if [ ! -f "project.pbxproj" ]; then
+            echo "❌ project.pbxproj not found in ios/App directory!"
+            echo "This means the iOS project structure is incorrect"
+            echo "Available files in ios/App:"
+            ls -la
+            exit 1
+          fi
+          
+          echo "✅ Found project.pbxproj, configuring code signing..."
+          
           # Force automatic signing in project file
           sed -i '' 's/CODE_SIGN_STYLE = Manual;/CODE_SIGN_STYLE = Automatic;/g' project.pbxproj
           sed -i '' 's/CODE_SIGN_IDENTITY = "iPhone Developer";/CODE_SIGN_IDENTITY = "";/g' project.pbxproj
@@ -113,23 +137,46 @@ workflows:
       - name: Verify code signing configuration
         script: |
           echo "🔍 Verifying code signing configuration..."
-          cd ios/App
-          echo "Checking project code signing settings:"
-          grep -n "CODE_SIGN_STYLE" project.pbxproj || echo "No CODE_SIGN_STYLE found"
-          grep -n "CODE_SIGN_IDENTITY" project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
-          grep -n "PROVISIONING_PROFILE" project.pbxproj || echo "No PROVISIONING_PROFILE found"
-          echo "🔍 CRITICAL: Checking for DEVELOPMENT_TEAM in project:"
-          if grep -q "DEVELOPMENT_TEAM" project.pbxproj; then
-            echo "✅ DEVELOPMENT_TEAM found in project:"
-            grep -n "DEVELOPMENT_TEAM" project.pbxproj
-            echo "This should fix the 'No Team Found in Archive' error"
+          echo "Current directory: $(pwd)"
+          echo "Checking if ios/App directory exists:"
+          ls -la ios/ || echo "ios directory not found"
+          ls -la ios/App/ || echo "ios/App directory not found"
+          
+          if [ -d "ios/App" ]; then
+            cd ios/App
+            echo "Changed to ios/App directory: $(pwd)"
+            echo "Checking project code signing settings:"
+            if [ -f "project.pbxproj" ]; then
+              echo "✅ project.pbxproj found"
+              grep -n "CODE_SIGN_STYLE" project.pbxproj || echo "No CODE_SIGN_STYLE found"
+              grep -n "CODE_SIGN_IDENTITY" project.pbxproj || echo "No CODE_SIGN_IDENTITY found"
+              grep -n "PROVISIONING_PROFILE" project.pbxproj || echo "No PROVISIONING_PROFILE found"
+              echo "🔍 CRITICAL: Checking for DEVELOPMENT_TEAM in project:"
+              if grep -q "DEVELOPMENT_TEAM" project.pbxproj; then
+                echo "✅ DEVELOPMENT_TEAM found in project:"
+                grep -n "DEVELOPMENT_TEAM" project.pbxproj
+                echo "This should fix the 'No Team Found in Archive' error"
+              else
+                echo "❌ DEVELOPMENT_TEAM NOT FOUND in project!"
+                echo "This will cause 'No Team Found in Archive' error"
+                echo "The archive will be created but export will fail"
+                exit 1
+              fi
+            else
+              echo "❌ project.pbxproj not found in ios/App directory!"
+              echo "This means the iOS project structure is incorrect"
+              echo "Available files in ios/App:"
+              ls -la
+              exit 1
+            fi
+            cd ../..
           else
-            echo "❌ DEVELOPMENT_TEAM NOT FOUND in project!"
-            echo "This will cause 'No Team Found in Archive' error"
-            echo "The archive will be created but export will fail"
+            echo "❌ ios/App directory not found!"
+            echo "This means the Capacitor iOS project was not created properly"
+            echo "Available directories:"
+            ls -la
             exit 1
           fi
-          cd ../..
       - name: Prepare build directory
         script: |
           echo "📁 Preparing build directory..."
