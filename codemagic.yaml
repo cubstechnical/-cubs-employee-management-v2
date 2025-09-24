@@ -110,9 +110,29 @@ workflows:
             echo "❌ Archive not found!"
             exit 1
           fi
-      - name: Export IPA
+      - name: Debug App Store Connect Setup
         script: |
-          echo "📦 Exporting IPA..."
+          echo "🔍 Debugging App Store Connect setup..."
+          echo "Bundle ID: $BUNDLE_ID"
+          echo "App Store App ID: $APP_STORE_APP_ID"
+          echo "Development Team: $DEVELOPMENT_TEAM"
+          
+          # Check if we can access App Store Connect
+          if [ -n "$APP_STORE_CONNECT_API_KEY" ]; then
+            echo "✅ App Store Connect API key is available"
+          else
+            echo "❌ App Store Connect API key is not available"
+          fi
+          
+          # Check environment variables
+          echo "All environment variables containing 'APP_STORE':"
+          env | grep -i app_store || echo "No APP_STORE variables found"
+          
+          echo "All environment variables containing 'TEAM':"
+          env | grep -i team || echo "No TEAM variables found"
+      - name: Export IPA with fallback options
+        script: |
+          echo "📦 Exporting IPA with fallback options..."
           echo "Checking if archive exists before export:"
           ls -la build/ios/archive/ || echo "Archive directory not found"
           ls -la build/ios/archive/*.xcarchive || echo "No .xcarchive files found"
@@ -129,20 +149,67 @@ workflows:
           echo "ExportOptions.plist content:"
           cat ExportOptions.plist || echo "Cannot read ExportOptions.plist"
           
-          # Export with the corrected ExportOptions.plist
-          echo "Attempting export with ExportOptions.plist..."
+          # Try automatic signing first
+          echo "🔄 Attempting export with automatic signing..."
           if xcodebuild -exportArchive \
             -archivePath ../../build/ios/archive/App.xcarchive \
             -exportPath ../../build/ios/ipa \
             -exportOptionsPlist ExportOptions.plist \
             -verbose; then
-            echo "✅ Export completed successfully"
+            echo "✅ Export successful with automatic signing"
           else
-            echo "❌ Export failed"
-            echo "Checking what files exist:"
-            ls -la ../../build/ios/ipa/ || echo "Export directory not found"
-            find ../../build/ios/ipa/ -name "*" || echo "No files in export directory"
-            exit 1
+            echo "❌ Automatic signing failed, trying manual signing..."
+            
+            # Create manual signing ExportOptions.plist
+            cat > ExportOptions_manual.plist << 'EOF'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store</string>
+              <key>teamID</key>
+              <string>GQCYASP5XS</string>
+              <key>uploadBitcode</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+              <key>compileBitcode</key>
+              <false/>
+              <key>stripSwiftSymbols</key>
+              <true/>
+              <key>thinning</key>
+              <string>&lt;none&gt;</string>
+              <key>destination</key>
+              <string>export</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+          </dict>
+          </plist>
+          EOF
+            
+            echo "Manual ExportOptions.plist content:"
+            cat ExportOptions_manual.plist
+            
+            # Try manual signing
+            echo "🔄 Attempting export with manual signing..."
+            if xcodebuild -exportArchive \
+              -archivePath ../../build/ios/archive/App.xcarchive \
+              -exportPath ../../build/ios/ipa \
+              -exportOptionsPlist ExportOptions_manual.plist \
+              -verbose; then
+              echo "✅ Export successful with manual signing"
+            else
+              echo "❌ Both automatic and manual signing failed"
+              echo "🔍 Debugging information:"
+              echo "Archive contents:"
+              ls -la ../../build/ios/archive/App.xcarchive/
+              echo "Export directory contents:"
+              ls -la ../../build/ios/ipa/ || echo "Export directory not found"
+              echo "Available certificates:"
+              security find-identity -v -p codesigning || echo "No certificates found"
+              exit 1
+            fi
           fi
           
           echo "Export completed. Checking results:"
