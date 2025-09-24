@@ -133,20 +133,36 @@ workflows:
         script: |
           echo "📦 Exporting IPA..."
           echo "Checking if archive exists before export:"
-          ls -la ../../build/ios/archive/ || echo "Archive directory not found"
-          ls -la ../../build/ios/archive/*.xcarchive || echo "No .xcarchive files found"
+          ls -la build/ios/archive/ || echo "Archive directory not found"
+          ls -la build/ios/archive/*.xcarchive || echo "No .xcarchive files found"
+          
+          # Ensure export directory exists
+          mkdir -p build/ios/ipa
           
           cd ios/App
           echo "Current directory: $(pwd)"
           echo "Archive path: ../../build/ios/archive/App.xcarchive"
           echo "Export path: ../../build/ios/ipa"
           echo "ExportOptions.plist exists: $(test -f ExportOptions.plist && echo 'Yes' || echo 'No')"
+          echo "ExportOptions.plist content:"
+          cat ExportOptions.plist || echo "Cannot read ExportOptions.plist"
           
-          xcodebuild -exportArchive \
+          # Try export with error handling
+          if xcodebuild -exportArchive \
             -archivePath ../../build/ios/archive/App.xcarchive \
             -exportPath ../../build/ios/ipa \
             -exportOptionsPlist ExportOptions.plist \
-            -verbose
+            -verbose; then
+            echo "✅ Export completed successfully"
+          else
+            echo "❌ Export failed, trying alternative approach..."
+            # Try without ExportOptions.plist
+            xcodebuild -exportArchive \
+              -archivePath ../../build/ios/archive/App.xcarchive \
+              -exportPath ../../build/ios/ipa \
+              -exportMethod app-store \
+              -verbose
+          fi
           
           echo "Export completed. Checking results:"
           ls -la ../../build/ios/ipa/ || echo "Export directory not found"
@@ -191,7 +207,7 @@ workflows:
           fi
     artifacts:
       - build/ios/ipa/*.ipa
-      - build/ios/archive.xcarchive
+      - build/ios/archive/*.xcarchive
       - build/ios/xcodebuild.log
     publishing:
       app_store_connect:
