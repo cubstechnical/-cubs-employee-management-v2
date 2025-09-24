@@ -128,7 +128,7 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
             getFileIcon(item.name, item.file_type)
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white break-words leading-tight">
               {item.name}
             </h3>
             {item.type === 'document' && item.file_size && (
@@ -433,28 +433,20 @@ function DocumentsContent() {
       setLoadingDocumentId(item.document_id);
 
       console.log('👁️ Opening document:', item.document_id);
-      
-      // Check if mobile device
-      const isMobile = /Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // For mobile, navigate to the mobile-friendly viewer
-        window.location.href = `/documents/view/${item.document_id}`;
+
+      // Always open documents in new tab for consistent behavior
+      const newTab = window.open(
+        `/api/documents/${item.document_id}/view`,
+        '_blank'
+      );
+
+      if (newTab) {
+        newTab.focus();
+        console.log('✅ Document opened in new tab');
+        toast.success(`Opened ${item.name} in new tab`);
       } else {
-        // For desktop, open in new tab
-        const newTab = window.open(
-          `/api/documents/${item.document_id}/view`,
-          '_blank'
-        );
-        
-        if (newTab) {
-          newTab.focus();
-          console.log('✅ Document opened in new tab');
-          toast.success(`Opened ${item.name} in new tab`);
-        } else {
-          console.warn('⚠️ Failed to open document tab (popup blocked?)');
-          toast.error('Failed to open document. Please check popup settings and try again.');
-        }
+        console.warn('⚠️ Failed to open document tab (popup blocked?)');
+        toast.error('Failed to open document. Please check popup settings and try again.');
       }
     } catch (error) {
       console.error('❌ Error opening document viewer:', error);
@@ -664,7 +656,7 @@ function DocumentsContent() {
                         setCurrentPath(newPath);
                         setSelectedIds(new Set());
                       }}
-                      className="text-blue-600 hover:text-blue-800 hover:underline max-w-32 truncate font-medium"
+                      className="text-blue-600 hover:text-blue-800 hover:underline max-w-40 break-all font-medium"
                     >
                       {part}
                     </button>

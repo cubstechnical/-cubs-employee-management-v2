@@ -53,11 +53,42 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    // Check if user is already logged in
+    // Check if user is already logged in with enhanced session persistence
     const checkAuth = async () => {
-      const user = await AuthService.getCurrentUser();
-      if (user) {
-        router.push('/dashboard');
+      try {
+        // Check session persistence flag
+        if (typeof window !== 'undefined') {
+          const sessionPersisted = localStorage.getItem('cubs_session_persisted');
+          const lastLogin = localStorage.getItem('cubs_last_login');
+
+          // If session was persisted and last login was within 24 hours, try to maintain it
+          if (sessionPersisted === 'true' && lastLogin) {
+            const lastLoginTime = new Date(lastLogin);
+            const now = new Date();
+            const hoursSinceLogin = (now.getTime() - lastLoginTime.getTime()) / (1000 * 60 * 60);
+
+            if (hoursSinceLogin < 24) {
+              const user = await AuthService.getCurrentUser();
+              if (user) {
+                router.push('/dashboard');
+                return;
+              }
+            }
+          }
+        }
+
+        // Fallback to standard auth check
+        const user = await AuthService.getCurrentUser();
+        if (user) {
+          router.push('/dashboard');
+        }
+      } catch (error) {
+        console.error('Auth check error:', error);
+        // Clear potentially corrupted session data
+        if (typeof window !== 'undefined') {
+          localStorage.removeItem('cubs_session_persisted');
+          localStorage.removeItem('cubs_last_login');
+        }
       }
     };
     checkAuth();
@@ -65,7 +96,7 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
-    
+
     try {
       // Check network connectivity for mobile
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
@@ -75,14 +106,20 @@ export default function LoginPage() {
 
       // Use AuthContext signIn method which properly updates the context
       await signIn(data.email, data.password);
-      
+
+      // Enhanced session persistence
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('cubs_session_persisted', 'true');
+        localStorage.setItem('cubs_last_login', new Date().toISOString());
+      }
+
       toast.success('Login successful! Redirecting...');
-      
+
       // Small delay to ensure context is updated before redirect
       setTimeout(() => {
         router.push('/dashboard');
       }, 100);
-      
+
     } catch (error) {
       console.error('Login error:', error);
       // Better error handling for mobile
@@ -91,6 +128,8 @@ export default function LoginPage() {
           toast.error('Login timeout. Please try again.');
         } else if (error.message.includes('network')) {
           toast.error('Network error. Please check your connection.');
+        } else if (error.message.includes('Invalid login credentials')) {
+          toast.error('Invalid email or password. Please check your credentials.');
         } else {
           toast.error(error.message);
         }
@@ -129,17 +168,19 @@ export default function LoginPage() {
   };
 
   return (
-    <div 
-      className={`min-h-screen flex flex-col items-center justify-start pt-16 pb-8 px-4 login-background-image relative safe-area-all overflow-y-auto ${
+    <div
+      className={`min-h-screen flex flex-col items-center justify-start pt-8 pb-4 px-4 login-background-image relative safe-area-all overflow-y-auto ${
         backgroundLoaded ? 'loaded' : 'loading'
       }`}
-      style={{ 
+      style={{
         contain: 'layout style paint',
         willChange: 'transform',
-        transform: 'translateZ(0)'
+        transform: 'translateZ(0)',
+        scrollBehavior: 'smooth',
+        WebkitOverflowScrolling: 'touch'
       }}
     >
-      <div className="w-full max-w-sm mobile-optimized">
+      <div className="w-full max-w-sm mobile-optimized flex-1 flex flex-col justify-center min-h-0">
         {/* Logo */}
         <div className="login-logo-container-image mb-8">
           <div className="flex justify-center mb-4">

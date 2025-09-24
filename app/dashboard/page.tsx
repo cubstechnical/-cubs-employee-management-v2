@@ -153,38 +153,38 @@ export default function Dashboard() {
         </div>
 
         {/* Second Row: Company Chart and Compliance Score */}
-        <div className="grid grid-cols-12 gap-4">
-            {/* Company Chart - Reduced */}
-            <div className="col-span-12 lg:col-span-7">
-              <EmployeeGrowthChart 
-                loading={loading} 
-              />
-            </div>
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+          {/* Company Chart */}
+          <div className="lg:col-span-7">
+            <EmployeeGrowthChart
+              loading={loading}
+            />
+          </div>
 
-            {/* Visa Compliance Score - Moved here */}
-            <div className="col-span-12 lg:col-span-5">
-              <VisaComplianceScore 
-                score={dashboardData.complianceScore}
-                loading={loading}
-              />
-            </div>
-                  </div>
+          {/* Visa Compliance Score */}
+          <div className="lg:col-span-5">
+            <VisaComplianceScore
+              score={dashboardData.complianceScore}
+              loading={loading}
+            />
+          </div>
+        </div>
 
         {/* Third Row: Visa Analytics */}
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-6">
           {/* Visa Expiry Trends */}
-          <div className="col-span-12 xl:col-span-7">
-            <VisaExpiryTrendChart 
-              data={dashboardData.visaTrendData} 
-              loading={loading} 
+          <div className="xl:col-span-7">
+            <VisaExpiryTrendChart
+              data={dashboardData.visaTrendData}
+              loading={loading}
             />
           </div>
 
           {/* Recent Activities */}
-          <div className="col-span-12 xl:col-span-5">
-            <RecentEmployeeActivities 
+          <div className="xl:col-span-5">
+            <RecentEmployeeActivities
               data={dashboardData.recentActivities}
-              loading={loading} 
+              loading={loading}
             />
           </div>
         </div>

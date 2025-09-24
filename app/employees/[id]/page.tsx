@@ -1,0 +1,446 @@
+'use client';
+
+import { useState, useEffect, Suspense } from 'react';
+import { useRouter, useParams } from 'next/navigation';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
+import { ArrowLeft, Edit, Mail, Phone, Calendar, Building2, User, Briefcase, FileText, Download } from 'lucide-react';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import { EmployeeService, Employee } from '@/lib/services/employees';
+import { supabase } from '@/lib/supabase/client';
+import Image from 'next/image';
+
+const employeeSchema = z.object({
+  name: z.string().min(1, 'Name is required'),
+  email_id: z.string().email('Please enter a valid email').optional().or(z.literal('')),
+  mobile_number: z.string().optional(),
+  trade: z.string().min(1, 'Trade/Position is required'),
+  company_name: z.string().min(1, 'Company is required'),
+  nationality: z.string().min(1, 'Nationality is required'),
+  visa_expiry_date: z.string().optional(),
+});
+
+type EmployeeFormData = z.infer<typeof employeeSchema>;
+
+interface EmployeeDocuments {
+  id: string;
+  name: string;
+  document_id: string | null;
+  created_at: string;
+  file_url?: string;
+}
+
+export default function EmployeeDetailsPage() {
+  const router = useRouter();
+  const params = useParams();
+  const employeeId = params.id as string;
+
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [documents, setDocuments] = useState<EmployeeDocuments[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    formState: { errors },
+    reset
+  } = useForm<EmployeeFormData>({
+    resolver: zodResolver(employeeSchema),
+  });
+
+  useEffect(() => {
+    fetchEmployeeDetails();
+    fetchEmployeeDocuments();
+  }, [employeeId]);
+
+  const fetchEmployeeDetails = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const employeeData = await EmployeeService.getEmployeeById(employeeId);
+
+      if (employeeData) {
+        setEmployee(employeeData);
+        // Populate form with existing data
+        reset({
+          name: employeeData.name || '',
+          email_id: employeeData.email_id || '',
+          mobile_number: employeeData.mobile_number || '',
+          trade: employeeData.trade || '',
+          company_name: employeeData.company_name || '',
+          nationality: employeeData.nationality || '',
+          visa_expiry_date: employeeData.visa_expiry_date || '',
+        });
+      } else {
+        setError('Employee not found');
+      }
+    } catch (error) {
+      console.error('Error fetching employee details:', error);
+      setError('Failed to load employee details');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchEmployeeDocuments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('documents')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching documents:', error);
+        return;
+      }
+
+      setDocuments(data || []);
+    } catch (error) {
+      console.error('Error fetching documents:', error);
+    }
+  };
+
+  const onSubmit = async (data: EmployeeFormData) => {
+    if (!employee) return;
+
+    try {
+      const updatedEmployee = await EmployeeService.updateEmployee(employeeId, data);
+
+      if (updatedEmployee) {
+        setEmployee(updatedEmployee);
+        setEditing(false);
+        toast.success('Employee updated successfully');
+      } else {
+        toast.error('Failed to update employee');
+      }
+    } catch (error) {
+      console.error('Error updating employee:', error);
+      toast.error('Failed to update employee');
+    }
+  };
+
+  const handleDocumentDownload = async (document: EmployeeDocuments) => {
+    if (!document.document_id) {
+      toast.error('Document not available');
+      return;
+    }
+
+    try {
+      // Open in new tab instead of downloading
+      window.open(`/api/documents/${document.document_id}/view`, '_blank');
+    } catch (error) {
+      console.error('Error opening document:', error);
+      toast.error('Failed to open document');
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    if (!dateString) return 'Not set';
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    });
+  };
+
+  const getVisaStatus = () => {
+    if (!employee?.visa_expiry_date) return { status: 'No visa', color: 'text-gray-500' };
+
+    const expiryDate = new Date(employee.visa_expiry_date);
+    const now = new Date();
+    const daysLeft = Math.ceil((expiryDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (daysLeft < 0) {
+      return { status: 'Expired', color: 'text-red-600' };
+    } else if (daysLeft <= 30) {
+      return { status: `Expires in ${daysLeft} days`, color: 'text-orange-600' };
+    } else if (daysLeft <= 90) {
+      return { status: `Expires in ${daysLeft} days`, color: 'text-yellow-600' };
+    } else {
+      return { status: 'Valid', color: 'text-green-600' };
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading employee details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !employee) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+        <Card className="p-8 max-w-md mx-auto text-center">
+          <div className="text-red-500 mb-4">
+            <svg className="w-12 h-12 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16c-.77.833.192 2.5 1.732 2.5z" />
+            </svg>
+          </div>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+            Employee Not Found
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">
+            The employee you're looking for could not be found.
+          </p>
+          <Button onClick={() => router.push('/employees')}>
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back to Employees
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  const visaInfo = getVisaStatus();
+
+  return (
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <Button
+                variant="outline"
+                onClick={() => router.push('/employees')}
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back
+              </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                  Employee Details
+                </h1>
+                <p className="text-gray-600 dark:text-gray-400">
+                  View and manage employee information
+                </p>
+              </div>
+            </div>
+            <Button onClick={() => setEditing(!editing)}>
+              <Edit className="w-4 h-4 mr-2" />
+              {editing ? 'Cancel' : 'Edit'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Employee Information */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Basic Information */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                Basic Information
+              </h3>
+
+              {editing ? (
+                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Input
+                      label="Full Name"
+                      {...register('name')}
+                      error={errors.name?.message}
+                    />
+                    <Input
+                      label="Email"
+                      type="email"
+                      {...register('email_id')}
+                      error={errors.email_id?.message}
+                    />
+                    <Input
+                      label="Mobile Number"
+                      {...register('mobile_number')}
+                      error={errors.mobile_number?.message}
+                    />
+                    <Input
+                      label="Trade/Position"
+                      {...register('trade')}
+                      error={errors.trade?.message}
+                    />
+                    <Input
+                      label="Company"
+                      {...register('company_name')}
+                      error={errors.company_name?.message}
+                    />
+                    <Input
+                      label="Nationality"
+                      {...register('nationality')}
+                      error={errors.nationality?.message}
+                    />
+                  </div>
+                  <Input
+                    label="Visa Expiry Date"
+                    type="date"
+                    {...register('visa_expiry_date')}
+                    error={errors.visa_expiry_date?.message}
+                  />
+                  <div className="flex gap-4">
+                    <Button type="submit" className="flex-1">
+                      Save Changes
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditing(false)}
+                      className="flex-1"
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex items-center gap-3">
+                    <User className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Full Name</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{employee.name || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Mail className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Email</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{employee.email_id || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Phone className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Mobile</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{employee.mobile_number || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Briefcase className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Position</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{employee.trade || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Building2 className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Company</p>
+                      <p className="font-medium text-gray-900 dark:text-white">{employee.company_name || 'Not provided'}</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-3">
+                    <Calendar className="w-5 h-5 text-gray-400" />
+                    <div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Visa Status</p>
+                      <p className={`font-medium ${visaInfo.color}`}>{visaInfo.status}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+
+            {/* Documents */}
+            <Card className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                Documents ({documents.length})
+              </h3>
+
+              {documents.length === 0 ? (
+                <div className="text-center py-8">
+                  <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500 dark:text-gray-400">No documents found</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {documents.map((doc) => (
+                    <div key={doc.id} className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <FileText className="w-8 h-8 text-blue-500" />
+                        <div>
+                          <p className="font-medium text-gray-900 dark:text-white">{doc.name}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {new Date(doc.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleDocumentDownload(doc)}
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        View
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="lg:col-span-1">
+            <Card className="p-6 sticky top-8">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">
+                Quick Stats
+              </h3>
+
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Status</p>
+                  <p className="font-medium text-gray-900 dark:text-white capitalize">
+                    {employee.status || 'Active'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Nationality</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {employee.nationality || 'Not specified'}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Visa Expiry</p>
+                  <p className={`font-medium ${visaInfo.color}`}>
+                    {formatDate(employee.visa_expiry_date || '')}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Created</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {formatDate(employee.created_at || '')}
+                  </p>
+                </div>
+
+                <div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Last Updated</p>
+                  <p className="font-medium text-gray-900 dark:text-white">
+                    {formatDate(employee.updated_at || '')}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
