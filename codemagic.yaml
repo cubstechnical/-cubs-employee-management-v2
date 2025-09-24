@@ -39,13 +39,12 @@ workflows:
         script: |
           echo "🔢 Setting build number..."
           cd ios/App
-          # Get current build number and increment it
-          CURRENT_BUILD=$(agvtool what-version -terse)
-          NEW_BUILD=$((CURRENT_BUILD + 1))
-          echo "Current build number: $CURRENT_BUILD"
-          echo "Setting new build number to: $NEW_BUILD"
-          agvtool new-version -all $NEW_BUILD
-          echo "✅ Build number updated to: $NEW_BUILD"
+          # Use timestamp-based build number to ensure uniqueness
+          TIMESTAMP=$(date +%s)
+          BUILD_NUMBER=$((TIMESTAMP % 100000))
+          echo "Setting build number to: $BUILD_NUMBER"
+          agvtool new-version -all $BUILD_NUMBER
+          echo "✅ Build number updated to: $BUILD_NUMBER"
           cd ../..
       - name: Configure code signing
         script: |
