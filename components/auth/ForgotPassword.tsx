@@ -57,7 +57,7 @@ export default function ForgotPassword() {
                 Check Your Email
               </h2>
               <p className="text-gray-600 dark:text-gray-400">
-                We've sent a password reset link to <strong>{email}</strong>
+                We&apos;ve sent a password reset link to <strong>{email}</strong>
               </p>
             </div>
 
@@ -81,7 +81,7 @@ export default function ForgotPassword() {
             </div>
 
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              <p>Didn't receive the email? Check your spam folder or try again.</p>
+              <p>Didn&apos;t receive the email? Check your spam folder or try again.</p>
             </div>
           </div>
         </Card>
@@ -99,7 +99,7 @@ export default function ForgotPassword() {
               Forgot Password?
             </h2>
             <p className="text-gray-600 dark:text-gray-400">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we&apos;ll send you a link to reset your password.
             </p>
           </div>
 

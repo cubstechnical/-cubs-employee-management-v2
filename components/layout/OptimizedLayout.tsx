@@ -31,11 +31,11 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   // Initialize mobile app functionality
   useMobileApp();
 
-  // Define public pages that shouldn't show sidebar
-  const publicPages = ['/login', '/register', '/forgot-password', '/reset-password', '/callback', '/delete-account', '/privacy', '/terms', '/pending', '/pending-approval'];
-  
   // Update public page status when pathname changes
   useEffect(() => {
+    // Define public pages that shouldn't show sidebar
+    const publicPages = ['/login', '/register', '/forgot-password', '/reset-password', '/callback', '/delete-account', '/privacy', '/terms', '/pending', '/pending-approval'];
+    
     // Use pathname if available, otherwise fallback to window.location
     const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
     const normalizedPathname = currentPath.replace(/\/$/, '');
@@ -51,7 +51,7 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
         isPublic 
       });
     }
-  }, [pathname, publicPages]);
+  }, [pathname]);
 
   useEffect(() => {
     const checkMobile = () => {

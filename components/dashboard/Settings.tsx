@@ -68,7 +68,7 @@ export default function Settings() {
   // Load settings from API
   useEffect(() => {
     loadSettings();
-  }, [user]);
+  }, [user, loadSettings]);
 
   const loadSettings = async () => {
     if (!user?.id) return;

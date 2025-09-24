@@ -18,7 +18,7 @@ interface EmployeeMetricsProps {
   loading?: boolean;
 }
 
-export const EmployeeMetrics = React.memo(({ data, loading = false }: EmployeeMetricsProps) => {
+const EmployeeMetricsComponent = ({ data, loading = false }: EmployeeMetricsProps) => {
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -137,6 +137,9 @@ export const EmployeeMetrics = React.memo(({ data, loading = false }: EmployeeMe
     </div>
   );
 });
+
+export const EmployeeMetrics = React.memo(EmployeeMetricsComponent);
+EmployeeMetrics.displayName = 'EmployeeMetrics';
 
 export default EmployeeMetrics;
 

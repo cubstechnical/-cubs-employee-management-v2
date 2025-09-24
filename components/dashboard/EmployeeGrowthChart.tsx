@@ -64,7 +64,7 @@ const EmployeeGrowthChart = memo(function EmployeeGrowthChart({ data, loading = 
     } finally {
       setIsDataLoading(false);
     }
-  }, []); // Remove fallbackData dependency to prevent recreation
+  }, [fallbackData]); // Include fallbackData dependency
 
   // Fetch real company data from Supabase - only once
   useEffect(() => {
@@ -173,7 +173,7 @@ const EmployeeGrowthChart = memo(function EmployeeGrowthChart({ data, loading = 
       strokeDashArray: 3,
     },
     };
-  }, [companyStats]);
+  }, []);
 
   const series = useMemo(() => [
     {

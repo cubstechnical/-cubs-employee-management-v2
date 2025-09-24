@@ -594,7 +594,7 @@ export default function EmployeesPage() {
                 {searchSuggestions.length >= 8 && (
                   <div className="p-3 border-t border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50">
                     <p className="text-sm text-gray-600 dark:text-gray-400 text-center">
-                      Press Enter to see all results for "{searchTerm}"
+                      Press Enter to see all results for &quot;{searchTerm}&quot;
                     </p>
                   </div>
                 )}
@@ -607,7 +607,7 @@ export default function EmployeesPage() {
                 <div className="text-center">
                   <Search className="w-8 h-8 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-600 dark:text-gray-400">
-                    No employees found for "{searchTerm}"
+                    No employees found for &quot;{searchTerm}&quot;
                   </p>
                   <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                     Try a different search term

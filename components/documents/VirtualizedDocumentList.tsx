@@ -127,7 +127,7 @@ const VirtualizedDocumentList: React.FC<VirtualizedDocumentListProps> = ({
               No matching documents found
             </h3>
             <p className="text-sm">
-              No documents found matching "{searchTerm}". Try searching by employee name, file name, or company.
+              No documents found matching &quot;{searchTerm}&quot;. Try searching by employee name, file name, or company.
             </p>
           </div>
         </>

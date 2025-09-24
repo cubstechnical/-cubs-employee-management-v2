@@ -194,7 +194,7 @@ export default function DocumentSearch({
             <span className="text-sm text-gray-600 dark:text-gray-400">Active filters:</span>
             {filters.searchTerm && (
               <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300 rounded text-xs">
-                Search: "{filters.searchTerm}"
+                Search: &quot;{filters.searchTerm}&quot;
               </span>
             )}
             {filters.fileType !== 'all' && (
