@@ -136,7 +136,7 @@ const EmployeeMetricsComponent = ({ data, loading = false }: EmployeeMetricsProp
       })}
     </div>
   );
-});
+};
 
 export const EmployeeMetrics = React.memo(EmployeeMetricsComponent);
 EmployeeMetrics.displayName = 'EmployeeMetrics';
