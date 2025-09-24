@@ -31,6 +31,7 @@ const iosIconSizes = [
   { size: 76, scale: 1, filename: 'AppIcon-76.png' },
   { size: 76, scale: 2, filename: 'AppIcon-76@2x.png' },
   { size: 83.5, scale: 2, filename: 'AppIcon-83.5@2x.png' },
+  { size: 1024, scale: 1, filename: 'AppIcon-1024.png' },
   { size: 1024, scale: 2, filename: 'AppIcon-512@2x.png' }
 ];
 
