@@ -2,16 +2,35 @@ const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 
+// Helper function to delete directories recursively
+function deleteDir(dirPath) {
+  if (!fs.existsSync(dirPath)) return;
+
+  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+  for (const entry of entries) {
+    const entryPath = path.join(dirPath, entry.name);
+
+    if (entry.isDirectory()) {
+      deleteDir(entryPath);
+    } else {
+      fs.unlinkSync(entryPath);
+    }
+  }
+
+  fs.rmdirSync(dirPath);
+}
+
 console.log('🚀 Starting mobile build process...');
 
 try {
   // Step 1: Clean previous builds
   console.log('🧹 Cleaning previous builds...');
   if (fs.existsSync('.next')) {
-    execSync('rm -rf .next', { stdio: 'inherit' });
+    deleteDir('.next');
   }
   if (fs.existsSync('out')) {
-    execSync('rm -rf out', { stdio: 'inherit' });
+    deleteDir('out');
   }
 
   // Step 2: Build Next.js app
@@ -21,21 +40,70 @@ try {
   // Step 3: Copy build to out directory for Capacitor
   console.log('📁 Preparing build for Capacitor...');
   if (!fs.existsSync('out')) {
-    fs.mkdirSync('out');
+    fs.mkdirSync('out', { recursive: true });
   }
-  
-  // Copy .next/static to out/static
+
+  // Helper function to copy directories recursively
+  function copyDir(src, dest) {
+    if (!fs.existsSync(src)) return;
+
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+
+    const entries = fs.readdirSync(src, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const srcPath = path.join(src, entry.name);
+      const destPath = path.join(dest, entry.name);
+
+      if (entry.isDirectory()) {
+        copyDir(srcPath, destPath);
+      } else {
+        fs.copyFileSync(srcPath, destPath);
+      }
+    }
+  }
+
+  // Copy .next/static to out/_next/static
   if (fs.existsSync('.next/static')) {
-    execSync('cp -r .next/static out/', { stdio: 'inherit' });
+    copyDir('.next/static', 'out/_next/static');
   }
-  
+
+  // Copy .next/build to out/_next/build
+  if (fs.existsSync('.next/build')) {
+    copyDir('.next/build', 'out/_next/build');
+  }
+
+  // Copy .next/static/chunks to out/_next/static/chunks
+  if (fs.existsSync('.next/static/chunks')) {
+    copyDir('.next/static/chunks', 'out/_next/static/chunks');
+  }
+
   // Copy public assets to out
   if (fs.existsSync('public')) {
-    execSync('cp -r public/* out/', { stdio: 'inherit' });
+    copyDir('public', 'out');
   }
 
   // Step 4: Generate index.html for Capacitor
   console.log('📄 Generating index.html for Capacitor...');
+
+  // Get the actual build manifest to find the correct file names
+  let mainJsFile = 'main.js';
+  let appJsFile = '_app.js';
+  let webpackJsFile = 'webpack.js';
+
+  try {
+    if (fs.existsSync('.next/build-manifest.json')) {
+      const buildManifest = JSON.parse(fs.readFileSync('.next/build-manifest.json', 'utf8'));
+      if (buildManifest.pages && buildManifest.pages['/_app']) {
+        appJsFile = buildManifest.pages['/_app'][0];
+      }
+    }
+  } catch (error) {
+    console.warn('Could not read build manifest, using default file names');
+  }
+
   const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -53,17 +121,17 @@ try {
   <meta name="apple-touch-fullscreen" content="yes" />
   <meta name="apple-mobile-web-app-orientations" content="portrait" />
   <meta name="mobile-web-app-status-bar-style" content="default" />
-  
+
   <title>CUBS Employee Management</title>
   <meta name="description" content="Comprehensive employee management system for CUBS Technical Group" />
-  
+
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/assets/cubs.webp" sizes="32x32" type="image/webp" />
   <link rel="icon" href="/assets/cubs.webp" sizes="192x192" type="image/webp" />
   <link rel="icon" href="/assets/cubs.webp" sizes="512x512" type="image/webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
-  
+
   <script>
     // Prevent zoom on input focus (iOS)
     document.addEventListener('DOMContentLoaded', function() {
@@ -76,11 +144,42 @@ try {
 </head>
 <body>
   <div id="__next"></div>
-  <script src="/_next/static/chunks/webpack.js"></script>
-  <script src="/_next/static/chunks/main.js"></script>
-  <script src="/_next/static/chunks/pages/_app.js"></script>
-  <script src="/_next/static/chunks/pages/_error.js"></script>
-  <script src="/_next/static/chunks/pages/index.js"></script>
+
+  <!-- Load build assets dynamically -->
+  <script>
+    // Load the main build files
+    const loadScript = (src) => {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    // Load CSS files
+    const loadCSS = (href) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      document.head.appendChild(link);
+    };
+
+    // Initialize the app
+    window.onload = async function() {
+      try {
+        // Load main build files
+        await loadScript('/_next/static/chunks/webpack.js');
+        await loadScript('/_next/static/chunks/main.js');
+        await loadScript('/_next/static/chunks/pages/_app.js');
+
+        console.log('✅ Mobile app loaded successfully');
+      } catch (error) {
+        console.error('❌ Failed to load mobile app:', error);
+      }
+    };
+  </script>
 </body>
 </html>`;
 
