@@ -60,30 +60,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
       } catch (error) {
-        log.warn('AuthContext: Session load warning (not clearing user):', error);
+        console.log('⚠️ AuthContext: Session load warning (keeping current state):', error);
         // Don't immediately clear user on session load errors
-        // Instead, check if we have a valid session first
+        // Try to maintain current session if possible
         try {
           const { session } = await AuthService.getSession();
           if (!session) {
-            setUser(null);
-            log.warn('AuthContext: No session found after error, clearing user');
+            console.log('⚠️ AuthContext: No session found, but keeping current user state');
+            // Don't clear user immediately - let them try to use the app
           } else {
-            log.info('AuthContext: Session exists despite error, keeping current state');
+            console.log('✅ AuthContext: Session exists, attempting user recovery');
             // Try to recover user data from existing session
             try {
               const user = await AuthService.getCurrentUser();
               if (user) {
                 setUser(user);
-                log.info('AuthContext: Recovered user from existing session');
+                console.log('✅ AuthContext: Recovered user from existing session');
               }
             } catch (recoveryError) {
-              log.warn('AuthContext: User recovery failed:', recoveryError);
+              console.log('⚠️ AuthContext: User recovery failed, but keeping current state:', recoveryError);
             }
           }
         } catch (sessionError) {
-          log.error('AuthContext: Session check failed:', sessionError);
-          setUser(null);
+          console.log('⚠️ AuthContext: Session check failed, but keeping current state:', sessionError);
         }
       } finally {
         // Ensure loading is always set to false with a small delay

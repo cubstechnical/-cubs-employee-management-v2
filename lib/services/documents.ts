@@ -453,7 +453,7 @@ export class DocumentService {
   }
 
   // Get document by ID
-  static async getDocumentById(documentId: string): Promise<{ documents: Document[]; error: string | null }> {
+  static async getDocumentById(documentId: string): Promise<{ data: Document | null; error: string | null }> {
     try {
       console.log(`🔍 Fetching document by ID: ${documentId}...`);
       
@@ -461,23 +461,23 @@ export class DocumentService {
           .from('employee_documents')
           .select('*')
         .eq('id', documentId)
-        .limit(1);
+        .single();
 
           if (error) {
         console.error(`❌ Error fetching document ${documentId}:`, error);
-            return { documents: [], error: error.message };
+            return { data: null, error: error.message };
           }
 
-      if (!data || data.length === 0) {
+      if (!data) {
         console.warn(`⚠️ Document not found: ${documentId}`);
-        return { documents: [], error: 'Document not found' };
+        return { data: null, error: 'Document not found' };
       }
 
-      console.log(`✅ Document found: ${data[0].file_name}`);
-      return { documents: data as unknown as Document[], error: null };
+      console.log(`✅ Document found: ${data.file_name}`);
+      return { data: data as unknown as Document, error: null };
     } catch (error) {
       console.error('❌ Exception in getDocumentById:', error);
-      return { documents: [], error: 'Failed to fetch document' };
+      return { data: null, error: 'Failed to fetch document' };
     }
   }
 

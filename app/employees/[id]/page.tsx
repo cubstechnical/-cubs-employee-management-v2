@@ -75,12 +75,27 @@ export default function EmployeeDetailsPage() {
           nationality: employeeData.employee.nationality || '',
           visa_expiry_date: employeeData.employee.visa_expiry_date || '',
         });
+      } else if (employeeData && typeof employeeData === 'object' && 'id' in employeeData) {
+        // Handle case where employeeData is the employee directly
+        setEmployee(employeeData as unknown as Employee);
+        const employee = employeeData as unknown as Employee;
+        reset({
+          name: employee.name || '',
+          email_id: employee.email_id || '',
+          mobile_number: employee.mobile_number || '',
+          trade: employee.trade || '',
+          company_name: employee.company_name || '',
+          nationality: employee.nationality || '',
+          visa_expiry_date: employee.visa_expiry_date || '',
+        });
       } else {
+        console.log('⚠️ Employee not found for ID:', employeeId);
         setError('Employee not found');
       }
     } catch (error) {
-      console.error('Error fetching employee details:', error);
-      setError('Failed to load employee details');
+      console.log('⚠️ Error fetching employee details:', error);
+      // Don't show error immediately - let user try again
+      setError(null);
     } finally {
       setLoading(false);
     }
@@ -102,7 +117,7 @@ export default function EmployeeDetailsPage() {
       // Cast the data to the correct type safely
       setDocuments((data as unknown as EmployeeDocuments[]) || []);
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      console.log('⚠️ Error fetching documents:', error);
     }
   }, [employeeId]);
 
@@ -132,13 +147,12 @@ export default function EmployeeDetailsPage() {
       if (updatedEmployee) {
         setEmployee(updatedEmployee);
         setEditing(false);
-        toast.success('Employee updated successfully');
+        console.log('✅ Employee updated successfully');
       } else {
-        toast.error('Failed to update employee');
+        console.log('⚠️ Failed to update employee');
       }
     } catch (error) {
-      console.error('Error updating employee:', error);
-      toast.error('Failed to update employee');
+      console.log('⚠️ Error updating employee:', error);
     }
   };
 

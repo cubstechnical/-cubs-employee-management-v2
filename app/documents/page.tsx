@@ -118,7 +118,7 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
   const isLoading = loadingDocumentId === item.document_id;
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 space-y-3">
+    <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3 sm:p-4 space-y-3">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-3">
@@ -128,8 +128,18 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
             getFileIcon(item.name, item.file_type)
           )}
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate leading-tight"
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white leading-tight break-words"
                 title={item.name} // Show full filename on hover
+                style={{ 
+                  wordBreak: 'break-word',
+                  overflowWrap: 'break-word',
+                  lineHeight: '1.3',
+                  maxHeight: '2.6em',
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical'
+                }}
             >
               {item.name}
             </h3>
@@ -140,7 +150,11 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
             )}
 
             {item.type === 'document' && (item.employeeName || item.companyName) && (
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate" 
+                 title={item.employeeName && item.companyName 
+                   ? `${item.employeeName} • ${item.companyName}`
+                   : item.employeeName || item.companyName
+                 }>
                 {item.employeeName && item.companyName 
                   ? `${item.employeeName} • ${item.companyName}`
                   : item.employeeName || item.companyName
@@ -161,44 +175,44 @@ const DocumentCard = ({ item, onView, onDownload, onDelete, onSelect, isSelected
 
       {/* Actions */}
       {item.type === 'document' && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5 sm:gap-2">
             <button
               onClick={onView}
               disabled={isLoading}
-              className="flex items-center space-x-1 px-3 py-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-md sm:rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
               ) : (
-                <Eye className="w-4 h-4" />
+                <Eye className="w-3 h-3 sm:w-4 sm:h-4" />
               )}
-              <span className="text-sm">View</span>
+              <span className="hidden sm:inline">View</span>
             </button>
             
             <button
               onClick={onDownload}
               disabled={isLoading}
-              className="flex items-center space-x-1 px-3 py-1.5 text-green-600 hover:text-green-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-green-600 hover:text-green-800 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-md sm:rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
               ) : (
-                <Download className="w-4 h-4" />
+                <Download className="w-3 h-3 sm:w-4 sm:h-4" />
               )}
-              <span className="text-sm">Download</span>
+              <span className="hidden sm:inline">Download</span>
             </button>
           
           <button
             onClick={onDelete}
             disabled={isLoading}
-            className="flex items-center space-x-1 px-3 py-1.5 text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center space-x-1 px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-red-600 hover:text-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md sm:rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
             ) : (
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" />
             )}
-            <span className="text-sm">Delete</span>
+            <span className="hidden sm:inline">Delete</span>
           </button>
         </div>
       )}
@@ -430,7 +444,7 @@ function DocumentsContent() {
 
   const handleDocumentView = async (item: FolderItem) => {
     if (!item.document_id) {
-      toast.error('Document ID not found');
+      console.log('⚠️ No document ID found for item:', item.name);
       return;
     }
 
@@ -438,88 +452,53 @@ function DocumentsContent() {
       setLoadingDocumentId(item.document_id);
       console.log('👁️ Opening document:', item.document_id, item.name);
 
-      // For mobile apps, we want to open documents in a new browser tab
-      // The API route will handle the edge function redirect or direct file access
-      const isMobileApp = window.location.protocol === 'capacitor:' ||
-                          window.location.protocol === 'ionic:' ||
-                          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-      const documentUrl = `/api/documents/${item.document_id}/view`;
-
-      if (isMobileApp) {
-        // For mobile apps, open in system browser
-        console.log('📱 Mobile app detected, opening in system browser');
-
-        // Use Capacitor's Browser plugin if available (only in mobile app)
-        if (typeof window !== 'undefined' &&
-            (window as any).Capacitor?.isNative) {
-          try {
-            const { Browser } = await import('@capacitor/browser');
-            await Browser.open({
-              url: window.location.origin + documentUrl,
-              presentationStyle: 'popover' // Opens in a popover on iOS
-            });
-            toast.success(`Opening ${item.name} in browser...`);
-          } catch (capacitorError) {
-            console.warn('⚠️ Capacitor Browser not available, trying fallback:', capacitorError);
-
-            // Fallback: try to open in external browser
-            try {
-              window.open(window.location.origin + documentUrl, '_system', 'location=yes');
-            } catch (fallbackError) {
-              console.error('❌ Fallback opening also failed:', fallbackError);
-              toast.error('Failed to open document. Please try opening in your device browser.');
-            }
-          }
-        } else {
-          // For PWA or web mobile, open in new tab
-          const newTab = window.open(documentUrl, '_blank', 'noopener,noreferrer');
-          if (newTab) {
-            toast.success(`Opening ${item.name} in new tab...`);
-          } else {
-            toast.error('Popup blocked. Please allow popups and try again.');
-          }
+      // Get document metadata from Supabase to get direct Backblaze URL
+      const { data: documentData, error } = await DocumentService.getDocumentById(item.document_id);
+      
+      if (error || !documentData) {
+        console.log('⚠️ Could not fetch document metadata, using fallback');
+        // Fallback: try to get from item data if available
+        if (item.file_url) {
+          window.open(item.file_url, '_blank', 'noopener,noreferrer');
+          return;
         }
-      } else {
-        // For desktop, open in new tab
-        const newTab = window.open(documentUrl, '_blank', 'noopener,noreferrer');
-
-        if (newTab) {
-          newTab.focus();
-          console.log('✅ Document opened in new tab');
-          toast.success(`Opening ${item.name}...`);
-
-          // Check if tab is blocked after a short delay
-          setTimeout(() => {
-            try {
-              if (newTab.closed) {
-                console.warn('⚠️ Document tab was closed immediately (possibly blocked)');
-                toast.error('Document popup was blocked. Please allow popups for this site and try again.');
-              }
-            } catch (e) {
-              // Ignore errors when checking if tab is closed
-            }
-          }, 1000);
-        } else {
-          console.warn('⚠️ Failed to open document tab (popup blocked?)');
-
-          // Fallback: try to open directly (might work for some browsers)
-          try {
-            const link = document.createElement('a');
-            link.href = documentUrl;
-            link.target = '_blank';
-            link.rel = 'noopener noreferrer';
-            link.click();
-            toast.success(`Opening ${item.name}...`);
-          } catch (fallbackError) {
-            console.error('❌ Fallback opening also failed:', fallbackError);
-            toast.error('Failed to open document. Please check popup settings and try again.');
-          }
-        }
+        return;
       }
+
+      // Use direct Backblaze URL for better performance and reliability
+      const directUrl = documentData.file_url;
+      
+      if (!directUrl) {
+        console.log('⚠️ No file URL found for document');
+        return;
+      }
+
+      console.log('🔗 Opening document directly:', directUrl);
+
+      // Open document in new tab/browser
+      const newTab = window.open(directUrl, '_blank', 'noopener,noreferrer');
+      
+      if (newTab) {
+        newTab.focus();
+        console.log('✅ Document opened successfully');
+      } else {
+        // Fallback for popup blockers
+        const link = document.createElement('a');
+        link.href = directUrl;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log('✅ Document opened via fallback method');
+      }
+
     } catch (error) {
-      console.error('❌ Error opening document viewer:', error);
-      toast.error('Failed to open document viewer. Please try again.');
+      console.log('⚠️ Error opening document:', error);
+      // Try fallback with item URL if available
+      if (item.file_url) {
+        window.open(item.file_url, '_blank', 'noopener,noreferrer');
+      }
     } finally {
       setLoadingDocumentId(null);
     }
@@ -532,41 +511,58 @@ function DocumentsContent() {
       setLoadingDocumentId(item.document_id);
       console.log('⬇️ Downloading document:', item.document_id, item.name);
 
-      // Use the API route which will redirect to edge function or direct download
-      const downloadUrl = `/api/documents/${item.document_id}/download`;
-
-      // For mobile apps, we want to open the download in the browser
-      const isMobileApp = window.location.protocol === 'capacitor:' ||
-                          window.location.protocol === 'ionic:' ||
-                          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-      if (isMobileApp &&
-          typeof window !== 'undefined' &&
-          (window as any).Capacitor?.isNative) {
-        try {
-          const { Browser } = await import('@capacitor/browser');
-          await Browser.open({
-            url: window.location.origin + downloadUrl,
-            presentationStyle: 'popover'
-          });
-          toast.success(`Download started in browser...`);
-        } catch (capacitorError) {
-          console.warn('⚠️ Capacitor Browser not available, trying direct download:', capacitorError);
-          // Fallback to direct download
-          window.open(window.location.origin + downloadUrl, '_blank');
+      // Get document metadata from Supabase to get direct Backblaze URL
+      const { data: documentData, error } = await DocumentService.getDocumentById(item.document_id);
+      
+      if (error || !documentData) {
+        console.log('⚠️ Could not fetch document metadata, using fallback');
+        // Fallback: try to get from item data if available
+        if (item.file_url) {
+          const link = document.createElement('a');
+          link.href = item.file_url;
+          link.download = item.name;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          return;
         }
-      } else {
-        // For desktop or PWA, use direct download
+        return;
+      }
+
+      // Use direct Backblaze URL for download
+      const directUrl = documentData.file_url;
+      
+      if (!directUrl) {
+        console.log('⚠️ No file URL found for document');
+        return;
+      }
+
+      console.log('⬇️ Downloading document directly:', directUrl);
+
+      // Create download link
+      const link = document.createElement('a');
+      link.href = directUrl;
+      link.download = documentData.file_name || item.name;
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      console.log('✅ Download started successfully');
+
+    } catch (error) {
+      console.log('⚠️ Error downloading document:', error);
+      // Try fallback with item URL if available
+      if (item.file_url) {
         const link = document.createElement('a');
-        link.href = downloadUrl;
+        link.href = item.file_url;
         link.download = item.name;
         link.target = '_blank';
+        document.body.appendChild(link);
         link.click();
-        toast.success('Download started');
+        document.body.removeChild(link);
       }
-    } catch (error) {
-      console.error('❌ Error downloading document:', error);
-      toast.error('Failed to download document');
     } finally {
       setLoadingDocumentId(null);
     }
