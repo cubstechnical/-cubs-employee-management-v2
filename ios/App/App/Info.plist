@@ -67,11 +67,7 @@
 	<key>NSMicrophoneUsageDescription</key>
 	<string>This app needs access to microphone for video recording features.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>This app needs access to location to provide location-based features.</string>
-	<key>NSContactsUsageDescription</key>
-	<string>This app needs access to contacts to manage employee information.</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>This app uses tracking to provide personalized content and improve user experience.</string>
+	<string>This app needs access to location to provide location-based features and improve user experience.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSMinimumSystemVersion</key>
@@ -90,5 +86,9 @@
 	<string>Automatic</string>
 	<key>UISceneDelegate</key>
 	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

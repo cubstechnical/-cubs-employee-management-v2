@@ -138,6 +138,17 @@ export const DynamicPerformanceDashboard = dynamic(() => import('@/components/pe
   loading: () => <div className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg animate-pulse" />
 });
 
+// Date picker - heavy component with react-datepicker
+export const DynamicDatePicker = dynamic(() => import('@/components/ui/DatePicker'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center p-8">
+      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#d3194f]"></div>
+      <span className="ml-2 text-sm text-gray-500">Loading date picker...</span>
+    </div>
+  )
+});
+
 export const DynamicDocuments = dynamic(() => import('@/app/documents/page'), {
   loading: () => <LoadingSpinner />,
   ssr: false

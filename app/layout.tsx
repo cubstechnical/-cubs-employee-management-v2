@@ -12,6 +12,7 @@ import { PerformanceMonitor } from '@/components/ui/PerformanceMonitor'
 import { ClientOnly } from '@/components/common/ClientOnly'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
+import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
 
 const inter = Inter({ 
@@ -125,9 +126,10 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
-        {/* Suppress harmless mobile app warnings */}
+        {/* Suppress harmless mobile app warnings and initialize environment */}
         {(() => {
           suppressMobileWarnings();
+          initializeEnvironment();
           return null;
         })()}
         <PerformanceMonitor />

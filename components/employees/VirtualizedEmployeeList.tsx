@@ -101,31 +101,42 @@ const EmployeeRow = memo(function EmployeeRow({
       <Card className="p-4 hover:shadow-md transition-shadow">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <div className="w-12 h-12 bg-[#d3194f]/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-lg font-semibold text-[#d3194f]">
+            <div
+              className="w-12 h-12 bg-[#d3194f]/10 rounded-full flex items-center justify-center flex-shrink-0"
+              role="img"
+              aria-label={`Avatar for ${employee.name}`}
+            >
+              <span
+                className="text-lg font-semibold text-[#d3194f]"
+                id={`employee-${employee.id}-initials`}
+                aria-hidden="true"
+              >
                 {getInitials(employee.name)}
               </span>
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
+              <h3
+                className="text-lg font-semibold text-gray-900 dark:text-white truncate"
+                id={`employee-${employee.id}-name`}
+              >
                 {employee.name}
               </h3>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-2" aria-label="Employee ID">
                 ID: {employee.employee_id}
               </p>
-              <div className="flex items-center gap-4 mt-1">
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <Building className="w-3 h-3" />
-                  <span className="truncate max-w-[120px]">{employee.company_name}</span>
+              <div className="flex items-center gap-2 sm:gap-4 mt-1 flex-wrap" aria-label="Employee details">
+                <div className="flex items-center gap-1 text-sm text-gray-500" aria-label="Company">
+                  <Building className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                  <span className="truncate max-w-[80px] sm:max-w-[120px]">{employee.company_name}</span>
                 </div>
-                <div className="flex items-center gap-1 text-sm text-gray-500">
-                  <MapPin className="w-3 h-3" />
-                  <span className="truncate max-w-[80px]">{employee.nationality || 'N/A'}</span>
+                <div className="flex items-center gap-1 text-sm text-gray-500" aria-label="Nationality">
+                  <MapPin className="w-3 h-3 flex-shrink-0" aria-hidden="true" />
+                  <span className="truncate max-w-[60px] sm:max-w-[80px]">{employee.nationality || 'N/A'}</span>
                 </div>
                 {employee.trade && (
-                  <div className="flex items-center gap-1 text-sm text-gray-500">
-                    <span className="w-3 h-3">🔧</span>
-                    <span className="truncate max-w-[100px]">{employee.trade}</span>
+                  <div className="flex items-center gap-1 text-sm text-gray-500" aria-label="Trade">
+                    <span className="w-3 h-3 flex-shrink-0" aria-hidden="true">🔧</span>
+                    <span className="truncate max-w-[80px] sm:max-w-[100px]">{employee.trade}</span>
                   </div>
                 )}
               </div>
@@ -133,41 +144,43 @@ const EmployeeRow = memo(function EmployeeRow({
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="text-right">
-              <Badge color={employee.is_active ? 'success' : 'error'}>
+            <div className="text-right" aria-label="Employee status information">
+              <Badge color={employee.is_active ? 'success' : 'error'} aria-label={`Status: ${employee.is_active ? 'Active' : 'Inactive'}`}>
                 {employee.is_active ? 'Active' : 'Inactive'}
               </Badge>
               <div className="mt-1">
-                <Badge color={visaStatus.color}>
+                <Badge color={visaStatus.color} aria-label={`Visa status: ${visaStatus.status}`}>
                   Visa {visaStatus.status}
                 </Badge>
               </div>
             </div>
             
-            <div className="flex items-center gap-2">
-              <Button 
-                variant="outline" 
+            <div className="flex items-center gap-2" role="toolbar" aria-label="Employee actions">
+              <Button
+                variant="outline"
                 size="sm"
                 onClick={() => data.router.push(`/employees/${employee.id}`)}
+                aria-label={`Edit employee ${employee.name}`}
               >
-                <Edit className="w-4 h-4" />
+                <Edit className="w-4 h-4" aria-hidden="true" />
               </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="text-red-600 hover:text-red-700"
                 onClick={() => data.onDelete(employee)}
+                aria-label={`Delete employee ${employee.name}`}
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-4 h-4" aria-hidden="true" />
               </Button>
             </div>
           </div>
         </div>
         
         {employee.visa_expiry_date && (
-          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-1 text-sm text-gray-500">
-              <Calendar className="w-3 h-3" />
+          <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700" aria-label="Visa information">
+            <div className="flex items-center gap-1 text-sm text-gray-500" aria-label="Visa expiry date">
+              <Calendar className="w-3 h-3" aria-hidden="true" />
               Visa expires: {formatDate(employee.visa_expiry_date)}
             </div>
           </div>

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<channels>
+    <!-- Default notification channel for employee management -->
+    <channel
+        android:id="cubs_employee_notifications"
+        android:name="Employee Notifications"
+        android:description="Notifications for employee management, visa expiry, and document updates"
+        android:importance="high"
+        android:lightColor="@color/colorPrimary"
+        android:lockscreenVisibility="public"
+        android:showBadge="true"
+        android:vibrationPattern="200,100,200"
+        android:sound="default" />
+
+    <!-- Visa expiry notifications -->
+    <channel
+        android:id="visa_notifications"
+        android:name="Visa Expiry Alerts"
+        android:description="Urgent notifications about visa expiry dates"
+        android:importance="high"
+        android:lightColor="#FF5722"
+        android:lockscreenVisibility="public"
+        android:showBadge="true"
+        android:vibrationPattern="500,200,500,200,500"
+        android:sound="default" />
+
+    <!-- Document upload notifications -->
+    <channel
+        android:id="document_notifications"
+        android:name="Document Updates"
+        android:description="Notifications about document uploads and approvals"
+        android:importance="default"
+        android:lightColor="@color/colorPrimary"
+        android:lockscreenVisibility="public"
+        android:showBadge="true"
+        android:vibrationPattern="200,100,200"
+        android:sound="default" />
+</channels>

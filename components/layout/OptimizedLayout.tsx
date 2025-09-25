@@ -91,8 +91,8 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   // Show loading only during auth initialization, not for pathname
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-        <div className="text-center space-y-4">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center safe-area-inset-top safe-area-inset-bottom">
+        <div className="text-center space-y-4 p-4">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto"></div>
           <p className="text-gray-600 dark:text-gray-400 text-sm">
             Initializing Application...
@@ -107,10 +107,16 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   
   if (shouldHideSidebar) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-area-inset-top safe-area-inset-bottom">
         {/* Page content */}
-        <main className={cn("flex-1 p-4 lg:p-6", className)}>
-          {children}
+        <main className={cn(
+          "flex-1 p-4 lg:p-6 overflow-auto",
+          isMobile ? "p-2 sm:p-3" : "p-4 lg:p-6",
+          className
+        )}>
+          <div className="min-h-full w-full">
+            {children}
+          </div>
         </main>
 
         {/* Toast notifications */}
@@ -166,19 +172,26 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
 
       {/* Sidebar - only show if user is authenticated */}
       {user && (
-        <div className={cn(
-          "bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out overflow-hidden",
-          // Desktop: always visible, mobile: toggle based on sidebarOpen
-          isMobile 
-            ? "fixed inset-y-0 left-0 z-50 transform " + (sidebarOpen ? "translate-x-0" : "-translate-x-full")
-            : "relative flex-shrink-0",
-          sidebarCollapsed && !isMobile ? "w-16" : "w-64"
-        )} style={{ minWidth: sidebarCollapsed && !isMobile ? '4rem' : '16rem' }}>
-          <Sidebar 
+        <aside
+          id="mobile-sidebar"
+          className={cn(
+            "bg-white dark:bg-gray-800 shadow-lg transition-all duration-300 ease-in-out overflow-hidden",
+            // Desktop: always visible, mobile: toggle based on sidebarOpen
+            isMobile
+              ? "fixed inset-y-0 left-0 z-50 transform " + (sidebarOpen ? "translate-x-0" : "-translate-x-full")
+              : "relative flex-shrink-0",
+            sidebarCollapsed && !isMobile ? "w-16" : "w-64"
+          )}
+          style={{ minWidth: sidebarCollapsed && !isMobile ? '4rem' : '16rem' }}
+          role="navigation"
+          aria-label="Main navigation"
+          aria-hidden={isMobile ? !sidebarOpen : false}
+        >
+          <Sidebar
             onClose={isMobile ? toggleSidebar : undefined}
             onCollapseChange={setSidebarCollapsed}
           />
-        </div>
+        </aside>
       )}
 
       {/* Main content */}
@@ -188,27 +201,38 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
       )}>
         {/* Mobile header - only show if user is authenticated */}
         {isMobile && user && (
-          <header className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between lg:hidden">
-            <button
-              onClick={toggleSidebar}
-              className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-700"
-            >
-              <Menu className="h-6 w-6" />
-            </button>
-            <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
-              CUBS Technical
-            </h1>
+          <header
+            className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between lg:hidden safe-area-inset-top"
+            role="banner"
+            aria-label="Mobile navigation header"
+          >
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleSidebar}
+                className="p-2 rounded-md text-gray-600 hover:text-gray-900 hover:bg-gray-100 dark:text-gray-400 dark:hover:text-gray-100 dark:hover:bg-gray-700 touch-manipulation focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                aria-label="Toggle navigation menu"
+                aria-expanded={sidebarOpen}
+                aria-controls="mobile-sidebar"
+              >
+                <Menu className="h-6 w-6" />
+              </button>
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+                CUBS Technical
+              </h1>
+            </div>
             <div className="w-10" /> {/* Spacer */}
           </header>
         )}
 
         {/* Page content */}
         <main className={cn(
-          "flex-1 p-4 lg:p-6 overflow-auto",
-          isMobile ? "p-2 sm:p-3" : "p-4 lg:p-6",
+          "flex-1 p-4 lg:p-6 overflow-auto safe-area-inset-bottom",
+          isMobile ? "p-2 sm:p-3 pb-safe" : "p-4 lg:p-6",
           className
         )}>
-          {children}
+          <div className="min-h-full w-full">
+            {children}
+          </div>
         </main>
       </div>
 

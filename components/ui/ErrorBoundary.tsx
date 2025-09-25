@@ -94,25 +94,25 @@ Please describe what you were doing when this error occurred:
 
       // Default error UI
       return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4">
-          <Card className="max-w-lg w-full p-8 text-center">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center p-4 safe-area-inset-top safe-area-inset-bottom">
+          <Card className="max-w-lg w-full p-6 sm:p-8 text-center mx-4">
             <div className="mb-6">
-              <AlertTriangle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-              <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
+              <AlertTriangle className="w-12 h-12 sm:w-16 sm:h-16 text-red-500 mx-auto mb-4" />
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2">
                 Oops! Something went wrong
               </h1>
-              <p className="text-gray-600 dark:text-gray-400">
+              <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
                 We&apos;re sorry, but something unexpected happened. Don&apos;t worry, your data is safe.
               </p>
             </div>
 
             {/* Error details (only in development) */}
             {process.env.NODE_ENV === 'development' && this.state.error && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-left">
-                <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2">
+              <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-left">
+                <h3 className="font-semibold text-red-800 dark:text-red-200 mb-2 text-sm sm:text-base">
                   Error Details (Development Only)
                 </h3>
-                <div className="text-sm text-red-700 dark:text-red-300 font-mono overflow-auto max-h-32">
+                <div className="text-xs sm:text-sm text-red-700 dark:text-red-300 font-mono overflow-auto max-h-24 sm:max-h-32">
                   <p className="mb-2"><strong>Message:</strong> {this.state.error.message}</p>
                   <p><strong>Stack:</strong></p>
                   <pre className="whitespace-pre-wrap text-xs">
@@ -126,26 +126,26 @@ Please describe what you were doing when this error occurred:
             <div className="space-y-3">
               <Button
                 onClick={this.handleRefresh}
-                className="w-full bg-[#d3194f] hover:bg-[#b0173a] text-white"
+                className="w-full bg-[#d3194f] hover:bg-[#b0173a] text-white py-3 sm:py-2 touch-manipulation"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
                 Try Again
               </Button>
-              
-              <div className="flex gap-3">
+
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
                 <Button
                   onClick={this.handleGoHome}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 py-3 sm:py-2 touch-manipulation"
                 >
                   <Home className="w-4 h-4 mr-2" />
                   Go Home
                 </Button>
-                
+
                 <Button
                   onClick={this.handleReportBug}
                   variant="outline"
-                  className="flex-1"
+                  className="flex-1 py-3 sm:py-2 touch-manipulation"
                 >
                   <Bug className="w-4 h-4 mr-2" />
                   Report Bug
