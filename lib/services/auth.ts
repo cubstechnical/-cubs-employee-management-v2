@@ -14,7 +14,7 @@ export interface AuthUser {
 
 // Helper method to check if user is master admin
 const isMasterAdmin = (email: string): boolean => {
-  return email === 'info@cubstechnical.com';
+  return email === 'info@cubstechnical.com' || email === 'admin@cubstechnical.com';
 };
 
 // Helper method to determine user role with master admin override
@@ -208,24 +208,34 @@ export class AuthService {
         return { user: null, isApproved: false };
       }
 
-      // Get user profile from profiles table with timeout
+      // Get user profile from profiles table with timeout and error handling
       console.log('🔍 AuthService: Fetching user profile...');
-      const profilePromise = supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-      const profileTimeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Profile fetch timeout')), 10000) // Consistent 10s timeout
-      );
-      
-      const { data: profile, error: profileError } = await Promise.race([profilePromise, profileTimeoutPromise]) as any;
+      let profile = null;
+      let profileError = null;
 
-      console.log('🔍 AuthService: Profile result:', { hasProfile: !!profile, hasError: !!profileError });
+      try {
+        const profilePromise = supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single();
+        const profileTimeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Profile fetch timeout')), 10000) // Consistent 10s timeout
+        );
+
+        const result = await Promise.race([profilePromise, profileTimeoutPromise]) as any;
+        profile = result.data;
+        profileError = result.error;
+
+        console.log('🔍 AuthService: Profile result:', { hasProfile: !!profile, hasError: !!profileError });
+      } catch (fetchError) {
+        console.error('⚠️ AuthService: Profile fetch failed (continuing with fallback):', fetchError);
+        // Continue with fallback user data - don't fail completely
+      }
 
       if (profile && !profileError) {
         const userRole = getUserRole(user.email!, profile.role as string);
-        const isApproved = profile.approved_by !== null;
+        const isApproved = profile.approved_by !== null && profile.approved_by !== undefined;
 
         const authUser: AuthUser = {
           id: user.id,
@@ -239,24 +249,26 @@ export class AuthService {
         // Cache the result
         this.userCache = { user: authUser, timestamp: Date.now() };
         return { user: authUser, isApproved };
-      } else if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        // Continue with fallback user data
+      } else {
+        console.log('⚠️ AuthService: Profile not found or error occurred, using fallback user data');
       }
 
-      // Fallback: create user from auth data
+      // Fallback: create user from auth data with admin override
+      const userRole = getUserRole(user.email!, 'user');
+      const isApproved = isMasterAdmin(user.email!);
+
       const fallbackUser: AuthUser = {
         id: user.id,
         email: user.email!,
-        role: getUserRole(user.email!, 'user'),
+        role: userRole,
         name: user.user_metadata?.name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
         avatar_url: user.user_metadata?.avatar_url,
-        approved: false
+        approved: isApproved
       };
 
       // Cache the fallback result
       this.userCache = { user: fallbackUser, timestamp: Date.now() };
-      return { user: fallbackUser, isApproved: false };
+      return { user: fallbackUser, isApproved };
     } catch (error) {
       console.error('❌ AuthService: getCurrentUserWithApproval error:', error);
       return { user: null, isApproved: false };
