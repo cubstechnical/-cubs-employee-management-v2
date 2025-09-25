@@ -106,11 +106,14 @@ export default function EmployeeDetailsPage() {
   }, [employeeId, reset]);
 
   const fetchEmployeeDocuments = useCallback(async () => {
+    // Don't fetch documents until we have employee data
+    if (!employee) return;
+
     try {
       const { data, error } = await supabase
         .from('employee_documents')
         .select('*')
-        .eq('employee_id', employeeId)
+        .eq('employee_id', employee.employee_id) // Use the actual employee_id, not the UUID
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -123,12 +126,18 @@ export default function EmployeeDetailsPage() {
     } catch (error) {
       console.log('⚠️ Error fetching documents:', error);
     }
-  }, [employeeId]);
+  }, [employee]);
 
   useEffect(() => {
     fetchEmployeeDetails();
-    fetchEmployeeDocuments();
-  }, [fetchEmployeeDetails, fetchEmployeeDocuments]);
+  }, [fetchEmployeeDetails]);
+
+  // Fetch documents when employee data is available
+  useEffect(() => {
+    if (employee) {
+      fetchEmployeeDocuments();
+    }
+  }, [employee, fetchEmployeeDocuments]);
 
   const onSubmit = async (data: EmployeeFormData) => {
     if (!employee) return;
@@ -136,7 +145,7 @@ export default function EmployeeDetailsPage() {
     try {
       // Create the correct UpdateEmployeeData structure
       const updateData = {
-        employee_id: employeeId,
+        employee_id: employee.employee_id, // Use the actual employee_id, not the UUID
         name: data.name,
         email_id: data.email_id,
         mobile_number: data.mobile_number,
