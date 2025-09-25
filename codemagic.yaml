@@ -21,13 +21,36 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Build Next.js app
+      - name: Build Next.js app for mobile
         script: |
-          echo "🏗️ Building Next.js production app..."
-          npm run build
+          echo "🏗️ Building Next.js production app for mobile deployment..."
+          npm run build:mobile
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
+          echo "📁 Checking for out directory..."
+          if [ -d "out" ]; then
+            echo "✅ Found out directory"
+            ls -la out/
+          else
+            echo "❌ out directory not found!"
+            echo "📋 Available directories:"
+            ls -la
+            echo "❌ Build process failed to create out directory"
+            exit 1
+          fi
+
+          echo "📄 Checking for index.html..."
+          if [ -f "out/index.html" ]; then
+            echo "✅ Found index.html"
+          else
+            echo "❌ index.html not found in out directory!"
+            echo "📋 Contents of out directory:"
+            ls -la out/
+            exit 1
+          fi
+
+          echo "🔄 Syncing with Capacitor..."
           npx cap sync ios
       - name: Install CocoaPods
         script: |
@@ -430,13 +453,36 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Build Next.js app
+      - name: Build Next.js app for mobile
         script: |
-          echo "🏗️ Building Next.js production app..."
-          npm run build
+          echo "🏗️ Building Next.js production app for mobile deployment..."
+          npm run build:mobile
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
+          echo "📁 Checking for out directory..."
+          if [ -d "out" ]; then
+            echo "✅ Found out directory"
+            ls -la out/
+          else
+            echo "❌ out directory not found!"
+            echo "📋 Available directories:"
+            ls -la
+            echo "❌ Build process failed to create out directory"
+            exit 1
+          fi
+
+          echo "📄 Checking for index.html..."
+          if [ -f "out/index.html" ]; then
+            echo "✅ Found index.html"
+          else
+            echo "❌ index.html not found in out directory!"
+            echo "📋 Contents of out directory:"
+            ls -la out/
+            exit 1
+          fi
+
+          echo "🔄 Syncing with Capacitor..."
           npx cap sync ios
       - name: Install CocoaPods
         script: |
@@ -497,13 +543,36 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Build Next.js app
+      - name: Build Next.js app for mobile
         script: |
-          echo "🏗️ Building Next.js production app..."
-          npm run build
+          echo "🏗️ Building Next.js production app for mobile deployment..."
+          npm run build:mobile
       - name: Sync Capacitor Android
         script: |
           echo "🔄 Syncing web assets with Capacitor Android..."
+          echo "📁 Checking for out directory..."
+          if [ -d "out" ]; then
+            echo "✅ Found out directory"
+            ls -la out/
+          else
+            echo "❌ out directory not found!"
+            echo "📋 Available directories:"
+            ls -la
+            echo "❌ Build process failed to create out directory"
+            exit 1
+          fi
+
+          echo "📄 Checking for index.html..."
+          if [ -f "out/index.html" ]; then
+            echo "✅ Found index.html"
+          else
+            echo "❌ index.html not found in out directory!"
+            echo "📋 Contents of out directory:"
+            ls -la out/
+            exit 1
+          fi
+
+          echo "🔄 Syncing with Capacitor..."
           npx cap sync android
       - name: Build Android APK
         script: |
