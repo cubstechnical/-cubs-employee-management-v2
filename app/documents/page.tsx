@@ -467,7 +467,7 @@ function DocumentsContent() {
           if (newTab) {
             newTab.focus();
             console.log('✅ Document opened via fallback method');
-            return;
+          return;
           } else {
             console.log('⚠️ Popup blocked or failed to open fallback URL');
           }
@@ -479,7 +479,7 @@ function DocumentsContent() {
 
       // Open document in new tab/browser
       const newTab = window.open(signedUrl, '_blank', 'noopener,noreferrer');
-
+      
       if (newTab) {
         newTab.focus();
         console.log('✅ Document opened successfully');
@@ -544,7 +544,7 @@ function DocumentsContent() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-
+      
       console.log('✅ Download started successfully');
 
     } catch (error) {
@@ -593,7 +593,7 @@ function DocumentsContent() {
   const navigateBack = () => {
     const pathParts = currentPath.split('/').filter(Boolean);
     if (pathParts.length === 0) return;
-
+    
     if (pathParts.length === 1) {
       // Go back to root from company level
       setCurrentPath('/');

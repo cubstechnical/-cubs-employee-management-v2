@@ -714,11 +714,25 @@ export class EmployeeService {
       if (inflight) return inflight;
 
       const run = async (): Promise<{ employee: Employee | null; error: string | null }> => {
-        const { data: rawEmployee, error } = await supabase
+        // Try to find employee by employee_id first (human-readable ID like "ALHT001")
+        let { data: rawEmployee, error } = await supabase
           .from('employee_table')
           .select('*')
           .eq('employee_id', employeeId)
           .single();
+
+        // If not found and employeeId looks like a UUID, try searching by id field
+        if (error && (employeeId.includes('-') && employeeId.length > 20)) {
+          console.log('🔄 Employee not found by employee_id, trying UUID search...');
+          const uuidResult = await supabase
+            .from('employee_table')
+            .select('*')
+            .eq('id', employeeId)
+            .single();
+
+          rawEmployee = uuidResult.data;
+          error = uuidResult.error;
+        }
 
         if (error) {
           return { employee: null, error: error.message };
@@ -727,7 +741,7 @@ export class EmployeeService {
         // Enhance employee with calculated status fields
         const employee = rawEmployee ? this.enhanceEmployeeData([rawEmployee])[0] : null;
 
-        // Cache the result
+        // Cache the result using the original employeeId parameter
         if (employee) {
           this.employeeCache.set(employeeId, { data: employee as unknown as Employee, timestamp: Date.now() });
         }
@@ -752,12 +766,25 @@ export class EmployeeService {
     try {
       console.log(`🔍 Fetching employee with optimized query: ${employeeId}`);
       
-      // First try to get employee from employee_table
-      const { data: employeeData, error: empError } = await supabase
+      // First try to get employee from employee_table by employee_id
+      let { data: employeeData, error: empError } = await supabase
         .from('employee_table')
         .select('*')
         .eq('employee_id', employeeId)
         .single();
+
+      // If not found and employeeId looks like a UUID, try searching by id field
+      if (empError && (employeeId.includes('-') && employeeId.length > 20)) {
+        console.log('🔄 Employee not found by employee_id in optimized query, trying UUID search...');
+        const uuidResult = await supabase
+          .from('employee_table')
+          .select('*')
+          .eq('id', employeeId)
+          .single();
+
+        employeeData = uuidResult.data;
+        empError = uuidResult.error;
+      }
 
       if (empError) {
         console.error('❌ Error fetching employee:', empError);
