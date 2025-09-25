@@ -438,44 +438,83 @@ function DocumentsContent() {
       setLoadingDocumentId(item.document_id);
       console.log('👁️ Opening document:', item.document_id, item.name);
 
-      // Try to open in new tab
-      const newTab = window.open(
-        `/api/documents/${item.document_id}/view`,
-        '_blank',
-        'noopener,noreferrer'
-      );
+      // For mobile apps, we want to open documents in a new browser tab
+      // The API route will handle the edge function redirect or direct file access
+      const isMobileApp = window.location.protocol === 'capacitor:' ||
+                          window.location.protocol === 'ionic:' ||
+                          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      if (newTab) {
-        // Tab opened successfully
-        newTab.focus();
-        console.log('✅ Document opened in new tab');
-        toast.success(`Opening ${item.name}...`);
+      const documentUrl = `/api/documents/${item.document_id}/view`;
 
-        // Check if tab is blocked after a short delay
-        setTimeout(() => {
+      if (isMobileApp) {
+        // For mobile apps, open in system browser
+        console.log('📱 Mobile app detected, opening in system browser');
+
+        // Use Capacitor's Browser plugin if available (only in mobile app)
+        if (typeof window !== 'undefined' &&
+            (window as any).Capacitor?.isNative) {
           try {
-            if (newTab.closed) {
-              console.warn('⚠️ Document tab was closed immediately (possibly blocked)');
-              toast.error('Document popup was blocked. Please allow popups for this site and try again.');
-            }
-          } catch (e) {
-            // Ignore errors when checking if tab is closed
-          }
-        }, 1000);
-      } else {
-        console.warn('⚠️ Failed to open document tab (popup blocked?)');
+            const { Browser } = await import('@capacitor/browser');
+            await Browser.open({
+              url: window.location.origin + documentUrl,
+              presentationStyle: 'popover' // Opens in a popover on iOS
+            });
+            toast.success(`Opening ${item.name} in browser...`);
+          } catch (capacitorError) {
+            console.warn('⚠️ Capacitor Browser not available, trying fallback:', capacitorError);
 
-        // Fallback: try to open directly (might work for some browsers)
-        try {
-          const link = document.createElement('a');
-          link.href = `/api/documents/${item.document_id}/view`;
-          link.target = '_blank';
-          link.rel = 'noopener noreferrer';
-          link.click();
+            // Fallback: try to open in external browser
+            try {
+              window.open(window.location.origin + documentUrl, '_system', 'location=yes');
+            } catch (fallbackError) {
+              console.error('❌ Fallback opening also failed:', fallbackError);
+              toast.error('Failed to open document. Please try opening in your device browser.');
+            }
+          }
+        } else {
+          // For PWA or web mobile, open in new tab
+          const newTab = window.open(documentUrl, '_blank', 'noopener,noreferrer');
+          if (newTab) {
+            toast.success(`Opening ${item.name} in new tab...`);
+          } else {
+            toast.error('Popup blocked. Please allow popups and try again.');
+          }
+        }
+      } else {
+        // For desktop, open in new tab
+        const newTab = window.open(documentUrl, '_blank', 'noopener,noreferrer');
+
+        if (newTab) {
+          newTab.focus();
+          console.log('✅ Document opened in new tab');
           toast.success(`Opening ${item.name}...`);
-        } catch (fallbackError) {
-          console.error('❌ Fallback opening also failed:', fallbackError);
-          toast.error('Failed to open document. Please check popup settings and try again.');
+
+          // Check if tab is blocked after a short delay
+          setTimeout(() => {
+            try {
+              if (newTab.closed) {
+                console.warn('⚠️ Document tab was closed immediately (possibly blocked)');
+                toast.error('Document popup was blocked. Please allow popups for this site and try again.');
+              }
+            } catch (e) {
+              // Ignore errors when checking if tab is closed
+            }
+          }, 1000);
+        } else {
+          console.warn('⚠️ Failed to open document tab (popup blocked?)');
+
+          // Fallback: try to open directly (might work for some browsers)
+          try {
+            const link = document.createElement('a');
+            link.href = documentUrl;
+            link.target = '_blank';
+            link.rel = 'noopener noreferrer';
+            link.click();
+            toast.success(`Opening ${item.name}...`);
+          } catch (fallbackError) {
+            console.error('❌ Fallback opening also failed:', fallbackError);
+            toast.error('Failed to open document. Please check popup settings and try again.');
+          }
         }
       }
     } catch (error) {
@@ -491,13 +530,40 @@ function DocumentsContent() {
 
     try {
       setLoadingDocumentId(item.document_id);
-      const res = await fetch(`/api/documents/${item.document_id}/download`);
-      if (!res.ok) {
-        throw new Error('Failed to download document');
+      console.log('⬇️ Downloading document:', item.document_id, item.name);
+
+      // Use the API route which will redirect to edge function or direct download
+      const downloadUrl = `/api/documents/${item.document_id}/download`;
+
+      // For mobile apps, we want to open the download in the browser
+      const isMobileApp = window.location.protocol === 'capacitor:' ||
+                          window.location.protocol === 'ionic:' ||
+                          /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+      if (isMobileApp &&
+          typeof window !== 'undefined' &&
+          (window as any).Capacitor?.isNative) {
+        try {
+          const { Browser } = await import('@capacitor/browser');
+          await Browser.open({
+            url: window.location.origin + downloadUrl,
+            presentationStyle: 'popover'
+          });
+          toast.success(`Download started in browser...`);
+        } catch (capacitorError) {
+          console.warn('⚠️ Capacitor Browser not available, trying direct download:', capacitorError);
+          // Fallback to direct download
+          window.open(window.location.origin + downloadUrl, '_blank');
+        }
+      } else {
+        // For desktop or PWA, use direct download
+        const link = document.createElement('a');
+        link.href = downloadUrl;
+        link.download = item.name;
+        link.target = '_blank';
+        link.click();
+        toast.success('Download started');
       }
-      const blob = await res.blob();
-      saveAs(blob, item.name);
-      toast.success('Download started');
     } catch (error) {
       console.error('❌ Error downloading document:', error);
       toast.error('Failed to download document');

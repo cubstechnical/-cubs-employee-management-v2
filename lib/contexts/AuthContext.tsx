@@ -20,12 +20,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load user session from Supabase with enhanced error handling
+    // Load user session from Supabase with enhanced error handling and mobile optimization
     const loadSession = async () => {
       try {
         // Add longer timeout for mobile networks
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session load timeout')), 15000)
+          setTimeout(() => reject(new Error('Session load timeout')), 20000) // Increased to 20s for mobile
         );
 
         const sessionPromise = AuthService.getCurrentUserWithApproval();
@@ -36,7 +36,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Only set user if we actually got one, don't clear existing user on errors
         if (currentUser) {
           setUser(currentUser);
-          log.info('AuthContext: Session loaded successfully', { hasUser: !!currentUser });
+          log.info('AuthContext: Session loaded successfully', {
+            hasUser: !!currentUser,
+            userRole: currentUser.role,
+            userEmail: currentUser.email
+          });
+
+          // Store session persistence data for mobile app
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('cubs_session_persisted', 'true');
+            localStorage.setItem('cubs_last_login', new Date().toISOString());
+            localStorage.setItem('cubs_user_email', currentUser.email || '');
+            localStorage.setItem('cubs_user_id', currentUser.id || '');
+          }
         } else {
           // Only clear user if we're certain there's no valid session
           const { session } = await AuthService.getSession();
@@ -55,15 +67,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const { session } = await AuthService.getSession();
           if (!session) {
             setUser(null);
+            log.warn('AuthContext: No session found after error, clearing user');
+          } else {
+            log.info('AuthContext: Session exists despite error, keeping current state');
+            // Try to recover user data from existing session
+            try {
+              const user = await AuthService.getCurrentUser();
+              if (user) {
+                setUser(user);
+                log.info('AuthContext: Recovered user from existing session');
+              }
+            } catch (recoveryError) {
+              log.warn('AuthContext: User recovery failed:', recoveryError);
+            }
           }
-          // If session exists, keep current user state
         } catch (sessionError) {
           log.error('AuthContext: Session check failed:', sessionError);
           setUser(null);
         }
       } finally {
-        // Ensure loading is always set to false
-        setTimeout(() => setIsLoading(false), 100);
+        // Ensure loading is always set to false with a small delay
+        setTimeout(() => {
+          setIsLoading(false);
+          log.info('AuthContext: Loading state set to false');
+        }, 200);
       }
     };
 
