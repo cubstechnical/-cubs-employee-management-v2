@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/client';
+import { BackblazeService } from './backblaze';
 
 export interface Document {
   id: string;
@@ -68,7 +69,7 @@ export class DocumentService {
   private static fetchPromise: Promise<{ folders: DocumentFolder[]; error: string | null }> | null = null;
   // Fast-path caching for presigned URLs to avoid repeated edge calls
   private static presignedUrlCache: Map<string, { url: string; expiresAt: number }> = new Map();
-  private static presignedUrlInflight: Map<string, Promise<{ url: string | null; error: string | null }>> = new Map();
+  private static presignedUrlInflight: Map<string, Promise<{ data: string | null; error: string | null }>> = new Map();
   // Lightweight cache from file_path -> signed url for batch prefetch
   private static presignedByPathCache: Map<string, { url: string; expiresAt: number }> = new Map();
   // Prefix auth cache to allow composing stream URLs without per-file sign
@@ -2202,19 +2203,19 @@ export class DocumentService {
     }
   }
 
-  static async getDocumentPresignedUrl(documentId: string): Promise<{ url: string | null; error: string | null }> {
+  static async getDocumentPresignedUrl(documentId: string): Promise<{ data: string | null; error: string | null }> {
     try {
       // 1) Cache hit - check first
       const cached = this.presignedUrlCache.get(documentId);
       if (cached && Date.now() < cached.expiresAt) {
-        return { url: cached.url, error: null };
+        return { data: cached.url, error: null };
       }
 
       // 2) Inflight de-duplication
       const inflight = this.presignedUrlInflight.get(documentId);
-      if (inflight) return inflight;
+      if (inflight) return await inflight;
 
-      const promise = (async (): Promise<{ url: string | null; error: string | null }> => {
+      const promise = (async (): Promise<{ data: string | null; error: string | null }> => {
         const { data: document, error } = await supabase
           .from('employee_documents')
           .select('file_path, file_url, file_name')
@@ -2223,12 +2224,12 @@ export class DocumentService {
 
         if (error) {
           console.error('❌ Error fetching document:', error);
-          return { url: null, error: error.message };
+          return { data: null, error: error.message };
         }
 
         if (!document) {
           console.error('❌ Document not found');
-          return { url: null, error: 'Document not found' };
+          return { data: null, error: 'Document not found' };
         }
 
         // 3a) If we have a path-level cache from batch prefetch, use it
@@ -2236,7 +2237,7 @@ export class DocumentService {
           const byPath = this.presignedByPathCache.get(document.file_path as string);
           if (byPath && Date.now() < byPath.expiresAt) {
             this.presignedUrlCache.set(documentId, { url: byPath.url, expiresAt: byPath.expiresAt });
-            return { url: byPath.url, error: null };
+            return { data: byPath.url, error: null };
           }
         }
 
@@ -2244,15 +2245,15 @@ export class DocumentService {
         if (document.file_url && String(document.file_url).includes('Authorization=')) {
           const url = document.file_url as string;
           this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 minutes
-          return { url, error: null };
+          return { data: url, error: null };
         }
 
         // 4) Edge Function for signed URL - with timeout
         try {
-          const timeoutPromise = new Promise((_, reject) => 
+          const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Edge function timeout')), 5000)
           );
-          
+
           const edgePromise = supabase.functions.invoke('doc-manager', {
             body: {
               action: 'getSignedUrl',
@@ -2260,14 +2261,14 @@ export class DocumentService {
               fileName: document.file_name as string
             }
           });
-          
+
           const { data: edgeResult, error: edgeError } = await Promise.race([edgePromise, timeoutPromise]) as any;
 
           if (!edgeError && edgeResult?.success && edgeResult?.signedUrl) {
             const url = edgeResult.signedUrl as string;
             // Cache for a short period (Edge typically returns 1h expiry, we keep 10m)
             this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 minutes
-            return { url, error: null };
+            return { data: url, error: null };
           }
         } catch (edgeError) {
           console.error('❌ Edge Function error:', edgeError);
@@ -2285,7 +2286,7 @@ export class DocumentService {
             const url = json?.data?.previewUrl as string | undefined;
             if (url) {
               this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 minutes
-              return { url, error: null };
+              return { data: url, error: null };
             }
           } else {
             console.error('❌ Preview API route failed:', resp.status, resp.statusText);
@@ -2294,9 +2295,22 @@ export class DocumentService {
           console.error('❌ Preview API route exception:', apiErr);
         }
 
-        // 6) Final: do NOT return an unsigned URL for private buckets
+        // 6) Final fallback: try to use the BackblazeService directly
+        try {
+          if (document.file_path) {
+            const url = await BackblazeService.getPresignedUrl(document.file_path as string);
+            if (url) {
+              this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 minutes
+              return { data: url, error: null };
+            }
+          }
+        } catch (b2Error) {
+          console.error('❌ BackblazeService fallback error:', b2Error);
+        }
+
+        // 7) Final: do NOT return an unsigned URL for private buckets
         console.error('❌ Failed to generate signed URL');
-        return { url: null, error: 'Failed to generate signed URL' };
+        return { data: null, error: 'Failed to generate signed URL' };
       })();
 
       this.presignedUrlInflight.set(documentId, promise);
@@ -2304,7 +2318,7 @@ export class DocumentService {
       return result;
     } catch (error) {
       console.error('❌ Exception in getDocumentPresignedUrl:', error);
-      return { url: null, error: 'Failed to get presigned URL' };
+      return { data: null, error: 'Failed to get presigned URL' };
     }
   }
 

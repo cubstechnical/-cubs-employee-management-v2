@@ -259,7 +259,7 @@ serve(async (req)=>{
           return await uploadUrlResponse.json();
         });
 
-        // Prepare file path using cleaner structure
+        // Prepare file path using cleaner structure - consistent with BackblazeService
         const safeFolder = folderName?.toString().trim().replace(/^\/+/g, "").replace(/\/+$/g, "");
         const target = (targetType || 'employee') as 'employee' | 'company';
         let baseFolder = '';
@@ -267,7 +267,10 @@ serve(async (req)=>{
           const safeCompany = (companyName || actualEmpId).toString().trim().replace(/^\/+/g, "").replace(/\/+$/g, "");
           baseFolder = `COMP_${safeCompany}`;
         } else {
-          baseFolder = `EMP_${actualEmpId}`;
+          // For employee documents, use the employee name if available, otherwise use employee ID
+          const employee = await verifyEmployee(supabaseClient, actualEmpId);
+          const employeeName = employee?.name || actualEmpId;
+          baseFolder = `EMP_${employeeName}`;
         }
         const filePath = safeFolder
           ? `${baseFolder}/${safeFolder}/${fileName}`
@@ -319,7 +322,7 @@ serve(async (req)=>{
               document_type: documentType || 'other',
               file_type: contentType || 'application/octet-stream',
               file_name: fileName,
-              file_url: `https://f005.backblazeb2.com/file/cubsdocs/${filePath}`,
+              file_url: `https://f005.backblazeb2.com/file/${bucketName}/${filePath}`,
               file_path: filePath, // Include file_path to avoid NOT NULL constraint
               file_size: binaryData.length.toString(), // Convert to string to match schema
               uploaded_at: new Date().toISOString(),
@@ -399,7 +402,7 @@ serve(async (req)=>{
           success: true,
           fileId: uploadResult.fileId,
           fileName: uploadResult.fileName,
-          fileUrl: `https://f005.backblazeb2.com/file/cubsdocs/${filePath}`,
+          fileUrl: `https://f005.backblazeb2.com/file/${bucketName}/${filePath}`,
           filePath: filePath, // Return file path for client
           size: binaryData.length,
 
@@ -538,19 +541,37 @@ serve(async (req)=>{
           filePath = directFilePath;
           console.log('🔍 Using direct file path from database:', filePath);
         } else if (!filePath) {
-            const safeCompany = (companyName || actualEmpId).toString().trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
-            filePath = `COMP_${safeCompany}/${fileName}`;
-          } else {
-            filePath = `EMP_${actualEmpId}/${fileName}`;
+          // Try to get the file path from the database using document ID if available
+          if (!actualEmpId || !fileName) {
+            return new Response(JSON.stringify({
+              success: false,
+              error: 'Missing required parameters: employeeId and fileName or directFilePath'
+            }), {
+              status: 400,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
           }
+
+          const safeCompany = (companyName || actualEmpId).toString().trim().replace(/^\/+/g, '').replace(/\/+$/g, '');
+          filePath = `COMP_${safeCompany}/${fileName}`;
         }
-        
+
+        console.log('🔍 Generating signed URL for file path:', filePath);
 
         // Generate download authorization
         const downloadAuthData = await retryWithBackoff(async () => {
           const downloadAuthResponse = await fetch(`${authData.apiUrl}/b2api/v2/b2_get_download_authorization`, {
+            method: 'POST',
+            headers: {
+              'Authorization': authData.authorizationToken,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              bucketId,
               fileNamePrefix: filePath,
               validDurationInSeconds: 3600 // 1 hour
+            })
+          });
 
           if (!downloadAuthResponse.ok) {
             const errorText = await downloadAuthResponse.text();
@@ -560,12 +581,30 @@ serve(async (req)=>{
           return await downloadAuthResponse.json();
         });
 
-        // Construct signed URL 
-        const signedUrl = `${authData.downloadUrl}/file/cubsdocs/${encodeURI(filePath)}?Authorization=${downloadAuthData.authorizationToken}`;
+        // Construct signed URL using the actual bucket name with proper encoding
+        const encodedFilePath = encodeURIComponent(filePath).replace(/%2F/g, '/');
+        const signedUrl = `${authData.downloadUrl}/file/${bucketName}/${encodedFilePath}?Authorization=${downloadAuthData.authorizationToken}`;
 
+        console.log('✅ Generated signed URL successfully');
 
-          signedUrl
+        return new Response(JSON.stringify({
+          success: true,
+          signedUrl: signedUrl,
+          filePath: filePath
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+
+      } catch (error) {
+        console.error('❌ Error in getSignedUrl:', error);
+        return new Response(JSON.stringify({
+          success: false,
           error: error.message || 'Failed to generate signed URL'
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       }
     }
 

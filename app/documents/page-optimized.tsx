@@ -60,7 +60,7 @@ const DocumentCard = React.memo(({ item, onView, onDownload, onDelete, onSelect,
     // Image files
     if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'].includes(extension || '') ||
         mimeType?.includes('image')) {
-      return <Image className="w-8 h-8 text-green-500" />;
+      return <Image className="w-8 h-8 text-green-500" alt="Image file icon" />;
     }
     
     // Video files
@@ -579,7 +579,7 @@ function DocumentsContent() {
               console.log('🔍 Attempting to get presigned URL for document:', item.document_id);
               // Mark that we should refresh when user returns to this tab
               shouldRefreshOnFocusRef.current = true;
-              const { url, error } = await DocumentService.getDocumentPresignedUrl(item.document_id);
+              const { data: url, error } = await DocumentService.getDocumentPresignedUrl(item.document_id);
               const target = viewerRef.current;
               if (error) {
                 console.error('❌ Presigned URL error:', error);

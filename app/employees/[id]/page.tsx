@@ -12,6 +12,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import { EmployeeService, Employee } from '@/lib/services/employees';
+import { DocumentService } from '@/lib/services/documents';
 import { supabase } from '@/lib/supabase/client';
 import Image from 'next/image';
 
@@ -29,10 +30,13 @@ type EmployeeFormData = z.infer<typeof employeeSchema>;
 
 interface EmployeeDocuments {
   id: string;
-  name: string;
-  document_id: string | null;
-  created_at: string;
+  file_name: string;
+  file_path: string;
   file_url?: string;
+  document_type?: string;
+  created_at: string;
+  file_size?: number;
+  mime_type?: string;
 }
 
 export default function EmployeeDetailsPage() {
@@ -104,7 +108,7 @@ export default function EmployeeDetailsPage() {
   const fetchEmployeeDocuments = useCallback(async () => {
     try {
       const { data, error } = await supabase
-        .from('documents')
+        .from('employee_documents')
         .select('*')
         .eq('employee_id', employeeId)
         .order('created_at', { ascending: false });
@@ -157,18 +161,36 @@ export default function EmployeeDetailsPage() {
   };
 
   const handleDocumentDownload = async (document: EmployeeDocuments) => {
-    if (!document.document_id) {
+    if (!document.file_path) {
       toast.error('Document not available');
       return;
     }
 
     try {
-      // Open in new tab instead of downloading
-      window.open(`/api/documents/${document.document_id}/view`, '_blank');
+      // Get a fresh signed URL from the DocumentService
+      const { data: signedUrl, error } = await DocumentService.getDocumentPresignedUrl(document.id);
+
+      if (error || !signedUrl) {
+        console.error('Error getting signed URL:', error);
+        toast.error('Failed to open document');
+        return;
+      }
+
+      // Open document in new tab
+      window.open(signedUrl, '_blank');
     } catch (error) {
       console.error('Error opening document:', error);
       toast.error('Failed to open document');
     }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
   const formatDate = (dateString: string) => {
@@ -400,9 +422,9 @@ export default function EmployeeDetailsPage() {
                       <div className="flex items-center gap-3">
                         <FileText className="w-8 h-8 text-blue-500" />
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">{doc.name}</p>
+                          <p className="font-medium text-gray-900 dark:text-white">{doc.file_name}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {new Date(doc.created_at).toLocaleDateString()}
+                            {doc.document_type && `${doc.document_type} • `}{formatFileSize(doc.file_size)} • {new Date(doc.created_at).toLocaleDateString()}
                           </p>
                         </div>
                       </div>

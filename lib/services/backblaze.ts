@@ -77,9 +77,37 @@ export class BackblazeService {
       keyIdLength: process.env.B2_APPLICATION_KEY_ID?.length || 0,
       keyLength: process.env.B2_APPLICATION_KEY?.length || 0
     };
-    
+
     console.log('🔧 Backblaze Configuration:', config);
+
+    // Check for common issues
+    if (!process.env.B2_APPLICATION_KEY_ID || !process.env.B2_APPLICATION_KEY) {
+      console.error('❌ Missing B2 credentials!');
+    }
+    if (!process.env.B2_BUCKET_NAME) {
+      console.error('❌ Missing B2_BUCKET_NAME!');
+    }
+
     return config;
+  }
+
+  // Debug method to test file access
+  static async testFileAccess(fileKey: string): Promise<boolean> {
+    try {
+      console.log('🔍 Testing file access for:', fileKey);
+
+      const command = new HeadObjectCommand({
+        Bucket: this.bucketName,
+        Key: fileKey,
+      });
+
+      await s3Client.send(command);
+      console.log('✅ File exists and is accessible');
+      return true;
+    } catch (error) {
+      console.error('❌ File access test failed:', error);
+      return false;
+    }
   }
   
   // Try different bucket names if the default fails
