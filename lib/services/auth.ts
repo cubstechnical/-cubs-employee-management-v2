@@ -111,7 +111,7 @@ export class AuthService {
       return await this.getSession(); // Use regular session for web
     }
 
-    console.log('AuthService: Attempting to restore mobile session...');
+    log.info('AuthService: Attempting to restore mobile session...');
 
     try {
       // Check if there's a stored session in localStorage
@@ -120,8 +120,42 @@ export class AuthService {
         if (storedSession) {
           try {
             const sessionData = JSON.parse(storedSession);
+            log.info('AuthService: Found stored mobile session data', {
+              hasAccessToken: !!sessionData.access_token,
+              hasRefreshToken: !!sessionData.refresh_token,
+              expiresAt: sessionData.expires_at
+            });
+
             if (sessionData && sessionData.access_token) {
-              console.log('AuthService: Found stored mobile session, validating...');
+              // Validate token expiry
+              const now = Math.floor(Date.now() / 1000);
+              const expiresAt = sessionData.expires_at;
+
+              if (expiresAt && expiresAt < now) {
+                log.warn('AuthService: Stored mobile session is expired, attempting refresh...');
+
+                // Try to refresh the session
+                try {
+                  const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+                    refresh_token: sessionData.refresh_token
+                  });
+
+                  if (refreshError) {
+                    log.warn('AuthService: Failed to refresh expired mobile session:', refreshError.message);
+                    // Clear expired stored session
+                    localStorage.removeItem('cubs-auth-token');
+                    return { session: null, error: { message: 'Session expired and refresh failed' } };
+                  }
+
+                  log.info('AuthService: Mobile session refreshed successfully');
+                  return { session: refreshData.session, error: null };
+                } catch (refreshError) {
+                  log.warn('AuthService: Mobile session refresh error:', refreshError);
+                  return { session: null, error: { message: 'Session refresh failed' } };
+                }
+              }
+
+              log.info('AuthService: Stored mobile session is valid, setting session...');
 
               // Set the session in Supabase
               const { data, error } = await supabase.auth.setSession({
@@ -130,27 +164,30 @@ export class AuthService {
               });
 
               if (error) {
-                console.warn('AuthService: Failed to restore mobile session:', error.message);
+                log.warn('AuthService: Failed to restore mobile session:', error.message);
                 // Clear invalid stored session
                 localStorage.removeItem('cubs-auth-token');
                 return { session: null, error: { message: error.message } };
               }
 
-              console.log('AuthService: Mobile session restored successfully');
+              log.info('AuthService: Mobile session restored successfully');
               return { session: data.session, error: null };
             }
           } catch (parseError) {
-            console.warn('AuthService: Failed to parse stored mobile session:', parseError);
+            log.warn('AuthService: Failed to parse stored mobile session:', parseError);
             // Clear corrupted stored session
             localStorage.removeItem('cubs-auth-token');
           }
+        } else {
+          log.info('AuthService: No stored mobile session found');
         }
       }
 
       // If no stored session or restoration failed, try to get current session
+      log.info('AuthService: No stored session, checking for existing session...');
       return await this.getSession();
     } catch (error) {
-      console.error('AuthService: Mobile session restoration error:', error);
+      log.error('AuthService: Mobile session restoration error:', error);
       return { session: null, error: { message: 'Session restoration failed' } };
     }
   }

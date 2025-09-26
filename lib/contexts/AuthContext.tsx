@@ -26,13 +26,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         // Add longer timeout for mobile networks
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session load timeout')), 20000) // Increased to 20s for mobile
+          setTimeout(() => reject(new Error('Session load timeout')), 25000) // Increased to 25s for mobile
         );
 
         let sessionPromise;
-        if (isCapacitorApp()) {
+        const isMobile = isCapacitorApp();
+        log.info('AuthContext: Starting session load', { isMobile });
+
+        if (isMobile) {
           // Use mobile-specific session restoration for mobile apps
+          log.info('AuthContext: Using mobile session restoration');
           sessionPromise = AuthService.restoreMobileSession().then(async (sessionResult) => {
+            log.info('AuthContext: Mobile session restoration result', {
+              hasSession: !!sessionResult.session,
+              hasError: !!sessionResult.error,
+              errorMessage: sessionResult.error?.message
+            });
             if (sessionResult.session) {
               return await AuthService.getCurrentUserWithApproval();
             }
@@ -40,11 +49,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         } else {
           // Use regular session for web
+          log.info('AuthContext: Using web session restoration');
           sessionPromise = AuthService.getCurrentUserWithApproval();
         }
 
         const result = await Promise.race([sessionPromise, timeoutPromise]);
         const { user: currentUser } = result as { user: any };
+
+        log.info('AuthContext: Session load completed', {
+          hasUser: !!currentUser,
+          isMobile,
+          userEmail: currentUser?.email,
+          userRole: currentUser?.role
+        });
 
         // Only set user if we actually got one, don't clear existing user on errors
         if (currentUser) {

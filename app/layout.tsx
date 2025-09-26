@@ -14,6 +14,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
 import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
+import MobileAuthDebug from '@/components/debug/MobileAuthDebug'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -160,6 +161,8 @@ export default function RootLayout({
               </ClientOnly>
             </OptimizedLayout>
           </MobileOptimizedLayout>
+          {/* Mobile authentication debug - only show in development */}
+          {process.env.NODE_ENV === 'development' && <MobileAuthDebug />}
         </ErrorBoundary>
       </body>
     </html>
