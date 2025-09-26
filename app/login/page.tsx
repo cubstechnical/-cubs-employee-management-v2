@@ -62,17 +62,23 @@ export default function LoginPage() {
         );
 
         const authPromise = (async () => {
-          // For mobile devices, try multiple approaches
-          if (typeof window !== 'undefined' && window.Capacitor) {
+          // Enhanced mobile/iPhone detection
+          const isMobile = typeof window !== 'undefined' && window.Capacitor;
+          const isIPhone = typeof window !== 'undefined' && /iPhone/.test(navigator.userAgent || '');
+          const isIPhoneApp = isIPhone && !/Safari/.test(navigator.userAgent || '');
+          
+          // For mobile/iPhone devices, try multiple approaches
+          if (isMobile || isIPhone || isIPhoneApp) {
+            console.log('Login: Mobile/iPhone device detected', { isMobile, isIPhone, isIPhoneApp });
             try {
-              // Try session first for mobile
+              // Try session first for mobile/iPhone
               const { session } = await AuthService.getSession();
               if (session) {
                 const user = await AuthService.getCurrentUser();
                 return user;
               }
             } catch (sessionError) {
-              console.log('Mobile session check failed, trying direct user fetch:', sessionError);
+              console.log('Mobile/iPhone session check failed, trying direct user fetch:', sessionError);
             }
           }
           

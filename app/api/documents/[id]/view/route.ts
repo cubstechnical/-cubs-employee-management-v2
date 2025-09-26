@@ -83,14 +83,31 @@ export async function GET(
     } catch (edgeError) {
       log.warn('Edge function not available, falling back to direct file URL', { documentId, error: edgeError });
 
-      // Check if request is from mobile app (enhanced for iPhone 13)
+      // Enhanced mobile/iPhone detection for ALL iPhone models
       const userAgent = request.headers.get('user-agent') || '';
-      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(userAgent) || 
-                      userAgent.includes('Capacitor') ||
-                      (/iPhone|iPad|iPod/.test(userAgent) && !/Safari/.test(userAgent)) ||
-                      /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent) && /iPhone|iPad|iPod/.test(userAgent);
+      const isIPhone = /iPhone/.test(userAgent);
+      const isIPad = /iPad/.test(userAgent);
+      const isIPod = /iPod/.test(userAgent);
+      const isIOSDevice = isIPhone || isIPad || isIPod;
+      const isAndroid = /Android/.test(userAgent);
+      const isMobile = /Mobile/i.test(userAgent);
+      
+      // Check for Capacitor app
+      const isCapacitor = userAgent.includes('Capacitor');
+      
+      // Check for iOS app (not Safari browser)
+      const isIOSApp = isIOSDevice && !/Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+      
+      // Check for WKWebView (Capacitor uses this)
+      const isWKWebView = /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent) && isIOSDevice;
+      
+      // Check for iOS app indicators
+      const hasIOSAppIndicators = /Mobile\/[A-Z0-9]+/.test(userAgent) && isIOSDevice;
+      
+      // Final mobile detection
+      const isMobileApp = isIPhone || isIPad || isIPod || isAndroid || isMobile || isCapacitor || isIOSApp || isWKWebView || hasIOSAppIndicators;
 
-      if (isMobile) {
+      if (isMobileApp) {
         // For mobile apps, return the file URL as JSON for client-side handling
         return NextResponse.json({
           success: true,

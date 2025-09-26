@@ -5,7 +5,7 @@ import { AuthService, type AuthUser } from '@/lib/services/auth'
 import { MobileAuthService } from '@/lib/services/mobileAuth'
 import { supabase } from '@/lib/supabase/client'
 import { log } from '@/lib/utils/logger'
-import { isCapacitorApp } from '@/utils/mobileDetection'
+import { isCapacitorApp, isIPhoneCapacitorApp, isIPhoneDevice } from '@/utils/mobileDetection'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -31,9 +31,18 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
 
         const sessionPromise = (async () => {
           const isMobile = isCapacitorApp()
+          const isIPhone = isIPhoneDevice()
+          const isIPhoneApp = isIPhoneCapacitorApp()
           
-          if (isMobile) {
-            // For mobile, use enhanced mobile auth service
+          // Enhanced detection for all iPhone models
+          if (isMobile || isIPhone || isIPhoneApp) {
+            log.info('SimpleAuthContext: Mobile/iPhone device detected', { 
+              isMobile, 
+              isIPhone, 
+              isIPhoneApp 
+            })
+            
+            // For mobile/iPhone, use enhanced mobile auth service
             try {
               const { session, error } = await MobileAuthService.restoreMobileSession()
               if (session && !error) {
@@ -45,7 +54,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
               }
             } catch (mobileError) {
               log.warn('Mobile session restoration failed, trying direct user fetch:', mobileError)
-              // Fallback: try direct user fetch for iPhone 13
+              // Fallback: try direct user fetch for all iPhone models
               try {
                 const userData = await AuthService.getCurrentUser()
                 if (userData) {
@@ -86,18 +95,18 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
             const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
             if (currentUser) {
               setUser(currentUser)
-              // Use mobile auth service for session storage
-              if (isCapacitorApp()) {
+              // Use mobile auth service for session storage on all mobile/iPhone devices
+              if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
                 MobileAuthService.storeMobileSession(session)
               }
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null)
-            if (isCapacitorApp()) {
+            if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
               MobileAuthService.clearMobileSession()
             }
           } else if (event === 'TOKEN_REFRESHED' && session) {
-            if (isCapacitorApp()) {
+            if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
               MobileAuthService.storeMobileSession(session)
             }
           }
