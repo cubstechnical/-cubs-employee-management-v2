@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import { Employee, Document } from '@/lib/supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface DashboardMetrics {
   totalEmployees: number;
@@ -43,7 +44,7 @@ export interface CompanyStats {
 
 export class DashboardService {
   private static cache = new Map<string, { data: any; timestamp: number }>();
-  private static CACHE_DURATION = 5 * 60 * 1000; // 5 minutes - optimized for better performance
+  private static CACHE_DURATION = 2 * 60 * 1000; // 2 minutes - optimized for faster navigation
   private static pendingRequests = new Map<string, Promise<any>>(); // Prevent duplicate requests
 
   // Smart cache key generation
@@ -93,13 +94,13 @@ export class DashboardService {
   // Get comprehensive dashboard metrics
   static async getDashboardMetrics(): Promise<{ metrics: DashboardMetrics; error: string | null }> {
     try {
-      console.log('📊 Fetching dashboard metrics...');
+      log.info('📊 Fetching dashboard metrics...');
       
       const metrics = await this.getOrFetch('dashboard_metrics', async () => {
         // Add timeout to prevent hanging
         const metricsPromise = this.fetchMetricsData();
         const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Dashboard metrics timeout')), 8000)
+          setTimeout(() => reject(new Error('Dashboard metrics timeout')), 15000)
         );
         
         return Promise.race([metricsPromise, timeoutPromise]) as Promise<DashboardMetrics>;
@@ -107,7 +108,7 @@ export class DashboardService {
       
       return { metrics, error: null };
     } catch (error) {
-      console.error('❌ Error fetching dashboard metrics:', error);
+      log.error('❌ Error fetching dashboard metrics:', error);
       return { 
         metrics: {
           totalEmployees: 0,
@@ -209,14 +210,14 @@ export class DashboardService {
         totalCompanies: uniqueCompanies,
       };
 
-    console.log('✅ Dashboard metrics fetched:', metrics);
+    log.info('✅ Dashboard metrics fetched:', metrics);
     return metrics;
   }
 
   // Get visa trend data for the last 6 months
   static async getVisaTrendData(): Promise<{ data: VisaTrendData; error: string | null }> {
     try {
-      console.log('📈 Fetching visa trend data...');
+      log.info('📈 Fetching visa trend data...');
       
       const data = await this.getOrFetch('visa_trend_data', async () => {
         // Add timeout to prevent hanging
@@ -230,7 +231,7 @@ export class DashboardService {
       
       return { data, error: null };
     } catch (error) {
-      console.error('❌ Error fetching visa trend data:', error);
+      log.error('❌ Error fetching visa trend data:', error);
       return { 
         data: {
           months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
@@ -270,14 +271,14 @@ export class DashboardService {
         renewed,
       };
 
-    console.log('✅ Visa trend data fetched:', data);
+    log.info('✅ Visa trend data fetched:', data);
     return data;
   }
 
   // Get recent activities
   static async getRecentActivities(): Promise<{ activities: RecentActivity[]; error: string | null }> {
     try {
-      console.log('📋 Fetching recent activities...');
+      log.info('📋 Fetching recent activities...');
       
       const activities = await this.getOrFetch('recent_activities', async () => {
         // Get recent employees (last 5)
@@ -298,7 +299,7 @@ export class DashboardService {
           .limit(2);
 
         if (docError) {
-          console.warn('Recent documents query failed, continuing without document activities:', docError);
+          log.warn('Recent documents query failed, continuing without document activities:', docError);
           // Don't throw error, just continue without document activities
         }
 
@@ -362,13 +363,13 @@ export class DashboardService {
         activities.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         const limitedActivities = activities.slice(0, 5);
 
-        console.log('✅ Recent activities fetched:', limitedActivities);
+        log.info('✅ Recent activities fetched:', limitedActivities);
         return limitedActivities;
       });
 
       return { activities, error: null };
     } catch (error) {
-      console.error('❌ Error fetching recent activities:', error);
+      log.error('❌ Error fetching recent activities:', error);
     return {
         activities: [
           {
@@ -389,7 +390,7 @@ export class DashboardService {
   // Get company statistics
   static async getCompanyStats(): Promise<{ stats: CompanyStats[]; error: string | null }> {
     try {
-      console.log('🏢 Fetching company statistics...');
+      log.info('🏢 Fetching company statistics...');
       
       const stats = await this.getOrFetch('company_stats', async () => {
         // Get all companies with employee counts in a single optimized query
@@ -427,7 +428,7 @@ export class DashboardService {
           .select('employee_id');
 
         if (docError) {
-          console.warn('Document count query failed, continuing without document data:', docError);
+          log.warn('Document count query failed, continuing without document data:', docError);
           // Don't throw error, just continue without document counts
         }
 
@@ -446,13 +447,13 @@ export class DashboardService {
         // Sort by employee count
         stats.sort((a, b) => b.employee_count - a.employee_count);
 
-        console.log('✅ Company statistics fetched:', stats);
+        log.info('✅ Company statistics fetched:', stats);
         return stats;
       });
 
       return { stats, error: null };
     } catch (error) {
-      console.error('❌ Error fetching company statistics:', error);
+      log.error('❌ Error fetching company statistics:', error);
       return { 
         stats: [
           { company_name: 'CUBS', employee_count: 0, document_count: 0, visa_expiring_count: 0 },
@@ -466,7 +467,7 @@ export class DashboardService {
   // Calculate visa compliance score
   static async getVisaComplianceScore(): Promise<{ score: number; error: string | null }> {
     try {
-      console.log('📊 Calculating visa compliance score...');
+      log.info('📊 Calculating visa compliance score...');
       
       const score = await this.getOrFetch('visa_compliance_score', async () => {
         // Get all active employees with visa data
@@ -512,13 +513,13 @@ export class DashboardService {
         const totalVisas = visaData.length;
         const score = Math.round(((validVisas * 100) + (expiringSoon * 50) + (expired * 0)) / totalVisas);
 
-        console.log('✅ Visa compliance score calculated:', score);
+        log.info('✅ Visa compliance score calculated:', score);
         return score;
       });
 
       return { score, error: null };
     } catch (error) {
-      console.error('❌ Error calculating visa compliance score:', error);
+      log.error('❌ Error calculating visa compliance score:', error);
       return { score: 87, error: error instanceof Error ? error.message : 'Failed to calculate compliance score' };
     }
   }
@@ -532,7 +533,7 @@ export class DashboardService {
     error?: string;
   }> {
     try {
-      console.log('🚀 DashboardService: Fetching all dashboard data...');
+      log.info('🚀 DashboardService: Fetching all dashboard data...');
       
       // Use Promise.allSettled to fetch all data in parallel
       const [
@@ -577,7 +578,7 @@ export class DashboardService {
         ? complianceResult.value.score
         : 87; // Default fallback
 
-      console.log('✅ DashboardService: All data fetched successfully');
+      log.info('✅ DashboardService: All data fetched successfully');
       
       return {
         metrics,
@@ -586,7 +587,7 @@ export class DashboardService {
         complianceScore
       };
     } catch (error) {
-      console.error('❌ DashboardService: Error fetching all dashboard data:', error);
+      log.error('❌ DashboardService: Error fetching all dashboard data:', error);
       return {
         metrics: { 
           totalEmployees: 0, 
@@ -612,6 +613,6 @@ export class DashboardService {
   static clearCache(): void {
     this.cache.clear();
     this.pendingRequests.clear();
-    console.log('🗑️ Dashboard cache and pending requests cleared');
+    log.info('🗑️ Dashboard cache and pending requests cleared');
   }
 }

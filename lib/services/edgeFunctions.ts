@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface UploadDocumentData {
   file: File;
@@ -41,13 +42,13 @@ export class EdgeFunctionService {
       });
 
       if (error) {
-        console.error('Edge function upload error:', error);
+        log.error('Edge function upload error:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, fileUrl: result?.fileUrl };
     } catch (error) {
-      console.error('Upload error:', error);
+      log.error('Upload error:', error);
       return { success: false, error: 'Failed to upload document' };
     }
   }
@@ -65,13 +66,13 @@ export class EdgeFunctionService {
       });
 
       if (error) {
-        console.error('Edge function download error:', error);
+        log.error('Edge function download error:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, downloadUrl: result?.downloadUrl };
     } catch (error) {
-      console.error('Download error:', error);
+      log.error('Download error:', error);
       return { success: false, error: 'Failed to download document' };
     }
   }
@@ -89,13 +90,13 @@ export class EdgeFunctionService {
       });
 
       if (error) {
-        console.error('Edge function delete error:', error);
+        log.error('Edge function delete error:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true };
     } catch (error) {
-      console.error('Delete error:', error);
+      log.error('Delete error:', error);
       return { success: false, error: 'Failed to delete document' };
     }
   }
@@ -111,13 +112,13 @@ export class EdgeFunctionService {
       });
 
       if (error) {
-        console.error('Edge function visa check error:', error);
+        log.error('Edge function visa check error:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, notifications: result?.notifications };
     } catch (error) {
-      console.error('Visa check error:', error);
+      log.error('Visa check error:', error);
       return { success: false, error: 'Failed to check visa notifications' };
     }
   }
@@ -134,13 +135,13 @@ export class EdgeFunctionService {
       });
 
       if (error) {
-        console.error('Edge function preview error:', error);
+        log.error('Edge function preview error:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, previewUrl: result?.previewUrl };
     } catch (error) {
-      console.error('Preview error:', error);
+      log.error('Preview error:', error);
       return { success: false, error: 'Failed to get document preview' };
     }
   }

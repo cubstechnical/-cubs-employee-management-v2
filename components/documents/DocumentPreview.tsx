@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { X, Download, ExternalLink, FileText, FileImage, FileVideo, FileAudio, Archive } from 'lucide-react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface DocumentPreviewProps {
   document: {
@@ -54,7 +55,7 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
         throw new Error('No preview URL received');
       }
     } catch (error) {
-      console.error('Error generating preview URL:', error);
+      log.error('Error generating preview URL:', error);
       setError('Failed to load document preview');
     } finally {
       setLoading(false);

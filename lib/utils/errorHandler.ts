@@ -1,3 +1,4 @@
+import { log } from '@/lib/utils/productionLogger';
 // Enhanced error handling for production iOS app
 export class ErrorHandler {
   private static instance: ErrorHandler;
@@ -31,10 +32,10 @@ export class ErrorHandler {
 
     // Console logging for development
     if (process.env.NODE_ENV === 'development') {
-      console.group(`🚨 Error (${severity.toUpperCase()}): ${context}`);
-      console.error(error);
-      console.log('Error Info:', errorInfo);
-      console.groupEnd();
+      log.group(`🚨 Error (${severity.toUpperCase()}): ${context}`);
+      log.error(error);
+      log.info('Error Info:', errorInfo);
+      log.groupEnd();
     }
 
     // Send to monitoring service if available
@@ -49,7 +50,7 @@ export class ErrorHandler {
       // Show user-friendly message
       if (typeof window !== 'undefined') {
         // Could dispatch to a toast notification system
-        console.warn('Network error occurred, showing offline indicator');
+        log.warn('Network error occurred, showing offline indicator');
       }
     } else {
       this.logError(error, context);
@@ -97,7 +98,7 @@ export class ErrorHandler {
 
         localStorage.setItem('cubs_error_logs', JSON.stringify(existingLogs));
       } catch (storageError) {
-        console.warn('Failed to store error logs:', storageError);
+        log.warn('Failed to store error logs:', storageError);
       }
     }
   }

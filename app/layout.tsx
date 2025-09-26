@@ -5,10 +5,14 @@ import '../styles/mobile-optimizations.css'
 import '../styles/mobile-pwa.css'
 import '../styles/login-background-image.css'
 import OptimizedLayout from '@/components/layout/OptimizedLayout'
-import MobileOptimizedLayout from '@/components/layout/MobileOptimizedLayout'
 import PWARegistration from '@/components/pwa/PWARegistration'
 import CapacitorInit from '@/components/capacitor/CapacitorInit'
-import { PerformanceMonitor } from '@/components/ui/PerformanceMonitor'
+import dynamic from 'next/dynamic'
+
+// Dynamically import PerformanceMonitor to prevent chunk loading issues
+const PerformanceMonitor = dynamic(() => import('@/components/ui/PerformanceMonitor').then(mod => ({ default: mod.PerformanceMonitor })), {
+  loading: () => null
+})
 import { ClientOnly } from '@/components/common/ClientOnly'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
@@ -17,6 +21,9 @@ import { Suspense } from 'react'
 import MobileAuthDebug from '@/components/debug/MobileAuthDebug'
 import MobileLoadingScreen from '@/components/ui/MobileLoadingScreen'
 import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
+import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
+import { QueryProvider } from '@/components/providers/QueryProvider'
+import { ThemeProvider } from '@/lib/theme'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -135,33 +142,45 @@ export default function RootLayout({
           initializeEnvironment();
           return null;
         })()}
-        {/* Only load performance monitor in development */}
-        {process.env.NODE_ENV === 'development' && <PerformanceMonitor />}
+        {/* Only load performance monitor in development - with error handling */}
+        {process.env.NODE_ENV === 'development' && (
+          <ErrorBoundary fallback={<div />}>
+            <Suspense fallback={<div />}>
+              <PerformanceMonitor />
+            </Suspense>
+          </ErrorBoundary>
+        )}
         <PWARegistration />
         <CapacitorInit />
         <ErrorBoundary>
-          <MobileOptimizedLayout>
-            <ClientOnly fallback={
-              <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                  <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-                </div>
-              </div>
-            }>
-              {/* Optimized Suspense boundary for lazy loading */}
-              <Suspense fallback={
-                <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                  <div className="text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                    <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
+          <ThemeProvider>
+            <SimpleAuthProvider>
+              <QueryProvider>
+                <OptimizedLayout>
+                <ClientOnly fallback={
+                  <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+                      <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+                    </div>
                   </div>
-                </div>
-              }>
-                {children}
-              </Suspense>
-            </ClientOnly>
-          </MobileOptimizedLayout>
+                }>
+                  {/* Optimized Suspense boundary for lazy loading */}
+                  <Suspense fallback={
+                    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+                        <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
+                      </div>
+                    </div>
+                  }>
+                    {children}
+                  </Suspense>
+                </ClientOnly>
+              </OptimizedLayout>
+              </QueryProvider>
+            </SimpleAuthProvider>
+          </ThemeProvider>
           {/* Mobile authentication debug - temporarily disabled for production builds */}
           {false && <MobileAuthDebug />}
           {/* Mobile loading screen for Capacitor apps - only show during actual loading */}

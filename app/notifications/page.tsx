@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 // Note: Email services are called via API routes, not imported directly
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 interface Notification {
   id: string;
@@ -93,7 +94,7 @@ export default function NotificationsPage() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, using fallback data:', apiError);
+        log.warn('API not available, using fallback data:', apiError);
       }
 
       // Fallback: Create mock notifications for demo purposes
@@ -147,7 +148,7 @@ export default function NotificationsPage() {
 
       setStats(newStats);
     } catch (error) {
-      console.error('Error loading notifications:', error);
+      log.error('Error loading notifications:', error);
       // Show empty state on error
       setNotifications([]);
       setStats({
@@ -175,7 +176,7 @@ export default function NotificationsPage() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, using fallback visa stats:', apiError);
+        log.warn('API not available, using fallback visa stats:', apiError);
       }
 
       // Fallback: Generate mock visa stats
@@ -187,7 +188,7 @@ export default function NotificationsPage() {
       };
       setVisaStats(mockVisaStats);
     } catch (error) {
-      console.error('Error loading visa stats:', error);
+      log.error('Error loading visa stats:', error);
       // Set default values on error
       setVisaStats({
         totalEmployees: 0,
@@ -219,14 +220,14 @@ export default function NotificationsPage() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, simulating test email:', apiError);
+        log.warn('API not available, simulating test email:', apiError);
       }
 
       // Fallback: Simulate successful email send
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
       toast.success('Test email sent successfully to info@cubstechnical.com (Demo Mode)');
     } catch (error) {
-      console.error('Error sending test email:', error);
+      log.error('Error sending test email:', error);
       toast.error('Failed to send test email');
     } finally {
       setIsSendingTest(false);
@@ -252,7 +253,7 @@ export default function NotificationsPage() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, simulating visa check:', apiError);
+        log.warn('API not available, simulating visa check:', apiError);
       }
 
       // Fallback: Simulate visa check
@@ -260,7 +261,7 @@ export default function NotificationsPage() {
       toast.success('Visa expiry check completed (Demo Mode)');
       loadVisaStats(); // Refresh stats
     } catch (error) {
-      console.error('Error checking visa expiries:', error);
+      log.error('Error checking visa expiries:', error);
       toast.error('Failed to check visa expiries');
     } finally {
       setIsCheckingVisa(false);

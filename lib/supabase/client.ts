@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { log } from '@/lib/utils/logger';
+import { log } from '@/lib/utils/productionLogger';
 
 // Use the correct Supabase URL from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -77,11 +77,11 @@ let authPromise: Promise<any> | null = null; // Prevent multiple simultaneous ca
 export const getAuthState = async () => {
   const now = Date.now();
   
-  console.log('🔍 Supabase: getAuthState called, isSupabaseAvailable:', isSupabaseAvailable);
+  log.info('🔍 Supabase: getAuthState called, isSupabaseAvailable:', isSupabaseAvailable);
 
   // If Supabase is not available, return empty state immediately
   if (!isSupabaseAvailable) {
-    console.log('⚠️ Supabase: Not available, returning empty state');
+    log.info('⚠️ Supabase: Not available, returning empty state');
     return { user: null, session: null, timestamp: now };
   }
 
@@ -101,10 +101,10 @@ export const getAuthState = async () => {
   }
 
   try {
-    console.log('🔍 Supabase: Creating new auth promise...');
+    log.info('🔍 Supabase: Creating new auth promise...');
     // Create new auth promise
     authPromise = (async () => {
-      console.log('🔍 Supabase: Calling supabase.auth.getSession()...');
+      log.info('🔍 Supabase: Calling supabase.auth.getSession()...');
       // PERFORMANCE: Reduced timeout from 5s to 2s for faster initial load
       const sessionPromise = supabase.auth.getSession();
       const timeoutPromise = new Promise((_, reject) =>
@@ -113,22 +113,22 @@ export const getAuthState = async () => {
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
       
-      console.log('🔍 Supabase: Session result:', { 
+      log.info('🔍 Supabase: Session result:', { 
         hasSession: !!session, 
         hasError: !!error,
         errorMessage: error?.message 
       });
 
       if (error) {
-        console.error('❌ Supabase: Auth state error:', error);
+        log.error('❌ Supabase: Auth state error:', error);
         
         // Handle refresh token errors specifically
         if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
-          console.warn('🔄 Supabase: Refresh token error detected, clearing session');
+          log.warn('🔄 Supabase: Refresh token error detected, clearing session');
           try {
             await supabase.auth.signOut();
           } catch (signOutError) {
-            console.error('Error during sign out:', signOutError);
+            log.error('Error during sign out:', signOutError);
           }
         }
         
@@ -142,16 +142,16 @@ export const getAuthState = async () => {
         timestamp: now
       };
 
-      console.log('✅ Supabase: Auth state cached successfully');
+      log.info('✅ Supabase: Auth state cached successfully');
       return authStateCache;
     })();
 
     const result = await authPromise;
     authPromise = null; // Clear the promise after completion
-    console.log('✅ Supabase: Auth promise completed');
+    log.info('✅ Supabase: Auth promise completed');
     return result;
   } catch (error) {
-    console.error('❌ Supabase: Auth state timeout or error:', error);
+    log.error('❌ Supabase: Auth state timeout or error:', error);
     authPromise = null; // Clear the promise on error
     // PERFORMANCE: Return empty state on timeout to prevent blocking
     return { user: null, session: null, timestamp: now };
@@ -166,12 +166,12 @@ export const clearAuthCache = () => {
 
 // Clear auth state and sign out when refresh token errors occur
 export const handleRefreshTokenError = async () => {
-  console.warn('🔄 Clearing auth state due to refresh token error');
+  log.warn('🔄 Clearing auth state due to refresh token error');
   clearAuthCache();
   try {
     await supabase.auth.signOut();
   } catch (error) {
-    console.error('Error during sign out:', error);
+    log.error('Error during sign out:', error);
   }
 };
 

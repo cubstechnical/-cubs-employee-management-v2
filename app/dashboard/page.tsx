@@ -12,6 +12,7 @@ const VisaComplianceScore = lazy(() => import('@/components/dashboard/VisaCompli
 const RecentEmployeeActivities = lazy(() => import('@/components/dashboard/RecentEmployeeActivities'));
 import { DashboardService, DashboardMetrics, VisaTrendData, RecentActivity } from '@/lib/services/dashboard';
 import UnifiedErrorBoundary from '@/components/ui/UnifiedErrorBoundary';
+import { log } from '@/lib/utils/productionLogger';
 // Temporarily disabled performance monitoring to fix infinite loops
 // import { PerformanceMonitor } from '@/components/performance/PerformanceMonitor';
 // import { CoreWebVitals } from '@/components/performance/CoreWebVitals';
@@ -48,7 +49,7 @@ export default function Dashboard() {
         setLoading(true);
         setError(null);
 
-        console.log('🚀 Fetching dashboard data...');
+        log.info('🚀 Fetching dashboard data...');
 
         // Load all data in a single optimized call
         const result = await DashboardService.getAllDashboardData();
@@ -59,13 +60,13 @@ export default function Dashboard() {
             recentActivities: result.recentActivities,
             complianceScore: result.complianceScore
           });
-          console.log('✅ All dashboard data loaded successfully');
+          log.info('✅ All dashboard data loaded successfully');
         } else {
           setError('Failed to load dashboard data. Please try again.');
         }
 
       } catch (error) {
-        console.error('❌ Error fetching dashboard data:', error);
+        log.error('❌ Error fetching dashboard data:', error);
         setError('Failed to load dashboard data. Please try again.');
       } finally {
         setLoading(false);
@@ -84,13 +85,13 @@ export default function Dashboard() {
       // Clear cache to force fresh data
       DashboardService.clearCache();
       
-      console.log('🔄 Refreshing dashboard data...');
+      log.info('🔄 Refreshing dashboard data...');
 
       // Use optimized single call to get all dashboard data
       const result = await DashboardService.getAllDashboardData();
 
       if (result.error) {
-        console.error('❌ Failed to refresh dashboard data:', result.error);
+        log.error('❌ Failed to refresh dashboard data:', result.error);
         setError(result.error);
       } else {
         // Update all data at once
@@ -101,11 +102,11 @@ export default function Dashboard() {
           complianceScore: result.complianceScore
         });
         setLastUpdated(new Date());
-        console.log('✅ Dashboard refresh completed');
+        log.info('✅ Dashboard refresh completed');
       }
 
     } catch (error) {
-      console.error('❌ Error refreshing dashboard data:', error);
+      log.error('❌ Error refreshing dashboard data:', error);
       setError('Failed to refresh dashboard data. Please try again.');
     } finally {
       setLoading(false);

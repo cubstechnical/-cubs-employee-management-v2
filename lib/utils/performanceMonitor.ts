@@ -1,3 +1,4 @@
+import { log } from '@/lib/utils/productionLogger';
 // Performance monitoring and optimization utilities
 export class PerformanceMonitor {
   private static instance: PerformanceMonitor;
@@ -67,7 +68,7 @@ export class PerformanceMonitor {
         }
       }
     } catch (error) {
-      console.warn('Performance monitoring initialization failed:', error);
+      log.warn('Performance monitoring initialization failed:', error);
     }
   }
 
@@ -87,7 +88,7 @@ export class PerformanceMonitor {
 
     // Log in development
     if (process.env.NODE_ENV === 'development') {
-      console.log(`📊 Performance: ${category} - ${metric.name}: ${metric.value.toFixed(2)}ms`);
+      log.info(`📊 Performance: ${category} - ${metric.name}: ${metric.value.toFixed(2)}ms`);
     }
   }
 
@@ -192,7 +193,7 @@ export class PerformanceMonitor {
       try {
         observer.disconnect();
       } catch (error) {
-        console.warn('Failed to disconnect performance observer:', error);
+        log.warn('Failed to disconnect performance observer:', error);
       }
     });
     this.observers = [];
@@ -236,7 +237,7 @@ export function measureExecutionTime<T>(fn: () => T, label: string = 'Execution'
   const result = fn();
   const end = performance.now();
 
-  console.log(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
+  log.info(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
 
   if (typeof window !== 'undefined') {
     PerformanceMonitor.getInstance().recordMetric('custom', {
@@ -258,7 +259,7 @@ export function measureAsyncExecutionTime<T>(
   return promise
     .then(result => {
       const end = performance.now();
-      console.log(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
+      log.info(`⏱️ ${label}: ${(end - start).toFixed(2)}ms`);
 
       if (typeof window !== 'undefined') {
         PerformanceMonitor.getInstance().recordMetric('custom', {
@@ -272,7 +273,7 @@ export function measureAsyncExecutionTime<T>(
     })
     .catch(error => {
       const end = performance.now();
-      console.error(`❌ ${label}: ${(end - start).toFixed(2)}ms (failed)`);
+      log.error(`❌ ${label}: ${(end - start).toFixed(2)}ms (failed)`);
 
       if (typeof window !== 'undefined') {
         PerformanceMonitor.getInstance().recordMetric('custom', {

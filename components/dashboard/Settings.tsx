@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { AuthService } from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -85,7 +86,7 @@ export default function Settings() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, using default settings:', apiError);
+        log.warn('API not available, using default settings:', apiError);
       }
 
       // Fallback: Use default settings with user data
@@ -95,7 +96,7 @@ export default function Settings() {
         email: user.email || ''
       }));
     } catch (error) {
-      console.error('Error loading settings:', error);
+      log.error('Error loading settings:', error);
       toast.error('Failed to load settings');
     } finally {
       setIsLoading(false);
@@ -148,7 +149,7 @@ export default function Settings() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, simulating save:', apiError);
+        log.warn('API not available, simulating save:', apiError);
       }
 
       // Fallback: Simulate successful save
@@ -163,7 +164,7 @@ export default function Settings() {
         confirmPassword: ''
       }));
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error('Error saving settings:', error);
       toast.error('Failed to save settings');
     } finally {
       setIsSaving(false);
@@ -234,7 +235,7 @@ export default function Settings() {
           return;
         }
       } catch (apiError) {
-        console.warn('API not available, simulating account deletion:', apiError);
+        log.warn('API not available, simulating account deletion:', apiError);
       }
 
       // Fallback: Simulate account deletion
@@ -243,7 +244,7 @@ export default function Settings() {
       await signOut();
       window.location.href = '/login';
     } catch (error) {
-      console.error('Error deleting account:', error);
+      log.error('Error deleting account:', error);
       toast.error('Failed to delete account. Please try again.');
     } finally {
       setIsDeleting(false);

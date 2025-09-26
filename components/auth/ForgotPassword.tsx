@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import { Mail, ArrowLeft, CheckCircle } from 'lucide-react';
 import AuthService from '@/lib/services/auth';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function ForgotPassword() {
       setIsSubmitted(true);
       toast.success('Password reset email sent! Check your inbox.');
     } catch (error) {
-      console.error('Forgot password error:', error);
+      log.error('Forgot password error:', error);
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);

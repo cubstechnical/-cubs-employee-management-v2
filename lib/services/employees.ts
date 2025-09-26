@@ -1,4 +1,5 @@
 import { supabase } from '../supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 // Define Employee interface locally since it's not exported from supabase client
 // This interface includes the most commonly used fields across the application
@@ -80,7 +81,7 @@ export interface PaginationParams {
 }
 
 export interface PaginatedEmployeesResponse {
-  employees: Employee[];
+  data: Employee[];
   total: number;
   page: number;
   pageSize: number;
@@ -171,9 +172,9 @@ export class EmployeeService {
     this.performanceMetrics.get(operation)!.push(duration);
     
     if (duration > 1000) {
-      console.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`);
+      log.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`);
     } else if (duration > 500) {
-      console.log(`⚠️ Moderate operation: ${operation} took ${duration.toFixed(2)}ms`);
+      log.info(`⚠️ Moderate operation: ${operation} took ${duration.toFixed(2)}ms`);
     }
   }
 
@@ -185,7 +186,7 @@ export class EmployeeService {
     this.dashboardStatsCache.clear();
     this.employeesInflight.clear();
     this.employeeInflight.clear();
-    console.log('🧹 All employee service caches cleared');
+    log.info('🧹 All employee service caches cleared');
   }
 
   // Helper function to calculate visa status based on expiry dates
@@ -260,7 +261,7 @@ export class EmployeeService {
 
   // Generate unique employee ID based on company and existing IDs for that company
   static async generateEmployeeId(companyName: string, employeeName: string): Promise<string> {
-    console.log('🔄 Generating employee ID for:', { companyName, employeeName });
+    log.info('🔄 Generating employee ID for:', { companyName, employeeName });
     try {
       // Get existing employees for this company
       const { data: existingEmployees, error } = await supabase
@@ -269,7 +270,7 @@ export class EmployeeService {
         .eq('company_name', companyName);
 
       if (error) {
-        console.error('Error getting existing employees:', error);
+        log.error('Error getting existing employees:', error);
         // Fallback to static prefix map if query fails
         const fallbackPrefix = this.generateCompanyPrefix(companyName);
         return `${fallbackPrefix}${Date.now().toString().slice(-4)}`;
@@ -327,7 +328,7 @@ export class EmployeeService {
         const padLen = chosen?.padLen ?? 3;
         const paddedNumber = nextNumber.toString().padStart(padLen, '0');
         const generatedId = `${dynamicPrefix}${paddedNumber}`;
-        console.log('✅ Generated employee ID (with existing employees):', generatedId, { dynamicPrefix, nextNumber, padLen, expectedPrefix });
+        log.info('✅ Generated employee ID (with existing employees):', generatedId, { dynamicPrefix, nextNumber, padLen, expectedPrefix });
         return generatedId;
       }
 
@@ -335,10 +336,10 @@ export class EmployeeService {
       const companyPrefix = this.generateCompanyPrefix(companyName);
       const defaultPad = companyPrefix === 'ALHT' ? 4 : 3; // known 4-digit series for AL HANA
       const generatedId = `${companyPrefix}${(1).toString().padStart(defaultPad, '0')}`;
-      console.log('✅ Generated new employee ID (no existing employees):', generatedId);
+      log.info('✅ Generated new employee ID (no existing employees):', generatedId);
       return generatedId;
     } catch (error) {
-      console.error('Error generating employee ID:', error);
+      log.error('Error generating employee ID:', error);
       const fallbackPrefix = this.generateCompanyPrefix(companyName);
       return `${fallbackPrefix}${Date.now().toString().slice(-4)}`;
     }
@@ -353,7 +354,7 @@ export class EmployeeService {
         .eq('company_name', 'AL ASHBAL AJMAN');
 
       if (error) {
-        console.error('Error getting AL ASHBAL employees:', error);
+        log.error('Error getting AL ASHBAL employees:', error);
         return `AL ASHBAL ${Date.now().toString().slice(-3)}`;
       }
 
@@ -378,7 +379,7 @@ export class EmployeeService {
       
       return `AL ASHBAL ${paddedNumber}`;
     } catch (error) {
-      console.error('Error generating AL ASHBAL employee ID:', error);
+      log.error('Error generating AL ASHBAL employee ID:', error);
       return `AL ASHBAL ${Date.now().toString().slice(-3)}`;
     }
   }
@@ -492,7 +493,7 @@ export class EmployeeService {
         .single();
 
       if (error) {
-        console.error('Error creating employee:', error);
+        log.error('Error creating employee:', error);
         return { success: false, error: error.message };
       }
 
@@ -501,7 +502,7 @@ export class EmployeeService {
 
       return { success: true, employee: enhancedEmployee as Employee };
     } catch (error) {
-      console.error('Error creating employee:', error);
+      log.error('Error creating employee:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to create employee' };
     }
   }
@@ -568,31 +569,31 @@ export class EmployeeService {
 
         // Apply company filter
         if (filters?.company_name && filters.company_name.trim()) {
-          console.log(`🏢 Applying company filter: "${filters.company_name}"`);
+          log.info(`🏢 Applying company filter: "${filters.company_name}"`);
           query = query.eq('company_name', filters.company_name);
         }
 
         // Apply trade filter
         if (filters?.trade && filters.trade.trim()) {
-          console.log(`🔧 Applying trade filter: "${filters.trade}"`);
+          log.info(`🔧 Applying trade filter: "${filters.trade}"`);
           query = query.eq('trade', filters.trade);
         }
 
         // Apply nationality filter
         if (filters?.nationality && filters.nationality.trim()) {
-          console.log(`🌍 Applying nationality filter: "${filters.nationality}"`);
+          log.info(`🌍 Applying nationality filter: "${filters.nationality}"`);
           query = query.eq('nationality', filters.nationality);
         }
 
         // Apply status filter
         if (filters?.status && filters.status.trim()) {
-          console.log(`📊 Applying status filter: "${filters.status}"`);
+          log.info(`📊 Applying status filter: "${filters.status}"`);
           query = query.eq('status', filters.status);
         }
 
         // Apply visa status filter
         if (filters?.visa_status && filters.visa_status.trim()) {
-          console.log(`🛂 Applying visa status filter: "${filters.visa_status}"`);
+          log.info(`🛂 Applying visa status filter: "${filters.visa_status}"`);
           // For visa status, we need to check the calculated field
           // This will be handled after fetching the data
         }
@@ -600,7 +601,7 @@ export class EmployeeService {
         // Apply pagination
         query = query.range(from, to);
 
-        console.log(`🔍 Fetching employees: page ${page}, size ${pageSize}, range ${from}-${to}`);
+        log.info(`🔍 Fetching employees: page ${page}, size ${pageSize}, range ${from}-${to}`);
 
         // Execute the query with timeout
         const { data: rawEmployees, error } = await Promise.race([
@@ -609,18 +610,18 @@ export class EmployeeService {
         ]) as any;
 
         if (error) {
-          console.error('❌ Employee query error:', error);
+          log.error('❌ Employee query error:', error);
           throw new Error(error.message);
         }
 
-        console.log(`✅ Found ${rawEmployees?.length || 0} employees`);
+        log.info(`✅ Found ${rawEmployees?.length || 0} employees`);
 
         // Enhance employees with calculated status fields
         let employees = this.enhanceEmployeeData(rawEmployees || []);
 
         // Apply visa status filter after enhancing data (since it's calculated)
         if (filters?.visa_status && filters.visa_status.trim()) {
-          console.log(`🛂 Applying visa status filter: "${filters.visa_status}"`);
+          log.info(`🛂 Applying visa status filter: "${filters.visa_status}"`);
           employees = employees.filter(emp => emp.visa_status === filters.visa_status);
         }
 
@@ -649,12 +650,12 @@ export class EmployeeService {
 
         const { count } = await countQuery;
         
-        console.log(`📊 Total employees matching filters: ${count || 0}`);
+        log.info(`📊 Total employees matching filters: ${count || 0}`);
         const total = count || 0;
         const totalPages = Math.ceil(total / pageSize);
 
         const response: PaginatedEmployeesResponse = {
-          employees: (employees || []) as unknown as Employee[],
+          data: (employees || []) as unknown as Employee[],
           total,
           page: page,
           pageSize: pageSize,
@@ -675,13 +676,13 @@ export class EmployeeService {
       this.employeesInflight.set(cacheKey, promise);
       return promise;
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      log.error('Error fetching employees:', error);
       
       // If it's a timeout error, provide more specific message
       if (error instanceof Error && error.message.includes('timeout')) {
-        console.log('⚠️ Employee query timed out, database might be slow');
+        log.info('⚠️ Employee query timed out, database might be slow');
               return {
-        employees: [],
+        data: [],
         total: 0,
         page: page || 1,
         pageSize: pageSize || 20,
@@ -691,7 +692,7 @@ export class EmployeeService {
       }
       
       return {
-        employees: [],
+        data: [],
         total: 0,
         page: pagination.page,
         pageSize: pagination.pageSize,
@@ -723,7 +724,7 @@ export class EmployeeService {
 
         // If not found and employeeId looks like a UUID, try searching by id field
         if (error && (employeeId.includes('-') && employeeId.length > 20)) {
-          console.log('🔄 Employee not found by employee_id, trying UUID search...');
+          log.info('🔄 Employee not found by employee_id, trying UUID search...');
           const uuidResult = await supabase
             .from('employee_table')
             .select('*')
@@ -756,7 +757,7 @@ export class EmployeeService {
       this.employeeInflight.set(employeeId, promise);
       return promise;
     } catch (error) {
-      console.error('Error fetching employee:', error);
+      log.error('Error fetching employee:', error);
       return { employee: null, error: 'Failed to fetch employee' };
     }
   }
@@ -764,7 +765,7 @@ export class EmployeeService {
   // Get employee by ID using the optimized view
   static async getEmployeeByIdOptimized(employeeId: string): Promise<{ employee: EmployeeWithDocuments | null; error: string | null }> {
     try {
-      console.log(`🔍 Fetching employee with optimized query: ${employeeId}`);
+      log.info(`🔍 Fetching employee with optimized query: ${employeeId}`);
       
       // First try to get employee from employee_table by employee_id
       let { data: employeeData, error: empError } = await supabase
@@ -775,7 +776,7 @@ export class EmployeeService {
 
       // If not found and employeeId looks like a UUID, try searching by id field
       if (empError && (employeeId.includes('-') && employeeId.length > 20)) {
-        console.log('🔄 Employee not found by employee_id in optimized query, trying UUID search...');
+        log.info('🔄 Employee not found by employee_id in optimized query, trying UUID search...');
         const uuidResult = await supabase
           .from('employee_table')
           .select('*')
@@ -787,12 +788,12 @@ export class EmployeeService {
       }
 
       if (empError) {
-        console.error('❌ Error fetching employee:', empError);
+        log.error('❌ Error fetching employee:', empError);
         return { employee: null, error: empError.message };
       }
 
       if (!employeeData) {
-        console.log('❌ Employee not found');
+        log.info('❌ Employee not found');
         return { employee: null, error: 'Employee not found' };
       }
 
@@ -803,7 +804,7 @@ export class EmployeeService {
         .eq('employee_id', employeeId);
 
       if (docError) {
-        console.error('❌ Error fetching document count:', docError);
+        log.error('❌ Error fetching document count:', docError);
       }
 
       const employee = {
@@ -811,11 +812,11 @@ export class EmployeeService {
         document_count: documentCount || 0
       } as unknown as EmployeeWithDocuments;
 
-      console.log(`✅ Found employee: ${employee.name} with ${employee.document_count || 0} documents`);
+      log.info(`✅ Found employee: ${employee.name} with ${employee.document_count || 0} documents`);
       
       return { employee, error: null };
     } catch (error) {
-      console.error('❌ Exception in getEmployeeByIdOptimized:', error);
+      log.error('❌ Exception in getEmployeeByIdOptimized:', error);
       return { employee: null, error: 'Failed to fetch employee' };
     }
   }
@@ -841,14 +842,14 @@ export class EmployeeService {
 
       return employee as unknown as Employee;
     } catch (error) {
-      console.error('Error updating employee:', error);
+      log.error('Error updating employee:', error);
       return null;
     }
   }
 
   static async deleteEmployee(employeeId: string): Promise<{ success: boolean; error?: string; deletedDocuments?: number }> {
     try {
-      console.log(`🗑️ Starting deletion of employee: ${employeeId}`);
+      log.info(`🗑️ Starting deletion of employee: ${employeeId}`);
       
       // Step 1: Find all documents for this employee
       const { data: documents, error: docError } = await supabase
@@ -857,7 +858,7 @@ export class EmployeeService {
         .eq('employee_id', employeeId);
 
       if (docError) {
-        console.error('Error fetching employee documents:', docError);
+        log.error('Error fetching employee documents:', docError);
         return { success: false, error: docError.message };
       }
 
@@ -865,7 +866,7 @@ export class EmployeeService {
 
       // Step 2: Delete documents from Backblaze (if any)
       if (documents && documents.length > 0) {
-        console.log(`🗂️ Deleting ${documents.length} documents for employee ${employeeId}`);
+        log.info(`🗂️ Deleting ${documents.length} documents for employee ${employeeId}`);
         
         // Import BackblazeService dynamically
         const { BackblazeService } = await import('./backblaze');
@@ -875,15 +876,15 @@ export class EmployeeService {
             if (doc.file_path && typeof doc.file_path === 'string' && doc.file_path.trim() !== '') {
               const deleteResult = await BackblazeService.deleteFile(doc.file_path);
               if (deleteResult.success) {
-                console.log(`✅ Deleted from Backblaze: ${doc.file_name}`);
+                log.info(`✅ Deleted from Backblaze: ${doc.file_name}`);
               } else {
-                console.log(`⚠️ Failed to delete from Backblaze: ${doc.file_name} - ${deleteResult.error || 'Unknown error'}`);
+                log.info(`⚠️ Failed to delete from Backblaze: ${doc.file_name} - ${deleteResult.error || 'Unknown error'}`);
               }
             } else {
-              console.log(`⚠️ Skipping document with invalid file_path: ${doc.file_name}`);
+              log.info(`⚠️ Skipping document with invalid file_path: ${doc.file_name}`);
             }
           } catch (error) {
-            console.log(`⚠️ Error deleting from Backblaze: ${doc.file_name} - ${error instanceof Error ? error.message : 'Unknown error'}`);
+            log.info(`⚠️ Error deleting from Backblaze: ${doc.file_name} - ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
 
@@ -894,12 +895,12 @@ export class EmployeeService {
           .eq('employee_id', employeeId);
 
         if (deleteDocsError) {
-          console.error('Error deleting documents from database:', deleteDocsError);
+          log.error('Error deleting documents from database:', deleteDocsError);
           return { success: false, error: deleteDocsError.message };
         }
 
         deletedDocuments = documents.length;
-        console.log(`✅ Successfully deleted ${deletedDocuments} documents from database`);
+        log.info(`✅ Successfully deleted ${deletedDocuments} documents from database`);
       }
 
       // Step 4: Delete employee from database
@@ -909,14 +910,14 @@ export class EmployeeService {
         .eq('employee_id', employeeId);
 
       if (error) {
-        console.error('Error deleting employee from database:', error);
+        log.error('Error deleting employee from database:', error);
         return { success: false, error: error.message };
       }
 
-      console.log(`✅ Successfully deleted employee: ${employeeId}`);
+      log.info(`✅ Successfully deleted employee: ${employeeId}`);
       return { success: true, deletedDocuments };
     } catch (error) {
-      console.error('Error deleting employee:', error);
+      log.error('Error deleting employee:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Failed to delete employee' };
     }
   }
@@ -939,7 +940,7 @@ export class EmployeeService {
           new Promise((_, reject) => setTimeout(() => reject(new Error('Companies query timeout')), 10000))
         ]) as any;
       } catch (error) {
-        console.log('⚠️ Companies query failed, using fallback');
+        log.info('⚠️ Companies query failed, using fallback');
         companiesResult = { data: [] };
       }
 
@@ -949,7 +950,7 @@ export class EmployeeService {
           new Promise((_, reject) => setTimeout(() => reject(new Error('Trades query timeout')), 5000))
         ]) as any;
       } catch (error) {
-        console.log('⚠️ Trades query failed, using fallback');
+        log.info('⚠️ Trades query failed, using fallback');
         tradesResult = { data: [] };
       }
 
@@ -959,7 +960,7 @@ export class EmployeeService {
           new Promise((_, reject) => setTimeout(() => reject(new Error('Nationalities query timeout')), 5000))
         ]) as any;
       } catch (error) {
-        console.log('⚠️ Nationalities query failed, using fallback');
+        log.info('⚠️ Nationalities query failed, using fallback');
         nationalitiesResult = { data: [] };
       }
 
@@ -982,7 +983,7 @@ export class EmployeeService {
 
       // Get all companies and clean them up
       const allCompanies = Array.from(companies).sort();
-      console.log('🏢 All companies found in database:', allCompanies);
+      log.info('🏢 All companies found in database:', allCompanies);
       
       // Filter out only unwanted companies, keep all active companies
       const cleanCompanies = allCompanies.filter(company => {
@@ -1000,7 +1001,7 @@ export class EmployeeService {
         return true;
       });
       
-      console.log('🏢 Clean companies after filtering:', cleanCompanies);
+      log.info('🏢 Clean companies after filtering:', cleanCompanies);
       
       const result: FilterOptions = {
         companies: cleanCompanies as string[],
@@ -1016,11 +1017,11 @@ export class EmployeeService {
       
       return result;
     } catch (error) {
-      console.error('Error getting filter options:', error);
+      log.error('Error getting filter options:', error);
       
       // If it's a timeout error, return basic data
       if (error instanceof Error && error.message.includes('timeout')) {
-        console.log('⚠️ Filter options query timed out, returning basic data');
+        log.info('⚠️ Filter options query timed out, returning basic data');
       }
       
       // Return fallback data to prevent UI from breaking
@@ -1053,7 +1054,7 @@ export class EmployeeService {
 
       return count || 0;
     } catch (error) {
-      console.error('Error getting temporary workers count:', error);
+      log.error('Error getting temporary workers count:', error);
       return 0;
     }
   }
@@ -1072,7 +1073,7 @@ export class EmployeeService {
       const { data, error } = await supabase.rpc('get_dashboard_stats');
 
       if (error) {
-        console.error('Error fetching dashboard stats via RPC:', error);
+        log.error('Error fetching dashboard stats via RPC:', error);
         // Fallback to individual queries if RPC fails
         return this.getAdminDashboardStatsFallback(filters);
       }
@@ -1098,7 +1099,7 @@ export class EmployeeService {
 
       return stats;
     } catch (error) {
-      console.error('Error in getAdminDashboardStats:', error);
+      log.error('Error in getAdminDashboardStats:', error);
       // Fallback to individual queries
       return this.getAdminDashboardStatsFallback(filters);
     }
@@ -1150,7 +1151,7 @@ export class EmployeeService {
       const uniqueDepartments = new Set(departments?.map(d => d.trade) || []).size;
 
       if (employeesError || activeError || docsError || approvalsError || visaError || deptError) {
-        console.error('Error fetching dashboard stats:', { employeesError, activeError, docsError, approvalsError, visaError, deptError });
+        log.error('Error fetching dashboard stats:', { employeesError, activeError, docsError, approvalsError, visaError, deptError });
         throw new Error('Failed to fetch dashboard statistics');
       }
 
@@ -1163,7 +1164,7 @@ export class EmployeeService {
         departments: uniqueDepartments
       };
     } catch (error) {
-      console.error('Error in getAdminDashboardStatsFallback:', error);
+      log.error('Error in getAdminDashboardStatsFallback:', error);
       throw error;
     }
   }
@@ -1179,7 +1180,7 @@ export class EmployeeService {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching department distribution:', error);
+        log.error('Error fetching department distribution:', error);
         throw error;
       }
 
@@ -1208,7 +1209,7 @@ export class EmployeeService {
         growth: stats.recentCount > 0 ? `+${stats.recentCount}` : '0'
       }));
     } catch (error) {
-      console.error('Error in getEmployeeDistributionByDepartment:', error);
+      log.error('Error in getEmployeeDistributionByDepartment:', error);
       throw error;
     }
   }
@@ -1223,7 +1224,7 @@ export class EmployeeService {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching company distribution:', error);
+        log.error('Error fetching company distribution:', error);
         throw error;
       }
 
@@ -1247,7 +1248,7 @@ export class EmployeeService {
         }))
         .sort((a, b) => b.employees - a.employees);
     } catch (error) {
-      console.error('Error in getEmployeeDistributionByCompany:', error);
+      log.error('Error in getEmployeeDistributionByCompany:', error);
       throw error;
     }
   }
@@ -1273,7 +1274,7 @@ export class EmployeeService {
           .lte('created_at', month.end);
 
         if (empError || docError) {
-          console.error('Error fetching growth trend data:', { empError, docError });
+          log.error('Error fetching growth trend data:', { empError, docError });
           continue;
         }
 
@@ -1287,7 +1288,7 @@ export class EmployeeService {
 
       return trendData;
     } catch (error) {
-      console.error('Error in getGrowthTrendData:', error);
+      log.error('Error in getGrowthTrendData:', error);
       throw error;
     }
   }
@@ -1304,7 +1305,7 @@ export class EmployeeService {
         .limit(limit);
 
       if (error) {
-        console.error('Error fetching expiring visas:', error);
+        log.error('Error fetching expiring visas:', error);
         throw error;
       }
 
@@ -1326,7 +1327,7 @@ export class EmployeeService {
         };
       }) || [];
     } catch (error) {
-      console.error('Error in getExpiringVisasSummary:', error);
+      log.error('Error in getExpiringVisasSummary:', error);
       throw error;
     }
   }
@@ -1334,7 +1335,7 @@ export class EmployeeService {
   // Test search functionality
   static async testEmployeeSearch(searchTerm: string): Promise<{ success: boolean; results: any[]; error?: string }> {
     try {
-      console.log(`🧪 Testing employee search with term: "${searchTerm}"`);
+      log.info(`🧪 Testing employee search with term: "${searchTerm}"`);
 
       const result = await this.getEmployees({ page: 1, pageSize: 10 }, { search: searchTerm });
 
@@ -1344,7 +1345,7 @@ export class EmployeeService {
 
       return {
         success: true,
-        results: result.employees.map(emp => ({
+        results: result.data.map(emp => ({
           employee_id: emp.employee_id,
           name: emp.name,
           company_name: emp.company_name,

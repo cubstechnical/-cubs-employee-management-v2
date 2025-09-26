@@ -40,6 +40,7 @@ import {
 import { cn } from '@/utils/cn';
 import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function AdminEmployees() {
   return (
@@ -131,7 +132,7 @@ function AdminEmployeesContent() {
         const options = await EmployeeService.getFilterOptions();
         setFilterOptions(options);
       } catch (error) {
-        console.error('Error fetching filter options:', error);
+        log.error('Error fetching filter options:', error);
       }
     };
     loadFilterOptions();
@@ -163,7 +164,7 @@ function AdminEmployeesContent() {
 
       // Brief delay to show 100% progress
       setTimeout(() => {
-        setEmployees(result.employees);
+        setEmployees(result.data);
         setTotalPages(result.totalPages);
         setTotalEmployees(result.total);
         setLoading(false);
@@ -172,7 +173,7 @@ function AdminEmployeesContent() {
       }, 200);
 
     } catch (error) {
-      console.error('Error fetching employees:', error);
+      log.error('Error fetching employees:', error);
       toast.error('Failed to load employees');
       setLoading(false);
       setInitialLoading(false);
@@ -219,13 +220,13 @@ function AdminEmployeesContent() {
         { search: searchTerm.trim() }
       );
 
-      if (result.employees && result.employees.length > 0) {
-        setSearchResults(result.employees);
+      if (result.data && result.data.length > 0) {
+        setSearchResults(result.data);
       } else {
         setSearchResults([]);
       }
     } catch (error) {
-      console.error('Instant search error:', error);
+      log.error('Instant search error:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);

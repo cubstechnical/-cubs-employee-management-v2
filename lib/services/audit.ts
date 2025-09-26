@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface AuditLog {
   id?: string;
@@ -31,13 +32,13 @@ export class AuditService {
         });
 
       if (error) {
-        console.error('❌ Error logging audit:', error);
+        log.error('❌ Error logging audit:', error);
         // Don't throw error to avoid breaking the main operation
       } else {
-        console.log('✅ Audit logged successfully');
+        log.info('✅ Audit logged successfully');
       }
     } catch (err) {
-      console.error('❌ Error in audit logging:', err);
+      log.error('❌ Error in audit logging:', err);
       // Don't throw error to avoid breaking the main operation
     }
   }
@@ -55,13 +56,13 @@ export class AuditService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('❌ Error fetching audit logs:', error);
+        log.error('❌ Error fetching audit logs:', error);
         return [];
       }
 
       return (data as unknown as AuditLog[]) || [];
     } catch (err) {
-      console.error('❌ Error in getAuditLogs:', err);
+      log.error('❌ Error in getAuditLogs:', err);
       return [];
     }
   }
@@ -79,13 +80,13 @@ export class AuditService {
         .limit(limit);
 
       if (error) {
-        console.error('❌ Error fetching table audit logs:', error);
+        log.error('❌ Error fetching table audit logs:', error);
         return [];
       }
 
       return (data as unknown as AuditLog[]) || [];
     } catch (err) {
-      console.error('❌ Error in getTableAuditLogs:', err);
+      log.error('❌ Error in getTableAuditLogs:', err);
       return [];
     }
   }
@@ -106,7 +107,7 @@ export class AuditService {
       
       return {};
     } catch (err) {
-      console.error('❌ Error getting current user info:', err);
+      log.error('❌ Error getting current user info:', err);
       return {};
     }
   }

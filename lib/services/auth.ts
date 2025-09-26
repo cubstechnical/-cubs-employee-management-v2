@@ -3,7 +3,7 @@ import { supabase, isSupabaseAvailable } from '@/lib/supabase/client';
 import { DevAuthService } from './auth-dev';
 import { authRateLimiter } from './rateLimiter';
 import { isCapacitorApp } from '@/utils/mobileDetection';
-import { log } from '@/lib/utils/logger';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface AuthUser {
   id: string;
@@ -65,11 +65,11 @@ export class AuthService {
       if (error) {
         // Handle refresh token errors specifically
         if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
-          console.warn('AuthService: Refresh token error, clearing session');
+          log.warn('AuthService: Refresh token error, clearing session');
           try {
             await supabase.auth.signOut();
           } catch (signOutError) {
-            console.error('Error during sign out:', signOutError);
+            log.error('Error during sign out:', signOutError);
           }
         }
         return { session: null, error: { message: error.message } };
@@ -77,23 +77,23 @@ export class AuthService {
 
       // Mobile-specific session validation
       if (isCapacitorApp() && session) {
-        console.log('AuthService: Mobile app session detected, validating...');
+        log.info('AuthService: Mobile app session detected, validating...');
 
         // Additional validation for mobile sessions
         const now = Math.floor(Date.now() / 1000);
         const expiresAt = session.expires_at;
 
         if (expiresAt && expiresAt < now) {
-          console.warn('AuthService: Mobile session expired, attempting refresh...');
+          log.warn('AuthService: Mobile session expired, attempting refresh...');
           try {
             const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
             if (refreshError) {
-              console.error('AuthService: Failed to refresh mobile session:', refreshError);
+              log.error('AuthService: Failed to refresh mobile session:', refreshError);
               return { session: null, error: { message: 'Session expired' } };
             }
             return { session: refreshData.session, error: null };
           } catch (refreshError) {
-            console.error('AuthService: Mobile session refresh error:', refreshError);
+            log.error('AuthService: Mobile session refresh error:', refreshError);
             return { session: null, error: { message: 'Session refresh failed' } };
           }
         }
@@ -101,7 +101,7 @@ export class AuthService {
 
       return { session, error: null };
     } catch (error) {
-      console.error('AuthService: Session error:', error);
+      log.error('AuthService: Session error:', error);
       return { session: null, error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -222,7 +222,7 @@ export class AuthService {
 
       return { error: null };
     } catch (error) {
-      console.error('Error resending verification:', error);
+      log.error('Error resending verification:', error);
       return { error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -233,7 +233,7 @@ export class AuthService {
       return await DevAuthService.getCurrentUser();
     }
     try {
-      console.log('🔍 AuthService: getCurrentUser called');
+      log.info('🔍 AuthService: getCurrentUser called');
       
       // Add timeout to prevent hanging - increased for mobile networks
       const userPromise = supabase.auth.getUser();
@@ -242,14 +242,14 @@ export class AuthService {
       );
       
       const { data: { user }, error } = await Promise.race([userPromise, timeoutPromise]) as any;
-      console.log('🔍 AuthService: getUser result:', { hasUser: !!user, hasError: !!error });
+      log.info('🔍 AuthService: getUser result:', { hasUser: !!user, hasError: !!error });
       if (error || !user) {
-        console.log('⚠️ AuthService: No user or error:', error?.message);
+        log.info('⚠️ AuthService: No user or error:', error?.message);
         return null;
       }
 
       // Get user profile from profiles table with timeout - increased for mobile
-      console.log('🔍 AuthService: Fetching user profile...');
+      log.info('🔍 AuthService: Fetching user profile...');
       const profilePromise = supabase
         .from('profiles')
         .select('*')
@@ -261,7 +261,7 @@ export class AuthService {
       
       const { data: profile, error: profileError } = await Promise.race([profilePromise, profileTimeoutPromise]) as any;
 
-      console.log('🔍 AuthService: Profile result:', { hasProfile: !!profile, hasError: !!profileError });
+      log.info('🔍 AuthService: Profile result:', { hasProfile: !!profile, hasError: !!profileError });
 
       if (profile && !profileError) {
         const userRole = getUserRole(user.email!, profile.role as string);
@@ -275,7 +275,7 @@ export class AuthService {
           approved: profile.approved_by !== null
         };
       } else if (profileError) {
-        console.error('Profile fetch error:', profileError);
+        log.error('Profile fetch error:', profileError);
         // Continue with fallback user data
       }
 
@@ -290,7 +290,7 @@ export class AuthService {
 
       return authUser;
     } catch (error) {
-      console.error('Error getting current user:', error);
+      log.error('Error getting current user:', error);
       return null;
     }
   }
@@ -307,7 +307,7 @@ export class AuthService {
     }
     
     try {
-      console.log('🔍 AuthService: getCurrentUserWithApproval called');
+      log.info('🔍 AuthService: getCurrentUserWithApproval called');
       
       // Add timeout to prevent hanging - reduced timeout for better UX
       const userPromise = supabase.auth.getUser();
@@ -319,7 +319,7 @@ export class AuthService {
       try {
         result = await Promise.race([userPromise, timeoutPromise]);
       } catch (timeoutError) {
-        console.warn('getUser timed out, trying once more...');
+        log.warn('getUser timed out, trying once more...');
         // Try one more time with a shorter timeout
         const retryPromise = supabase.auth.getUser();
         const shortTimeoutPromise = new Promise((_, reject) => 
@@ -328,21 +328,21 @@ export class AuthService {
         try {
           result = await Promise.race([retryPromise, shortTimeoutPromise]);
         } catch (retryError) {
-          console.warn('getUser retry also failed, returning null');
+          log.warn('getUser retry also failed, returning null');
           return { user: null, isApproved: false };
         }
       }
       
       const { data: { user }, error } = result as any;
-      console.log('🔍 AuthService: getUser result:', { hasUser: !!user, hasError: !!error });
+      log.info('🔍 AuthService: getUser result:', { hasUser: !!user, hasError: !!error });
       
       if (error || !user) {
-        console.log('⚠️ AuthService: No user or error:', error?.message);
+        log.info('⚠️ AuthService: No user or error:', error?.message);
         return { user: null, isApproved: false };
       }
 
       // Get user profile from profiles table with timeout and error handling
-      console.log('🔍 AuthService: Fetching user profile...');
+      log.info('🔍 AuthService: Fetching user profile...');
       let profile = null;
       let profileError = null;
 
@@ -360,9 +360,9 @@ export class AuthService {
         profile = result.data;
         profileError = result.error;
 
-        console.log('🔍 AuthService: Profile result:', { hasProfile: !!profile, hasError: !!profileError });
+        log.info('🔍 AuthService: Profile result:', { hasProfile: !!profile, hasError: !!profileError });
       } catch (fetchError) {
-        console.error('⚠️ AuthService: Profile fetch failed (continuing with fallback):', fetchError);
+        log.error('⚠️ AuthService: Profile fetch failed (continuing with fallback):', fetchError);
         // Continue with fallback user data - don't fail completely
       }
 
@@ -383,7 +383,7 @@ export class AuthService {
         this.userCache = { user: authUser, timestamp: Date.now() };
         return { user: authUser, isApproved };
       } else {
-        console.log('⚠️ AuthService: Profile not found or error occurred, using fallback user data');
+        log.info('⚠️ AuthService: Profile not found or error occurred, using fallback user data');
       }
 
       // Fallback: create user from auth data with admin override
@@ -403,7 +403,7 @@ export class AuthService {
       this.userCache = { user: fallbackUser, timestamp: Date.now() };
       return { user: fallbackUser, isApproved };
     } catch (error) {
-      console.error('❌ AuthService: getCurrentUserWithApproval error:', error);
+      log.error('❌ AuthService: getCurrentUserWithApproval error:', error);
       return { user: null, isApproved: false };
     }
   }
@@ -469,7 +469,7 @@ export class AuthService {
         return { user: authUser, error: null };
       } else if (profileError) {
         // Log profile fetch error securely
-        console.error('Profile fetch error during sign in:', profileError?.message || 'Unknown error');
+        log.error('Profile fetch error during sign in:', profileError?.message || 'Unknown error');
         // Continue with fallback user data
       }
 
@@ -486,7 +486,7 @@ export class AuthService {
       authRateLimiter.clear(identifier);
       return { user: authUser, error: null };
     } catch (error) {
-      console.error('Error signing in:', error);
+      log.error('Error signing in:', error);
       return { user: null, error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -531,10 +531,10 @@ export class AuthService {
           });
 
         if (profileError) {
-          console.log('Profile creation failed, but continuing with auth user:', profileError.message);
+          log.info('Profile creation failed, but continuing with auth user:', profileError.message);
         }
       } catch (profileError) {
-        console.log('Profile table not found, continuing with auth user only');
+        log.info('Profile table not found, continuing with auth user only');
       }
 
       const authUser: AuthUser = {
@@ -546,7 +546,7 @@ export class AuthService {
 
       return { user: authUser, error: null };
     } catch (error) {
-      console.error('Error signing up:', error);
+      log.error('Error signing up:', error);
       return { user: null, error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -564,7 +564,7 @@ export class AuthService {
       }
       return { error: null };
     } catch (error) {
-      console.error('Error signing out:', error);
+      log.error('Error signing out:', error);
       return { error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -582,7 +582,7 @@ export class AuthService {
 
       return { error: null };
     } catch (error) {
-      console.error('Error resetting password:', error);
+      log.error('Error resetting password:', error);
       return { error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -600,7 +600,7 @@ export class AuthService {
 
       return { error: null };
     } catch (error) {
-      console.error('Error updating password:', error);
+      log.error('Error updating password:', error);
       return { error: { message: 'An unexpected error occurred' } };
     }
   }
@@ -608,19 +608,19 @@ export class AuthService {
   // Check if user is approved
   static async isApproved(): Promise<boolean> {
     try {
-      console.log('🔍 AuthService: isApproved called');
+      log.info('🔍 AuthService: isApproved called');
       const user = await this.getCurrentUser();
-      console.log('🔍 AuthService: isApproved user check:', { hasUser: !!user, userRole: user?.role });
+      log.info('🔍 AuthService: isApproved user check:', { hasUser: !!user, userRole: user?.role });
       if (!user) return false;
 
       // Admins are always considered approved
       if (user.role === 'admin') {
-        console.log('✅ AuthService: Admin user, approved');
+        log.info('✅ AuthService: Admin user, approved');
         return true;
       }
 
       // Check approval status from profile - use approved_by field (consistent with middleware)
-      console.log('🔍 AuthService: Checking approval status from profile...');
+      log.info('🔍 AuthService: Checking approval status from profile...');
       const approvalPromise = supabase
         .from('profiles')
         .select('approved_by')
@@ -632,17 +632,17 @@ export class AuthService {
       
       const { data: profile, error } = await Promise.race([approvalPromise, approvalTimeoutPromise]) as any;
 
-      console.log('🔍 AuthService: Approval check result:', { hasProfile: !!profile, hasError: !!error, approvedBy: profile?.approved_by });
+      log.info('🔍 AuthService: Approval check result:', { hasProfile: !!profile, hasError: !!error, approvedBy: profile?.approved_by });
 
       if (error) {
-        console.error('❌ AuthService: Error checking approval status:', error);
+        log.error('❌ AuthService: Error checking approval status:', error);
         return false;
       }
 
       // User is approved if approved_by is not null/undefined
       return profile?.approved_by !== null && profile?.approved_by !== undefined;
     } catch (error) {
-      console.error('Error checking approval status:', error);
+      log.error('Error checking approval status:', error);
       return false;
     }
   }
@@ -660,7 +660,7 @@ export class AuthService {
         .limit(50);
 
       if (error) {
-        console.error('Error fetching pending approvals:', error);
+        log.error('Error fetching pending approvals:', error);
         return { users: [], error: { message: error.message } };
       }
 
@@ -668,7 +668,7 @@ export class AuthService {
       
       return { users: users || [], error: null };
     } catch (error) {
-      console.error('Error in getPendingApprovals:', error);
+      log.error('Error in getPendingApprovals:', error);
       return { users: [], error: { message: 'Failed to fetch pending approvals' } };
     }
   }
@@ -682,13 +682,13 @@ export class AuthService {
         .is('approved_by', null);
 
       if (error) {
-        console.error('Error fetching pending approvals count:', error);
+        log.error('Error fetching pending approvals count:', error);
         return { count: 0, error: { message: error.message } };
       }
 
       return { count: count || 0, error: null };
     } catch (error) {
-      console.error('Error in getPendingApprovalsCount:', error);
+      log.error('Error in getPendingApprovalsCount:', error);
       return { count: 0, error: { message: 'Failed to fetch pending approvals count' } };
     }
   }
@@ -704,7 +704,7 @@ export class AuthService {
         .single();
       
       if (checkError) {
-        console.error('Error checking user before approval:', checkError);
+        log.error('Error checking user before approval:', checkError);
         return { error: { message: `User not found: ${checkError.message}` } };
       }
       
@@ -724,7 +724,7 @@ export class AuthService {
         .select();
 
       if (error) {
-        console.error('❌ Database update error:', error);
+        log.error('❌ Database update error:', error);
         return { error: { message: `Database error: ${error.message}` } };
       }
 
@@ -734,7 +734,7 @@ export class AuthService {
 
       return { error: null };
     } catch (error) {
-      console.error('❌ Error in approveUser:', error);
+      log.error('❌ Error in approveUser:', error);
       return { error: { message: 'Failed to approve user' } };
     }
   }
@@ -750,7 +750,7 @@ export class AuthService {
         .single();
       
       if (checkError) {
-        console.error('Error checking user before rejection:', checkError);
+        log.error('Error checking user before rejection:', checkError);
         return { error: { message: `User not found: ${checkError.message}` } };
       }
       
@@ -772,7 +772,7 @@ export class AuthService {
         .select();
 
       if (error) {
-        console.error('❌ Database update error:', error);
+        log.error('❌ Database update error:', error);
         return { error: { message: `Database error: ${error.message}` } };
       }
 
@@ -782,7 +782,7 @@ export class AuthService {
 
       return { error: null };
     } catch (error) {
-      console.error('❌ Error in rejectUser:', error);
+      log.error('❌ Error in rejectUser:', error);
       return { error: { message: 'Failed to reject user' } };
     }
   }
@@ -806,7 +806,7 @@ export class AuthService {
       const userPermissions: ReadonlyArray<string> = rolePermissions ?? [];
       return userPermissions.includes('*') || userPermissions.includes(permission);
     } catch (error) {
-      console.error('Error checking permission:', error);
+      log.error('Error checking permission:', error);
       return false;
     }
   }
@@ -822,7 +822,7 @@ export class AuthService {
         .single();
       
       if (checkError) {
-        console.error('Error checking user for reapplication:', checkError);
+        log.error('Error checking user for reapplication:', checkError);
         return { error: { message: `User not found: ${checkError.message}` } };
       }
       
@@ -845,7 +845,7 @@ export class AuthService {
         .select();
 
       if (error) {
-        console.error('❌ Database update error during reapplication:', error);
+        log.error('❌ Database update error during reapplication:', error);
         return { error: { message: `Database error: ${error.message}` } };
       }
 
@@ -855,7 +855,7 @@ export class AuthService {
 
       return { error: null };
     } catch (error) {
-      console.error('❌ Error in reapplyUser:', error);
+      log.error('❌ Error in reapplyUser:', error);
       return { error: { message: 'Failed to reapply user' } };
     }
   }
@@ -873,13 +873,13 @@ export class AuthService {
         .single();
 
       if (error) {
-        console.error('Error checking rejection status:', error);
+        log.error('Error checking rejection status:', error);
         return false;
       }
 
       return profile?.approved_by === 'REJECTED' || profile?.status === 'rejected';
     } catch (error) {
-      console.error('Error checking rejection status:', error);
+      log.error('Error checking rejection status:', error);
       return false;
     }
   }

@@ -42,6 +42,7 @@ import { cn } from '@/utils/cn';
 import toast from 'react-hot-toast';
 import { useDebounce } from '@/hooks/usePerformance';
 import { useRef } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function AdminDocuments() {
   return (
@@ -128,9 +129,9 @@ function AdminDocumentsContent() {
       try {
         // Load only essential employee data for filters (name and ID only)
         const result = await EmployeeService.getEmployees({ page: 1, pageSize: 100 });
-        setEmployees(result.employees);
+        setEmployees(result.data);
       } catch (error) {
-        console.error('Error loading employees:', error);
+        log.error('Error loading employees:', error);
       }
     };
     loadEmployees();
@@ -171,7 +172,7 @@ function AdminDocumentsContent() {
       }, 200);
 
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      log.error('Error fetching documents:', error);
       toast.error('Failed to load documents');
       setLoading(false);
       setInitialLoading(false);
@@ -204,7 +205,7 @@ function AdminDocumentsContent() {
         setSearchResults([]);
       }
     } catch (error) {
-      console.error('Instant search error:', error);
+      log.error('Instant search error:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
@@ -253,7 +254,7 @@ function AdminDocumentsContent() {
       setFolders(result.folders || []);
 
     } catch (error) {
-      console.error('Error searching folders:', error);
+      log.error('Error searching folders:', error);
       toast.error('Failed to search employee folders');
     } finally {
       setLoading(false);
@@ -294,7 +295,7 @@ function AdminDocumentsContent() {
       toast.success('Document deleted successfully');
       fetchDocuments();
     } catch (error) {
-      console.error('Error deleting document:', error);
+      log.error('Error deleting document:', error);
       toast.error('Failed to delete document');
     }
   };
@@ -313,7 +314,7 @@ function AdminDocumentsContent() {
         toast.error('Failed to generate download URL');
       }
     } catch (error) {
-      console.error('Error downloading document:', error);
+      log.error('Error downloading document:', error);
       toast.error('Failed to download document');
     }
   };
@@ -327,7 +328,7 @@ function AdminDocumentsContent() {
         toast.error('Preview not available for this document');
       }
     } catch (error) {
-      console.error('Error previewing document:', error);
+      log.error('Error previewing document:', error);
       toast.error('Failed to preview document');
     }
   };

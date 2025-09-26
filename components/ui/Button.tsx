@@ -3,7 +3,7 @@ import { cn } from '@/utils/cn';
 
 interface ButtonProps {
   children: ReactNode;
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'destructive' | 'default';
   size?: 'sm' | 'md' | 'lg';
   loading?: boolean;
   disabled?: boolean;
@@ -33,6 +33,8 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(({
     outline: 'border border-gray-300 hover:bg-gray-50 text-gray-700 focus:ring-gray-500 dark:border-gray-600 dark:hover:bg-gray-700 dark:text-gray-300 dark:focus:ring-gray-400',
     ghost: 'hover:bg-gray-100 text-gray-700 focus:ring-gray-500 dark:hover:bg-gray-700 dark:text-gray-300 dark:focus:ring-gray-400',
     danger: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-400',
+    destructive: 'bg-red-600 hover:bg-red-700 text-white focus:ring-red-500 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-400',
+    default: 'bg-[#d3194f] hover:bg-[#b0173a] text-white focus:ring-[#d3194f] dark:bg-[#d3194f] dark:hover:bg-[#b0173a] dark:focus:ring-[#d3194f]',
   };
 
   const sizes = {

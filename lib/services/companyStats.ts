@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface CompanyStats {
   company_name: string;
@@ -11,7 +12,7 @@ export class CompanyStatsService {
    */
   static async getCompanyStats(): Promise<CompanyStats[]> {
     try {
-      console.log('Starting company stats fetch...');
+      log.info('Starting company stats fetch...');
       
       const { data, error } = await supabase
         .from('employee_table')
@@ -19,14 +20,14 @@ export class CompanyStatsService {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Supabase error fetching company stats:', error);
+        log.error('Supabase error fetching company stats:', error);
         throw error;
       }
 
-      console.log('Raw data from Supabase:', data);
+      log.info('Raw data from Supabase:', data);
 
       if (!data || data.length === 0) {
-        console.log('No data returned from Supabase');
+        log.info('No data returned from Supabase');
         throw new Error('No employee data found');
       }
 
@@ -40,7 +41,7 @@ export class CompanyStatsService {
         }
       });
 
-      console.log('Company counts:', companyCounts);
+      log.info('Company counts:', companyCounts);
 
       // Convert to array and sort by employee count (descending)
       const companyStats: CompanyStats[] = Object.entries(companyCounts)
@@ -65,10 +66,10 @@ export class CompanyStatsService {
         })
         .sort((a, b) => b.employee_count - a.employee_count);
 
-      console.log('Final company stats:', companyStats);
+      log.info('Final company stats:', companyStats);
       return companyStats;
     } catch (error) {
-      console.error('Error in getCompanyStats:', error);
+      log.error('Error in getCompanyStats:', error);
       // Return fallback data if there's an error
       return [
         { company_name: 'CUBS', employee_count: 0 },
@@ -96,7 +97,7 @@ export class CompanyStatsService {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching company names:', error);
+        log.error('Error fetching company names:', error);
         throw error;
       }
 
@@ -105,7 +106,7 @@ export class CompanyStatsService {
 
       return uniqueCompanies.sort();
     } catch (error) {
-      console.error('Error in getCompanyNames:', error);
+      log.error('Error in getCompanyNames:', error);
       // Return fallback company names
       return [
         'CUBS',

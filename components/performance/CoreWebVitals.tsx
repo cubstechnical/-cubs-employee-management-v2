@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface WebVitals {
   LCP?: number; // Largest Contentful Paint
@@ -74,7 +75,7 @@ export function CoreWebVitals() {
 
       // Log performance warnings only once
       if (renderTime > 16) {
-        console.warn('🐌 Initial render time is slow:', renderTime.toFixed(2) + 'ms (target: <16ms)');
+        log.warn('🐌 Initial render time is slow:', renderTime.toFixed(2) + 'ms (target: <16ms)');
       }
     };
 

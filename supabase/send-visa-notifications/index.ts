@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { log } from '@/lib/utils/productionLogger';
 
 // Gmail SMTP configuration
 const GMAIL_USER = Deno.env.get('GMAIL_USER') || 'technicalcubs@gmail.com';
@@ -18,19 +19,19 @@ async function sendEmailViaGmail(subject: string, html: string, text: string) {
     // Gmail SMTP is used for all email notifications
     // For now, we'll simulate the email sending with proper logging
     
-    console.log('📧 Gmail SMTP Email Details:');
-    console.log('From:', `${FROM_NAME} <${GMAIL_USER}>`);
-    console.log('To:', TO_EMAIL);
-    console.log('Subject:', subject);
-    console.log('HTML Content Length:', html.length);
-    console.log('Text Content Length:', text.length);
+    log.info('📧 Gmail SMTP Email Details:');
+    log.info('From:', `${FROM_NAME} <${GMAIL_USER}>`);
+    log.info('To:', TO_EMAIL);
+    log.info('Subject:', subject);
+    log.info('HTML Content Length:', html.length);
+    log.info('Text Content Length:', text.length);
     
     // In a real implementation, you would use a Gmail SMTP library
     // For now, we'll return success to simulate email sending
     // The actual email sending will be handled by the Next.js API route
     return { success: true, messageId: `gmail-${Date.now()}` };
   } catch (error) {
-    console.error('❌ Gmail SMTP Error:', error);
+    log.error('❌ Gmail SMTP Error:', error);
     return { success: false, error: error.message };
   }
 }
@@ -56,7 +57,7 @@ serve(async (req) => {
       .not('visa_expiry_date', 'is', null);
 
     if (error) {
-      console.error('❌ Database error:', error);
+      log.error('❌ Database error:', error);
       return new Response(JSON.stringify({ error: 'Database query failed' }), {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
@@ -64,7 +65,7 @@ serve(async (req) => {
     }
 
     if (!employees || employees.length === 0) {
-      console.log('ℹ️ No employees with visa expiring in the next 30 days');
+      log.info('ℹ️ No employees with visa expiring in the next 30 days');
       return new Response(JSON.stringify({ 
         message: 'No visa expiries found',
         count: 0 
@@ -74,7 +75,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`📋 Found ${employees.length} employees with visa expiring soon`);
+    log.info(`📋 Found ${employees.length} employees with visa expiring soon`);
 
     // Group employees by days until expiry
     const groupedEmployees = groupEmployeesByExpiryDays(employees, today);
@@ -89,9 +90,9 @@ serve(async (req) => {
         
         if (emailResult.success) {
           emailSentCount++;
-          console.log(`✅ Consolidated email sent for ${employeeGroup.length} employees (${daysRemaining} days remaining)`);
+          log.info(`✅ Consolidated email sent for ${employeeGroup.length} employees (${daysRemaining} days remaining)`);
         } else {
-          console.error(`❌ Failed to send email for ${daysRemaining} days group:`, emailResult.error);
+          log.error(`❌ Failed to send email for ${daysRemaining} days group:`, emailResult.error);
         }
 
         emailResults.push({
@@ -124,7 +125,7 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('❌ Function error:', error);
+    log.error('❌ Function error:', error);
     return new Response(JSON.stringify({ 
       error: 'Internal server error',
       details: error.message 

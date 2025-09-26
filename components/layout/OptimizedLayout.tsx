@@ -2,9 +2,7 @@
 
 import { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { ThemeProvider } from '@/lib/theme';
-import { SimpleAuthProvider, useAuth } from '@/lib/contexts/SimpleAuthContext';
-import { QueryProvider } from '@/components/providers/QueryProvider';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import OfflineIndicator from '@/components/ui/OfflineIndicator';
@@ -14,6 +12,7 @@ import { isMobileDevice } from '@/utils/mobileDetection';
 import { Menu, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { PerformanceTracker } from '@/components/ui/PerformanceTracker';
+import { log } from '@/lib/utils/productionLogger';
 
 interface OptimizedLayoutProps {
   children: ReactNode;
@@ -23,6 +22,9 @@ interface OptimizedLayoutProps {
 function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   const pathname = usePathname();
   const { isLoading: authLoading, user } = useAuth();
+  
+  // Safety check for pathname
+  const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -31,27 +33,27 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   // Initialize mobile app functionality
   useMobileApp();
 
+  // Note: Route prefetching is handled automatically by Next.js App Router
+  // when using Link components with prefetch prop in the Sidebar component
+
   // Update public page status when pathname changes
   useEffect(() => {
     // Define public pages that shouldn't show sidebar
     const publicPages = ['/login', '/register', '/forgot-password', '/reset-password', '/callback', '/delete-account', '/privacy', '/terms', '/pending', '/pending-approval'];
     
-    // Use pathname if available, otherwise fallback to window.location
-    const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
     const normalizedPathname = currentPath.replace(/\/$/, '');
     const isPublic = publicPages.includes(normalizedPathname);
     setIsPublicPage(isPublic);
     
     // Only log in development and reduce frequency
     if (process.env.NODE_ENV === 'development' && Math.random() < 0.1) {
-      console.log('🔍 OptimizedLayout: Pathname check:', { 
-        pathname, 
-        currentPath, 
+      log.info('🔍 OptimizedLayout: Pathname check:', { 
+        pathname: currentPath, 
         normalizedPathname, 
         isPublic 
       });
     }
-  }, [pathname]);
+  }, [currentPath]);
 
   useEffect(() => {
     const checkMobile = () => {
@@ -260,16 +262,8 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
 
 export default function OptimizedLayout({ children, className }: OptimizedLayoutProps) {
   return (
-    <ErrorBoundary>
-      <QueryProvider>
-        <ThemeProvider>
-          <SimpleAuthProvider>
-            <OptimizedLayoutContent className={className}>
-              {children}
-            </OptimizedLayoutContent>
-          </SimpleAuthProvider>
-        </ThemeProvider>
-      </QueryProvider>
-    </ErrorBoundary>
+    <OptimizedLayoutContent className={className}>
+      {children}
+    </OptimizedLayoutContent>
   );
 }

@@ -20,6 +20,7 @@ import {
   ExternalLink
 } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function AdminSettings() {
   const [settings, setSettings] = useState({
@@ -66,7 +67,7 @@ export default function AdminSettings() {
         setSettings(loadedSettings);
       }
     } catch (error) {
-      console.error('Error loading admin settings:', error);
+      log.error('Error loading admin settings:', error);
       // Keep default settings on error
     } finally {
       setIsLoading(false);
@@ -128,7 +129,7 @@ export default function AdminSettings() {
         alert(result.error || 'Failed to save settings');
       }
     } catch (error) {
-      console.error('Error saving settings:', error);
+      log.error('Error saving settings:', error);
       alert('Failed to save settings');
     } finally {
       setLoading(false);

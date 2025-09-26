@@ -1,6 +1,7 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { supabase } from '../supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 // Initialize S3 client for Backblaze B2
 const s3Client = new S3Client({
@@ -75,7 +76,7 @@ export class FileUploadService {
         .single();
 
       if (error) {
-        console.error('Error storing document metadata:', error);
+        log.error('Error storing document metadata:', error);
         // Clean up uploaded file if metadata storage fails
         await this.deleteFile(fileKey);
         return null;
@@ -83,7 +84,7 @@ export class FileUploadService {
 
       return document as unknown as UploadedFile;
     } catch (error) {
-      console.error('Error uploading file:', error);
+      log.error('Error uploading file:', error);
       return null;
     }
   }
@@ -98,7 +99,7 @@ export class FileUploadService {
       await s3Client.send(deleteCommand);
       return true;
     } catch (error) {
-      console.error('Error deleting file:', error);
+      log.error('Error deleting file:', error);
       return false;
     }
   }
@@ -113,7 +114,7 @@ export class FileUploadService {
         .single();
 
       if (fetchError || !document) {
-        console.error('Document not found:', fetchError);
+        log.error('Document not found:', fetchError);
         return false;
       }
 
@@ -124,7 +125,7 @@ export class FileUploadService {
       const deleted = await this.deleteFile(fileKey);
       
       if (!deleted) {
-        console.error('Failed to delete file from Backblaze B2');
+        log.error('Failed to delete file from Backblaze B2');
         return false;
       }
 
@@ -135,13 +136,13 @@ export class FileUploadService {
         .eq('id', documentId);
 
       if (deleteError) {
-        console.error('Error deleting document metadata:', deleteError);
+        log.error('Error deleting document metadata:', deleteError);
         return false;
       }
 
       return true;
     } catch (error) {
-      console.error('Error deleting document:', error);
+      log.error('Error deleting document:', error);
       return false;
     }
   }
@@ -159,7 +160,7 @@ export class FileUploadService {
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
       return signedUrl;
     } catch (error) {
-      console.error('Error generating signed URL:', error);
+      log.error('Error generating signed URL:', error);
       return null;
     }
   }
@@ -173,13 +174,13 @@ export class FileUploadService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching documents:', error);
+        log.error('Error fetching documents:', error);
         return [];
       }
 
       return documents as unknown as UploadedFile[];
     } catch (error) {
-      console.error('Error fetching documents:', error);
+      log.error('Error fetching documents:', error);
       return [];
     }
   }
@@ -193,13 +194,13 @@ export class FileUploadService {
         .single();
 
       if (error) {
-        console.error('Error fetching document:', error);
+        log.error('Error fetching document:', error);
         return null;
       }
 
       return document as unknown as UploadedFile;
     } catch (error) {
-      console.error('Error fetching document:', error);
+      log.error('Error fetching document:', error);
       return null;
     }
   }
@@ -220,13 +221,13 @@ export class FileUploadService {
         .single();
 
       if (error) {
-        console.error('Error updating document metadata:', error);
+        log.error('Error updating document metadata:', error);
         return null;
       }
 
       return document as unknown as UploadedFile;
     } catch (error) {
-      console.error('Error updating document metadata:', error);
+      log.error('Error updating document metadata:', error);
       return null;
     }
   }
@@ -240,13 +241,13 @@ export class FileUploadService {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching documents by type:', error);
+        log.error('Error fetching documents by type:', error);
         return [];
       }
 
       return documents as unknown as UploadedFile[];
     } catch (error) {
-      console.error('Error fetching documents by type:', error);
+      log.error('Error fetching documents by type:', error);
       return [];
     }
   }
@@ -262,7 +263,7 @@ export class FileUploadService {
         .select('*');
 
       if (error) {
-        console.error('Error fetching document stats:', error);
+        log.error('Error fetching document stats:', error);
         return { total: 0, byType: {}, totalSize: 0 };
       }
 
@@ -279,7 +280,7 @@ export class FileUploadService {
 
       return stats;
     } catch (error) {
-      console.error('Error fetching document stats:', error);
+      log.error('Error fetching document stats:', error);
       return { total: 0, byType: {}, totalSize: 0 };
     }
   }

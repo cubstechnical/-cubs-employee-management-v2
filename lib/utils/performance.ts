@@ -1,3 +1,4 @@
+import { log } from '@/lib/utils/productionLogger';
 // Performance utilities for production optimization
 
 export class PerformanceOptimizer {
@@ -110,7 +111,7 @@ export class PerformanceOptimizer {
       const moduleResult = await importFn();
       return moduleResult.default || moduleResult;
     } catch (error) {
-      console.error('Failed to load module:', error);
+      log.error('Failed to load module:', error);
       return null;
     }
   }
@@ -140,11 +141,11 @@ export class PerformanceOptimizer {
     if (result instanceof Promise) {
       return result.then(() => {
         const end = performance.now();
-        console.log(`⚡ ${name}: ${(end - start).toFixed(2)}ms`);
+        log.info(`⚡ ${name}: ${(end - start).toFixed(2)}ms`);
       });
     } else {
       const end = performance.now();
-      console.log(`⚡ ${name}: ${(end - start).toFixed(2)}ms`);
+      log.info(`⚡ ${name}: ${(end - start).toFixed(2)}ms`);
     }
   }
 
@@ -202,7 +203,7 @@ if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     setTimeout(() => {
       const navigation = performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming;
-      console.log('📊 Page Load Performance:', {
+      log.info('📊 Page Load Performance:', {
         loadTime: `${navigation.loadEventEnd - navigation.loadEventStart}ms`,
         domReady: `${navigation.domContentLoadedEventEnd - navigation.fetchStart}ms`,
         totalTime: `${navigation.loadEventEnd - navigation.fetchStart}ms`

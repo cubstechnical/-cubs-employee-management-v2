@@ -1,5 +1,7 @@
 'use client';
 
+import { log } from '@/lib/utils/productionLogger';
+
 // Performance monitoring utilities
 export interface PerformanceMetric {
   name: string;
@@ -45,7 +47,7 @@ export function trackWebVitals(metric: WebVitalMetric) {
   if (process.env.NODE_ENV === 'development') {
     const status = getPerformanceStatus(metric.value, PERFORMANCE_THRESHOLDS[metric.name]);
     const emoji = status === 'good' ? '✅' : status === 'needs-improvement' ? '⚠️' : '❌';
-    console.log(`${emoji} ${metric.name}: ${metric.value.toFixed(2)}ms (${status})`);
+    log.info(`${emoji} ${metric.name}: ${metric.value.toFixed(2)}ms (${status})`);
   }
 
   // Send to analytics service in production
@@ -87,10 +89,10 @@ function sendToAnalytics(metric: WebVitalMetric) {
         userAgent: navigator.userAgent
       })
     }).catch(error => {
-      console.warn('Failed to send web vitals to analytics:', error);
+      log.warn('Failed to send web vitals to analytics:', error);
     });
   } catch (error) {
-    console.warn('Error sending web vitals:', error);
+    log.warn('Error sending web vitals:', error);
   }
 }
 
@@ -250,7 +252,7 @@ export class PerformanceMonitor {
       clsObserver.observe({ entryTypes: ['layout-shift'] });
       this.observers.push(clsObserver);
     } catch (error) {
-      console.warn('Failed to observe web vitals:', error);
+      log.warn('Failed to observe web vitals:', error);
     }
   }
 
@@ -260,7 +262,7 @@ export class PerformanceMonitor {
     setInterval(() => {
       const memory = getMemoryUsage();
       if (memory && memory.percentage > 80) {
-        console.warn(`⚠️ High memory usage: ${memory.percentage}% (${memory.used}MB)`);
+        log.warn(`⚠️ High memory usage: ${memory.percentage}% (${memory.used}MB)`);
       }
     }, 30000); // Check every 30 seconds
   }
@@ -270,14 +272,14 @@ export class PerformanceMonitor {
       const longTaskObserver = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
           if (entry.duration > 50) { // Tasks longer than 50ms
-            console.warn(`🐌 Long task detected: ${entry.duration.toFixed(2)}ms`);
+            log.warn(`🐌 Long task detected: ${entry.duration.toFixed(2)}ms`);
           }
         }
       });
       longTaskObserver.observe({ entryTypes: ['longtask'] });
       this.observers.push(longTaskObserver);
     } catch (error) {
-      console.warn('Failed to observe long tasks:', error);
+      log.warn('Failed to observe long tasks:', error);
     }
   }
 
@@ -300,12 +302,12 @@ export function initializePerformanceMonitoring() {
 
   // Log performance budget
   const budget = checkPerformanceBudget();
-  console.log('📊 Performance Budget:', budget);
+  log.info('📊 Performance Budget:', budget);
 }
 
 // Network error handling
 export function handleNetworkError(error: Error, context: string) {
-  console.error(`Network error in ${context}:`, error);
+  log.error(`Network error in ${context}:`, error);
   
   // Log to monitoring service
   if (process.env.NODE_ENV === 'production') {

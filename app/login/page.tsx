@@ -15,6 +15,7 @@ import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
+import { log } from '@/lib/utils/productionLogger';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -37,6 +38,7 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
+    mode: 'onChange', // Add mode for better form handling
   });
 
   // Preload background image for better performance
@@ -46,7 +48,7 @@ export default function LoginPage() {
       setBackgroundLoaded(true);
     };
     img.onerror = () => {
-      console.warn('Background image failed to load, using fallback');
+      log.warn('Background image failed to load, using fallback');
       setBackgroundLoaded(true); // Still show the page with fallback
     };
     img.src = '/assets/bg1.webp';
@@ -69,7 +71,7 @@ export default function LoginPage() {
           
           // For mobile/iPhone devices, try multiple approaches
           if (isMobile || isIPhone || isIPhoneApp) {
-            console.log('Login: Mobile/iPhone device detected', { isMobile, isIPhone, isIPhoneApp });
+            log.info('Login: Mobile/iPhone device detected', { isMobile, isIPhone, isIPhoneApp });
             try {
               // Try session first for mobile/iPhone
               const { session } = await AuthService.getSession();
@@ -78,7 +80,7 @@ export default function LoginPage() {
                 return user;
               }
             } catch (sessionError) {
-              console.log('Mobile/iPhone session check failed, trying direct user fetch:', sessionError);
+              log.info('Mobile/iPhone session check failed, trying direct user fetch:', sessionError);
             }
           }
           
@@ -89,13 +91,13 @@ export default function LoginPage() {
         const user = await Promise.race([authPromise, timeoutPromise]) as any;
 
         if (user) {
-          console.log('✅ User found, redirecting to dashboard');
+          log.info('✅ User found, redirecting to dashboard');
           router.push('/dashboard');
         } else {
-          console.log('ℹ️ No user found, staying on login page');
+          log.info('ℹ️ No user found, staying on login page');
         }
       } catch (error) {
-        console.log('Auth check failed (non-critical):', error);
+        log.info('Auth check failed (non-critical):', error);
         // Don't redirect on error - just stay on login page
       }
     };
@@ -125,7 +127,7 @@ export default function LoginPage() {
       router.push('/dashboard');
 
     } catch (error) {
-      console.error('Login error:', error);
+      log.error('Login error:', error);
       // Better error handling for mobile with more specific messages
       if (error instanceof Error) {
         if (error.message.includes('timeout')) {
@@ -166,7 +168,7 @@ export default function LoginPage() {
       toast.success('Password reset email sent! Check your inbox.');
       setIsForgotPassword(false);
     } catch (error) {
-      console.error('Password reset error:', error);
+      log.error('Password reset error:', error);
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -186,7 +188,7 @@ export default function LoginPage() {
         WebkitOverflowScrolling: 'touch'
       }}
     >
-      <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-6">
+      <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">
         {/* Logo */}
         <div className="login-logo-container-image text-center">
           <div className="flex justify-center mb-4">
@@ -200,7 +202,7 @@ export default function LoginPage() {
                 priority
                 style={{ width: '120px', height: '120px' }}
                 onError={(e) => {
-                  console.log('Logo failed to load, using fallback');
+                  log.info('Logo failed to load, using fallback');
                   e.currentTarget.style.display = 'none';
                   e.currentTarget.nextElementSibling?.classList.remove('hidden');
                 }}
@@ -211,7 +213,7 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-          <p className="text-white dark:text-white mt-2 font-bold text-lg text-center drop-shadow-lg bg-black bg-opacity-50 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <p className="text-white dark:text-white mt-1 font-bold text-sm text-center drop-shadow-lg bg-black bg-opacity-50 px-3 py-1 rounded-lg backdrop-blur-sm whitespace-nowrap">
             Employee Management Portal
           </p>
         </div>
@@ -228,7 +230,14 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+              <form onSubmit={(e) => {
+                try {
+                  handleSubmit(onSubmit)(e);
+                } catch (error) {
+                  log.error('Form submission error:', error);
+                  toast.error('Form submission failed. Please try again.');
+                }
+              }} className="space-y-6">
                 <div>
                   <Input
                     label="Email Address"

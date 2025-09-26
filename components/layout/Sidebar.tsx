@@ -33,21 +33,32 @@ interface SidebarProps {
 }
 
 function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: SidebarItemProps & { onClose?: () => void; isCollapsed?: boolean }) {
+  const [isNavigating, setIsNavigating] = useState(false);
+
+  const handleClick = () => {
+    setIsNavigating(true);
+    onClose?.();
+    // Reset loading state after navigation
+    setTimeout(() => setIsNavigating(false), 1000);
+  };
+
   return (
     <Link
       href={href}
-      onClick={onClose}
+      onClick={handleClick}
       aria-label={`Navigate to ${children}`}
       aria-current={isActive ? 'page' : undefined}
       role="menuitem"
+      prefetch={true}
       className={cn(
-        'pwa-sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-300 ease-in-out group',
+        'pwa-sidebar-item flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200 ease-in-out group',
         'hover:bg-gray-100 dark:hover:bg-gray-800 hover:shadow-sm',
         'active:bg-gray-200 dark:active:bg-gray-700',
         'transform hover:translate-x-1',
         isActive
           ? 'bg-primary-50 text-primary-700 dark:bg-primary-900/20 dark:text-primary-400 shadow-sm'
-          : 'text-gray-700 dark:text-gray-300'
+          : 'text-gray-700 dark:text-gray-300',
+        isNavigating && 'opacity-50 pointer-events-none'
       )}
     >
       <div className={cn(
@@ -56,7 +67,11 @@ function SidebarItem({ href, icon, children, isActive, onClose, isCollapsed }: S
           ? 'text-primary-600 dark:text-primary-400 scale-110'
           : 'text-gray-500 dark:text-gray-400 group-hover:text-gray-700 dark:group-hover:text-gray-300 group-hover:scale-110'
       )}>
-        {icon}
+        {isNavigating ? (
+          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-current"></div>
+        ) : (
+          icon
+        )}
       </div>
       <span className={cn(
         'font-medium transition-all duration-300',

@@ -15,6 +15,7 @@ import { EmployeeService, Employee } from '@/lib/services/employees';
 import { DocumentService } from '@/lib/services/documents';
 import { supabase } from '@/lib/supabase/client';
 import Image from 'next/image';
+import { log } from '@/lib/utils/productionLogger';
 
 const employeeSchema = z.object({
   name: z.string().min(1, 'Name is required'),
@@ -93,11 +94,11 @@ export default function EmployeeDetailsPage() {
           visa_expiry_date: employee.visa_expiry_date || '',
         });
       } else {
-        console.log('⚠️ Employee not found for ID:', employeeId);
+        log.info('⚠️ Employee not found for ID:', employeeId);
         setError('Employee not found');
       }
     } catch (error) {
-      console.log('⚠️ Error fetching employee details:', error);
+      log.info('⚠️ Error fetching employee details:', error);
       // Don't show error immediately - let user try again
       setError(null);
     } finally {
@@ -117,14 +118,14 @@ export default function EmployeeDetailsPage() {
         .order('created_at', { ascending: false });
 
       if (error) {
-        console.error('Error fetching documents:', error);
+        log.error('Error fetching documents:', error);
         return;
       }
 
       // Cast the data to the correct type safely
       setDocuments((data as unknown as EmployeeDocuments[]) || []);
     } catch (error) {
-      console.log('⚠️ Error fetching documents:', error);
+      log.info('⚠️ Error fetching documents:', error);
     }
   }, [employee]);
 
@@ -160,12 +161,12 @@ export default function EmployeeDetailsPage() {
       if (updatedEmployee) {
         setEmployee(updatedEmployee);
         setEditing(false);
-        console.log('✅ Employee updated successfully');
+        log.info('✅ Employee updated successfully');
       } else {
-        console.log('⚠️ Failed to update employee');
+        log.info('⚠️ Failed to update employee');
       }
     } catch (error) {
-      console.log('⚠️ Error updating employee:', error);
+      log.info('⚠️ Error updating employee:', error);
     }
   };
 
@@ -180,7 +181,7 @@ export default function EmployeeDetailsPage() {
       const { data: signedUrl, error } = await DocumentService.getDocumentPresignedUrl(document.id);
 
       if (error || !signedUrl) {
-        console.error('Error getting signed URL:', error);
+        log.error('Error getting signed URL:', error);
         toast.error('Failed to open document');
         return;
       }
@@ -188,7 +189,7 @@ export default function EmployeeDetailsPage() {
       // Open document in new tab
       window.open(signedUrl, '_blank');
     } catch (error) {
-      console.error('Error opening document:', error);
+      log.error('Error opening document:', error);
       toast.error('Failed to open document');
     }
   };

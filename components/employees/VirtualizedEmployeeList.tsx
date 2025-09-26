@@ -17,6 +17,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { log } from '@/lib/utils/productionLogger';
 
 interface Employee {
   id: string;
@@ -206,7 +207,7 @@ export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
     queryKey: ['all-employees-optimized'],
     queryFn: async () => {
       try {
-        console.log('📊 Fetching employees for virtualization (optimized)...');
+        log.info('📊 Fetching employees for virtualization (optimized)...');
         
         // Only select essential fields to reduce memory usage
         const { data, error } = await supabase
@@ -224,14 +225,14 @@ export const VirtualizedEmployeeList = memo(function VirtualizedEmployeeList({
           .order('created_at', { ascending: false });
 
         if (error) {
-          console.error('❌ Error fetching employees:', error);
+          log.error('❌ Error fetching employees:', error);
           throw new Error(`Database query failed: ${error.message}`);
         }
         
-        console.log(`✅ Fetched ${data?.length || 0} employees for virtualization (optimized)`);
+        log.info(`✅ Fetched ${data?.length || 0} employees for virtualization (optimized)`);
         return (data as unknown) as Employee[];
       } catch (err) {
-        console.error('❌ Query function error:', err);
+        log.error('❌ Query function error:', err);
         throw err;
       }
     },

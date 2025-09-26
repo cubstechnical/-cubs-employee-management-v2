@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface PerformanceMetrics {
   fcp: number | null; // First Contentful Paint
@@ -56,13 +57,13 @@ export function PerformanceTracker() {
     // Log performance metrics to console in development
     if (process.env.NODE_ENV === 'development') {
       const logMetrics = () => {
-        console.group('🚀 Performance Metrics');
-        console.log('First Contentful Paint (FCP):', metrics.fcp ? `${metrics.fcp.toFixed(2)}ms` : 'Not available');
-        console.log('Largest Contentful Paint (LCP):', metrics.lcp ? `${metrics.lcp.toFixed(2)}ms` : 'Not available');
-        console.log('First Input Delay (FID):', metrics.fid ? `${metrics.fid.toFixed(2)}ms` : 'Not available');
-        console.log('Cumulative Layout Shift (CLS):', metrics.cls ? metrics.cls.toFixed(4) : 'Not available');
-        console.log('Time to First Byte (TTFB):', metrics.ttfb ? `${metrics.ttfb.toFixed(2)}ms` : 'Not available');
-        console.groupEnd();
+        log.group('🚀 Performance Metrics');
+        log.info('First Contentful Paint (FCP):', metrics.fcp ? `${metrics.fcp.toFixed(2)}ms` : 'Not available');
+        log.info('Largest Contentful Paint (LCP):', metrics.lcp ? `${metrics.lcp.toFixed(2)}ms` : 'Not available');
+        log.info('First Input Delay (FID):', metrics.fid ? `${metrics.fid.toFixed(2)}ms` : 'Not available');
+        log.info('Cumulative Layout Shift (CLS):', metrics.cls ? metrics.cls.toFixed(4) : 'Not available');
+        log.info('Time to First Byte (TTFB):', metrics.ttfb ? `${metrics.ttfb.toFixed(2)}ms` : 'Not available');
+        log.groupEnd();
       };
 
       // Log metrics after a delay to allow them to be collected

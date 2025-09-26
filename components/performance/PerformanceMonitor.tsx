@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface PerformanceMetrics {
   loadTime: number;
@@ -38,7 +39,7 @@ const PerformanceMonitorComponent = ({ componentName }: { componentName: string 
     if (process.env.NODE_ENV === 'development') {
       const renderTime = performance.now() - startTime;
       if (renderTime > 16) { // More than one frame (16ms at 60fps)
-        console.warn(`🐌 ${componentName} render took ${renderTime.toFixed(2)}ms`);
+        log.warn(`🐌 ${componentName} render took ${renderTime.toFixed(2)}ms`);
       }
     }
   }, [componentName]);

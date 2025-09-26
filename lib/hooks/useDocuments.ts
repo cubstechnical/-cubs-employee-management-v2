@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { DocumentService, UploadDocumentData, Document, DocumentFolder } from '@/lib/services/documents';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 // Query keys for consistent caching
 export const documentKeys = {
@@ -122,7 +123,7 @@ export function useUploadDocument() {
       }
     },
     onError: (error) => {
-      console.error('Error uploading document:', error);
+      log.error('Error uploading document:', error);
       toast.error('Failed to upload document');
     },
   });
@@ -149,7 +150,7 @@ export function useDeleteDocument() {
       }
     },
     onError: (error) => {
-      console.error('Error deleting document:', error);
+      log.error('Error deleting document:', error);
       toast.error('Failed to delete document');
     },
   });

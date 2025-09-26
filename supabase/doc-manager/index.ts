@@ -7,6 +7,7 @@ declare const Deno: any;
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { log } from '@/lib/utils/productionLogger';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -333,7 +334,7 @@ serve(async (req)=>{
               updated_at: new Date().toISOString()
             };
 
-            console.log('📝 Inserting employee document record:', documentRecord);
+            log.info('📝 Inserting employee document record:', documentRecord);
 
             const { data: insertedDoc, error: dbError } = await supabaseClient
               .from('employee_documents')
@@ -342,11 +343,11 @@ serve(async (req)=>{
               .single();
 
             if (dbError) {
-              console.error('❌ Database insertion error:', dbError);
+              log.error('❌ Database insertion error:', dbError);
               
               // If it's a duplicate file_path, try to update the existing record
               if (dbError.code === '23505' && dbError.message.includes('file_path')) {
-                console.log('🔄 Duplicate file_path detected, updating existing record...');
+                log.info('🔄 Duplicate file_path detected, updating existing record...');
                 
                 const { data: updatedDoc, error: updateError } = await supabaseClient
                   .from('employee_documents')
@@ -355,18 +356,18 @@ serve(async (req)=>{
                   .eq('file_path', documentRecord.file_path)
                 
                 if (updateError) {
-                  console.error('❌ Update error:', updateError);
+                  log.error('❌ Update error:', updateError);
                 } else {
-                  console.log('✅ Document record updated successfully:', updatedDoc.id);
+                  log.info('✅ Document record updated successfully:', updatedDoc.id);
                 }
               } else {
-                console.error('❌ Non-duplicate database error:', dbError);
+                log.error('❌ Non-duplicate database error:', dbError);
               }
             } else {
-              console.log('✅ Document record inserted successfully:', insertedDoc.id);
+              log.info('✅ Document record inserted successfully:', insertedDoc.id);
             }
           } catch (empError) {
-            console.error('❌ Employee document insertion error:', empError);
+            log.error('❌ Employee document insertion error:', empError);
             // Don't fail the upload - file is already uploaded to B2
           }
                 } else {
@@ -379,7 +380,7 @@ serve(async (req)=>{
               file_path: filePath,
             };
 
-            console.log('📝 Inserting company document record:', companyDocumentRecord);
+            log.info('📝 Inserting company document record:', companyDocumentRecord);
 
             // Insert the company document record into employee_documents table
               .insert(companyDocumentRecord)
@@ -393,7 +394,7 @@ serve(async (req)=>{
               }
             }
           } catch (companyError) {
-            console.error('❌ Company document insertion error:', companyError);
+            log.error('❌ Company document insertion error:', companyError);
             // Don't fail the upload - file is already uploaded to B2
           }
         }
@@ -539,7 +540,7 @@ serve(async (req)=>{
         // If we have a direct file path from the database, use it exactly as stored
         if (directFilePath && directFilePath.includes('/')) {
           filePath = directFilePath;
-          console.log('🔍 Using direct file path from database:', filePath);
+          log.info('🔍 Using direct file path from database:', filePath);
         } else if (!filePath) {
           // Try to get the file path from the database using document ID if available
           if (!actualEmpId || !fileName) {
@@ -556,7 +557,7 @@ serve(async (req)=>{
           filePath = `COMP_${safeCompany}/${fileName}`;
         }
 
-        console.log('🔍 Generating signed URL for file path:', filePath);
+        log.info('🔍 Generating signed URL for file path:', filePath);
 
         // Generate download authorization
         const downloadAuthData = await retryWithBackoff(async () => {
@@ -585,7 +586,7 @@ serve(async (req)=>{
         const encodedFilePath = encodeURIComponent(filePath).replace(/%2F/g, '/');
         const signedUrl = `${authData.downloadUrl}/file/${bucketName}/${encodedFilePath}?Authorization=${downloadAuthData.authorizationToken}`;
 
-        console.log('✅ Generated signed URL successfully');
+        log.info('✅ Generated signed URL successfully');
 
         return new Response(JSON.stringify({
           success: true,
@@ -597,7 +598,7 @@ serve(async (req)=>{
         });
 
       } catch (error) {
-        console.error('❌ Error in getSignedUrl:', error);
+        log.error('❌ Error in getSignedUrl:', error);
         return new Response(JSON.stringify({
           success: false,
           error: error.message || 'Failed to generate signed URL'

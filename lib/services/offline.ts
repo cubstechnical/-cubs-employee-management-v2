@@ -1,4 +1,5 @@
 import { handleNetworkError } from '../monitoring/performance';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface OfflineQueueItem {
   id: string;
@@ -23,13 +24,13 @@ export class OfflineService {
 
     window.addEventListener('online', () => {
       this.isOnline = true;
-      console.log('🌐 Back online - processing offline queue');
+      log.info('🌐 Back online - processing offline queue');
       this.processOfflineQueue();
     });
 
     window.addEventListener('offline', () => {
       this.isOnline = false;
-      console.log('📴 Gone offline - operations will be queued');
+      log.info('📴 Gone offline - operations will be queued');
     });
 
     // Check connectivity periodically
@@ -58,7 +59,7 @@ export class OfflineService {
     queue.push(item);
     this.saveOfflineQueue(queue);
 
-    console.log(`📋 Queued ${type} operation for offline processing: ${item.id}`);
+    log.info(`📋 Queued ${type} operation for offline processing: ${item.id}`);
     return item.id;
   }
 
@@ -69,23 +70,23 @@ export class OfflineService {
     const queue = this.getOfflineQueue();
     if (queue.length === 0) return;
 
-    console.log(`🔄 Processing ${queue.length} offline operations`);
+    log.info(`🔄 Processing ${queue.length} offline operations`);
 
     for (const item of queue) {
       try {
         await this.processQueueItem(item);
         // Remove successful items from queue
         this.removeFromQueue(item.id);
-        console.log(`✅ Processed offline operation: ${item.id}`);
+        log.info(`✅ Processed offline operation: ${item.id}`);
       } catch (error) {
         item.retryCount++;
 
         if (item.retryCount >= item.maxRetries) {
-          console.error(`❌ Max retries reached for operation: ${item.id}`, error);
+          log.error(`❌ Max retries reached for operation: ${item.id}`, error);
           this.removeFromQueue(item.id);
           handleNetworkError(error instanceof Error ? error : new Error(String(error)), `offline_operation_${item.type}`);
         } else {
-          console.warn(`⚠️ Retry ${item.retryCount}/${item.maxRetries} for operation: ${item.id}`);
+          log.warn(`⚠️ Retry ${item.retryCount}/${item.maxRetries} for operation: ${item.id}`);
         }
       }
     }
@@ -121,25 +122,25 @@ export class OfflineService {
   private static async handleUploadOperation(data: any): Promise<void> {
     // Implement your upload logic here
     // This should integrate with your existing upload service
-    console.log('Processing offline upload:', data);
+    log.info('Processing offline upload:', data);
   }
 
   // Handle update operations
   private static async handleUpdateOperation(data: any): Promise<void> {
     // Implement your update logic here
-    console.log('Processing offline update:', data);
+    log.info('Processing offline update:', data);
   }
 
   // Handle delete operations
   private static async handleDeleteOperation(data: any): Promise<void> {
     // Implement your delete logic here
-    console.log('Processing offline delete:', data);
+    log.info('Processing offline delete:', data);
   }
 
   // Handle sync operations
   private static async handleSyncOperation(data: any): Promise<void> {
     // Implement your sync logic here
-    console.log('Processing offline sync:', data);
+    log.info('Processing offline sync:', data);
   }
 
   // Cache data for offline access
@@ -155,7 +156,7 @@ export class OfflineService {
       };
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
     } catch (error) {
-      console.error('Failed to cache data:', error);
+      log.error('Failed to cache data:', error);
     }
   }
 
@@ -177,7 +178,7 @@ export class OfflineService {
 
       return cached.data;
     } catch (error) {
-      console.error('Failed to get cached data:', error);
+      log.error('Failed to get cached data:', error);
       return null;
     }
   }
@@ -198,7 +199,7 @@ export class OfflineService {
 
       localStorage.setItem(this.CACHE_KEY, JSON.stringify(cache));
     } catch (error) {
-      console.error('Failed to clear expired cache:', error);
+      log.error('Failed to clear expired cache:', error);
     }
   }
 
@@ -209,7 +210,7 @@ export class OfflineService {
     try {
       return JSON.parse(localStorage.getItem(this.QUEUE_KEY) || '[]');
     } catch (error) {
-      console.error('Failed to get offline queue:', error);
+      log.error('Failed to get offline queue:', error);
       return [];
     }
   }
@@ -221,7 +222,7 @@ export class OfflineService {
     try {
       localStorage.setItem(this.QUEUE_KEY, JSON.stringify(queue));
     } catch (error) {
-      console.error('Failed to save offline queue:', error);
+      log.error('Failed to save offline queue:', error);
     }
   }
 
@@ -239,7 +240,7 @@ export class OfflineService {
     try {
       return JSON.parse(localStorage.getItem(this.CACHE_KEY) || '{}');
     } catch (error) {
-      console.error('Failed to get cache:', error);
+      log.error('Failed to get cache:', error);
       return {};
     }
   }
@@ -259,14 +260,14 @@ export class OfflineService {
       this.isOnline = response.ok;
 
       if (wasOffline && this.isOnline) {
-        console.log('🌐 Connectivity restored');
+        log.info('🌐 Connectivity restored');
         this.processOfflineQueue();
       } else if (!wasOffline && !this.isOnline) {
-        console.log('📴 Connectivity lost');
+        log.info('📴 Connectivity lost');
       }
     } catch (error) {
       if (this.isOnline) {
-        console.log('📴 Connectivity lost');
+        log.info('📴 Connectivity lost');
         this.isOnline = false;
       }
     }
@@ -288,9 +289,9 @@ export class OfflineService {
     try {
       localStorage.removeItem(this.QUEUE_KEY);
       localStorage.removeItem(this.CACHE_KEY);
-      console.log('🧹 Cleared all offline data');
+      log.info('🧹 Cleared all offline data');
     } catch (error) {
-      console.error('Failed to clear offline data:', error);
+      log.error('Failed to clear offline data:', error);
     }
   }
 }

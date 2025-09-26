@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { AuthService } from '@/lib/services/auth';
 import { isCapacitorApp } from '@/utils/mobileDetection';
-import { log } from '@/lib/utils/logger';
+import { log } from '@/lib/utils/productionLogger';
 
 interface AuthDebugInfo {
   isMobile: boolean;
@@ -46,7 +46,7 @@ export default function MobileAuthDebug() {
         const { session } = await AuthService.getSession();
         sessionExists = !!session;
       } catch (error) {
-        console.warn('Debug: Failed to check session:', error);
+        log.warn('Debug: Failed to check session:', error);
       }
 
       setDebugInfo({

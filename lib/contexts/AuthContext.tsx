@@ -4,8 +4,8 @@ import React, { createContext, useContext, useState, useEffect, ReactNode } from
 import { AuthService, type AuthUser } from '@/lib/services/auth'
 import { supabase } from '@/lib/supabase/client'
 import { handleAuthError, isRefreshTokenError } from '@/lib/utils/authErrorHandler'
-import { log } from '@/lib/utils/logger'
 import { isCapacitorApp } from '@/utils/mobileDetection'
+import { log } from '@/lib/utils/productionLogger';
 
 interface AuthContextType {
   user: AuthUser | null
@@ -207,7 +207,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       await AuthService.signOut()
       setUser(null)
     } catch (error) {
-      console.error('Sign out error:', error)
+      log.error('Sign out error:', error)
     } finally {
       setIsLoading(false)
     }

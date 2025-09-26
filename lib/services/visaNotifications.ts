@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/client';
 import { EmailService } from './email-server';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface VisaExpiryRecord {
   id: string;
@@ -22,7 +23,7 @@ const EMAIL_BATCH_SIZE = 10; // Send emails in batches to avoid rate limiting
 
 export async function checkAndSendVisaExpiryNotifications(): Promise<void> {
   try {
-    console.log('🔄 Checking for visa expiry notifications...');
+    log.info('🔄 Checking for visa expiry notifications...');
     
     const today = new Date();
     const records = await getVisaExpiryRecords();
@@ -41,7 +42,7 @@ export async function checkAndSendVisaExpiryNotifications(): Promise<void> {
         // Update notification flags for all employees in this interval
         await updateNotificationFlagsForBatch(employees, parseInt(interval));
         
-        console.log(`📧 Consolidated visa expiry notification sent for ${employees.length} employees (${interval} days)`);
+        log.info(`📧 Consolidated visa expiry notification sent for ${employees.length} employees (${interval} days)`);
         
         // Respect Gmail rate limits - wait between batches
         if (totalEmailsSent < Object.keys(notificationsByInterval).length) {
@@ -50,9 +51,9 @@ export async function checkAndSendVisaExpiryNotifications(): Promise<void> {
       }
     }
     
-    console.log(`✅ Visa expiry notification check completed. Sent ${totalEmailsSent} consolidated emails.`);
+    log.info(`✅ Visa expiry notification check completed. Sent ${totalEmailsSent} consolidated emails.`);
   } catch (error) {
-    console.error('❌ Error checking visa expiry notifications:', error);
+    log.error('❌ Error checking visa expiry notifications:', error);
   }
 }
 
@@ -82,7 +83,7 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
       .limit(1);
 
     if (testError && testError.code === '42703') {
-      console.log('⚠️ Notification tracking columns do not exist yet. Using basic employee data.');
+      log.info('⚠️ Notification tracking columns do not exist yet. Using basic employee data.');
       
       // Fallback: get basic employee data without notification tracking
       const { data, error } = await supabase
@@ -98,7 +99,7 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
         .eq('is_active', true);
 
       if (error) {
-        console.error('Error fetching basic visa expiry records:', error);
+        log.error('Error fetching basic visa expiry records:', error);
         return [];
       }
 
@@ -137,7 +138,7 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
       .eq('is_active', true);
 
     if (error) {
-      console.error('Error fetching visa expiry records:', error);
+      log.error('Error fetching visa expiry records:', error);
       return [];
     }
 
@@ -156,7 +157,7 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
 
     return mappedData;
   } catch (error) {
-    console.error('Unexpected error fetching visa expiry records:', error);
+    log.error('Unexpected error fetching visa expiry records:', error);
     return [];
   }
 }
@@ -327,12 +328,12 @@ Generated on: ${new Date().toLocaleString()}`;
     });
     
     if (result.success) {
-      console.log(`✅ Consolidated visa expiry email sent for ${employees.length} employees (${daysUntilExpiry} days)`);
+      log.info(`✅ Consolidated visa expiry email sent for ${employees.length} employees (${daysUntilExpiry} days)`);
     } else {
-      console.error('❌ Error sending consolidated visa expiry email:', result.error);
+      log.error('❌ Error sending consolidated visa expiry email:', result.error);
     }
   } catch (error) {
-    console.error('❌ Error sending consolidated visa expiry email:', error);
+    log.error('❌ Error sending consolidated visa expiry email:', error);
   }
 }
 
@@ -369,7 +370,7 @@ async function updateNotificationFlagsForBatch(employees: VisaExpiryRecord[], da
       .limit(1);
 
     if (testError && testError.code === '42703') {
-      console.log('⚠️ Notification tracking columns do not exist yet. Skipping flag updates.');
+      log.info('⚠️ Notification tracking columns do not exist yet. Skipping flag updates.');
       return;
     }
 
@@ -400,18 +401,18 @@ async function updateNotificationFlagsForBatch(employees: VisaExpiryRecord[], da
       .in('id', employeeIds);
 
     if (error) {
-      console.error('❌ Error updating notification flags:', error);
+      log.error('❌ Error updating notification flags:', error);
     } else {
-      console.log(`✅ Updated notification flags for ${employees.length} employees (${daysUntilExpiry} days)`);
+      log.info(`✅ Updated notification flags for ${employees.length} employees (${daysUntilExpiry} days)`);
     }
   } catch (error) {
-    console.error('❌ Unexpected error updating notification flags:', error);
+    log.error('❌ Unexpected error updating notification flags:', error);
   }
 }
 
 // Function to manually trigger visa expiry check
 export async function triggerVisaExpiryCheck(): Promise<void> {
-  console.log('🔄 Manually triggering visa expiry check...');
+  log.info('🔄 Manually triggering visa expiry check...');
   await checkAndSendVisaExpiryNotifications();
 }
 
@@ -433,7 +434,7 @@ export async function getVisaExpiryStats(): Promise<{
     let error;
 
     if (testError && testError.code === '42703') {
-      console.log('⚠️ Notification tracking columns do not exist yet. Using basic stats.');
+      log.info('⚠️ Notification tracking columns do not exist yet. Using basic stats.');
       
       // Fallback: get basic employee data without notification tracking
       const result = await supabase
@@ -457,7 +458,7 @@ export async function getVisaExpiryStats(): Promise<{
     }
 
     if (error) {
-      console.error('❌ Error fetching visa expiry stats:', error);
+      log.error('❌ Error fetching visa expiry stats:', error);
       return { totalEmployees: 0, expiringSoon: 0, expired: 0, notificationsSent: 0 };
     }
 
@@ -494,7 +495,7 @@ export async function getVisaExpiryStats(): Promise<{
       notificationsSent
     };
   } catch (error) {
-    console.error('❌ Error getting visa expiry stats:', error);
+    log.error('❌ Error getting visa expiry stats:', error);
     return { totalEmployees: 0, expiringSoon: 0, expired: 0, notificationsSent: 0 };
   }
 } 

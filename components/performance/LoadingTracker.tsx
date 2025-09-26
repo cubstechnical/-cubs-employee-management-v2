@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface LoadingTrackerProps {
   onLoadComplete?: (loadTime: number) => void;
@@ -12,7 +13,7 @@ export default function LoadingTracker({ onLoadComplete }: LoadingTrackerProps) 
   useEffect(() => {
     const handleLoad = () => {
       const loadTime = performance.now() - startTime;
-      console.log(`🚀 Dashboard loaded in ${loadTime.toFixed(2)}ms`);
+      log.info(`🚀 Dashboard loaded in ${loadTime.toFixed(2)}ms`);
       onLoadComplete?.(loadTime);
     };
 

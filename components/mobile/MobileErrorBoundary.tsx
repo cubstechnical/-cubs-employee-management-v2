@@ -2,6 +2,7 @@
 
 import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Wifi, WifiOff } from 'lucide-react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface Props {
   children: ReactNode;
@@ -33,12 +34,12 @@ export class MobileErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Mobile Error Boundary caught an error:', error, errorInfo);
+    log.error('Mobile Error Boundary caught an error:', error, errorInfo);
     
     // Log to external service in production
     if (process.env.NODE_ENV === 'production') {
       // You can integrate with Sentry or other error tracking services here
-      console.error('Production error:', { error, errorInfo });
+      log.error('Production error:', { error, errorInfo });
     }
   }
 

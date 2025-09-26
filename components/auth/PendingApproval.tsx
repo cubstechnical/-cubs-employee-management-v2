@@ -7,6 +7,7 @@ import Button from '@/components/ui/Button';
 import { Clock, Mail, RefreshCw, LogOut } from 'lucide-react';
 import AuthService from '@/lib/services/auth';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function PendingApproval() {
   const router = useRouter();
@@ -21,7 +22,7 @@ export default function PendingApproval() {
           setUser(currentUser);
         }
       } catch (error) {
-        console.error('Error checking user status:', error);
+        log.error('Error checking user status:', error);
       }
     };
 
@@ -41,7 +42,7 @@ export default function PendingApproval() {
         toast('Your account is still pending approval');
       }
     } catch (error) {
-      console.error('Error checking approval status:', error);
+      log.error('Error checking approval status:', error);
       toast.error('Failed to check approval status');
     } finally {
       setIsChecking(false);
@@ -53,7 +54,7 @@ export default function PendingApproval() {
       await AuthService.signOut();
       router.push('/login');
     } catch (error) {
-      console.error('Sign out error:', error);
+      log.error('Sign out error:', error);
       toast.error('Failed to sign out');
     }
   };

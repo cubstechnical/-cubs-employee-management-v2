@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import { Save, Loader2 } from 'lucide-react';
 import { EmployeeService } from '@/lib/services/employees';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 interface FormData {
   name: string;
@@ -124,24 +125,24 @@ function NewEmployeeContent() {
       setCompanies(uniqueCompanies);
       setLoadingCompanies(false);
     } catch (error) {
-      console.error('Error loading companies:', error);
+      log.error('Error loading companies:', error);
       setLoadingCompanies(false);
     }
   };
 
   const generatePreviewId = useCallback(async () => {
-    console.log('🔄 Generating preview ID for:', { company: formData.company_name, name: formData.name });
+    log.info('🔄 Generating preview ID for:', { company: formData.company_name, name: formData.name });
     if (formData.company_name && formData.name) {
       try {
         const id = await EmployeeService.generateEmployeeId(formData.company_name, formData.name);
-        console.log('✅ Generated employee ID:', id);
+        log.info('✅ Generated employee ID:', id);
         setPreviewId(id);
       } catch (error) {
-        console.error('❌ Error generating preview ID:', error);
+        log.error('❌ Error generating preview ID:', error);
         setPreviewId('');
       }
     } else {
-      console.log('⚠️ Missing company or name for ID generation');
+      log.info('⚠️ Missing company or name for ID generation');
       setPreviewId('');
     }
   }, [formData.company_name, formData.name]);
@@ -232,7 +233,7 @@ function NewEmployeeContent() {
         router.push('/employees');
       }
     } catch (error) {
-      console.error('Error creating employee:', error);
+      log.error('Error creating employee:', error);
       toast.error('Failed to create employee. Please try again.');
     } finally {
       setLoading(false);

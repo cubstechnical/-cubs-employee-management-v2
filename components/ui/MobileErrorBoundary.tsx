@@ -5,6 +5,7 @@ import { isCapacitorApp } from '@/utils/mobileDetection';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import Button from './Button';
 import Card from './Card';
+import { log } from '@/lib/utils/productionLogger';
 
 interface Props {
   children: ReactNode;
@@ -27,7 +28,7 @@ export class MobileErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Mobile Error Boundary caught an error:', error, errorInfo);
+    log.error('Mobile Error Boundary caught an error:', error, errorInfo);
     this.setState({ error, errorInfo });
   }
 

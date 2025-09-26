@@ -2,12 +2,13 @@
 
 import { useState } from 'react';
 import SearchAutocomplete from './SearchAutocomplete';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function SearchDemo() {
   const [searchTerm, setSearchTerm] = useState('');
 
   const handleSearch = (term: string) => {
-    console.log('Search performed:', term);
+    log.info('Search performed:', term);
     // You can add additional search logic here
   };
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface AuthenticatedRequest extends NextRequest {
   user?: any;
@@ -53,7 +54,7 @@ export async function withAuth(
     return await handler(authenticatedRequest);
   } catch (error) {
     // Log error securely without exposing sensitive information
-    console.error('Auth middleware error:', error instanceof Error ? error.message : 'Unknown error');
+    log.error('Auth middleware error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -107,7 +108,7 @@ export async function withAdminAuth(
     return await handler(authenticatedRequest);
   } catch (error) {
     // Log error securely without exposing sensitive information
-    console.error('Admin auth middleware error:', error instanceof Error ? error.message : 'Unknown error');
+    log.error('Admin auth middleware error:', error instanceof Error ? error.message : 'Unknown error');
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -160,7 +161,7 @@ export async function withMasterAdminAuth(
 
     return await handler(authenticatedRequest);
   } catch (error) {
-    console.error('Master admin auth middleware error:', error);
+    log.error('Master admin auth middleware error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -169,7 +170,7 @@ export async function withMasterAdminAuth(
 }
 
 export function handleApiError(error: any) {
-  console.error('API Error:', error);
+  log.error('API Error:', error);
   
   if (error.code === 'PGRST116') {
     return NextResponse.json(

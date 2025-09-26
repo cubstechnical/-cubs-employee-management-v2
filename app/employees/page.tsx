@@ -26,6 +26,7 @@ import {
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
 import { EmployeeService } from '@/lib/services/employees';
+import { log } from '@/lib/utils/productionLogger';
 
 interface Employee {
   id: string;
@@ -98,7 +99,7 @@ export default function EmployeesPage() {
           .order('company_name');
 
         if (error) {
-          console.error('❌ Error fetching companies:', error);
+          log.error('❌ Error fetching companies:', error);
           return [];
         }
 
@@ -106,7 +107,7 @@ export default function EmployeesPage() {
         const uniqueCompanies = [...new Set(data.map((item: { company_name: unknown }) => item.company_name as string))];
         return uniqueCompanies;
       } catch (err) {
-        console.error('❌ Error in companies query:', err);
+        log.error('❌ Error in companies query:', err);
         return [];
       }
     },
@@ -149,7 +150,7 @@ export default function EmployeesPage() {
           inactive: inactiveCount || 0
         };
       } catch (err) {
-        console.error('❌ Error fetching employee counts:', err);
+        log.error('❌ Error fetching employee counts:', err);
         return { all: 0, active: 0, inactive: 0 };
       }
     },
@@ -161,11 +162,11 @@ export default function EmployeesPage() {
     queryKey: ['employees', selectedEmployee?.id, debouncedSearchTerm, filterStatus, filterCompany, currentPage],
     queryFn: async () => {
       try {
-        console.log('🔍 Fetching employees with search:', debouncedSearchTerm, 'filter:', filterStatus, 'selected:', selectedEmployee?.name, 'page:', currentPage);
+        log.info('🔍 Fetching employees with search:', debouncedSearchTerm, 'filter:', filterStatus, 'selected:', selectedEmployee?.name, 'page:', currentPage);
         
         // If a specific employee is selected, show only that employee
         if (selectedEmployee) {
-          console.log('🔍 Fetching selected employee:', selectedEmployee.id);
+          log.info('🔍 Fetching selected employee:', selectedEmployee.id);
           const { data, error } = await supabase
             .from('employee_table')
             .select('*')
@@ -173,18 +174,18 @@ export default function EmployeesPage() {
             .single();
 
           if (error) {
-            console.error('❌ Error fetching selected employee:', error);
+            log.error('❌ Error fetching selected employee:', error);
             throw new Error(`Failed to fetch selected employee: ${error.message}`);
           }
           
-          console.log('✅ Selected employee fetched:', data?.name);
+          log.info('✅ Selected employee fetched:', data?.name);
           setTotalPages(1);
           setTotalEmployees(1);
           return [(data as unknown) as Employee];
         }
 
         // Otherwise, perform paginated search
-        console.log('🔍 Performing paginated search...');
+        log.info('🔍 Performing paginated search...');
         let query = supabase
           .from('employee_table')
           .select('*', { count: 'exact' })
@@ -193,19 +194,19 @@ export default function EmployeesPage() {
         // Apply search filter
         if (debouncedSearchTerm.trim()) {
           const searchPattern = `%${debouncedSearchTerm.trim()}%`;
-          console.log('🔍 Applying search pattern:', searchPattern);
+          log.info('🔍 Applying search pattern:', searchPattern);
           query = query.or(`name.ilike.${searchPattern},email_id.ilike.${searchPattern},company_name.ilike.${searchPattern},trade.ilike.${searchPattern},employee_id.ilike.${searchPattern}`);
         }
 
         // Apply status filter
         if (filterStatus !== 'all') {
-          console.log('🔍 Applying status filter:', filterStatus);
+          log.info('🔍 Applying status filter:', filterStatus);
           query = query.eq('is_active', filterStatus === 'active');
         }
 
         // Apply company filter
         if (filterCompany !== 'all') {
-          console.log('🔍 Applying company filter:', filterCompany);
+          log.info('🔍 Applying company filter:', filterCompany);
           query = query.eq('company_name', filterCompany);
         }
 
@@ -216,7 +217,7 @@ export default function EmployeesPage() {
 
         const { data, error, count } = await query;
         if (error) {
-          console.error('❌ Error fetching employees:', error);
+          log.error('❌ Error fetching employees:', error);
           throw new Error(`Database query failed: ${error.message}`);
         }
         
@@ -226,10 +227,10 @@ export default function EmployeesPage() {
         setTotalPages(pages);
         setTotalEmployees(total);
         
-        console.log(`✅ Employees fetched: ${data?.length || 0} of ${total} (page ${currentPage}/${pages})`);
+        log.info(`✅ Employees fetched: ${data?.length || 0} of ${total} (page ${currentPage}/${pages})`);
         return (data as unknown) as Employee[];
       } catch (err) {
-        console.error('❌ Query function error:', err);
+        log.error('❌ Query function error:', err);
         throw err;
       }
     },
@@ -252,7 +253,7 @@ export default function EmployeesPage() {
   // Delete employee mutation
   const deleteEmployeeMutation = useMutation({
     mutationFn: async (employeeId: string) => {
-      console.log('🗑️ Deleting employee:', employeeId);
+      log.info('🗑️ Deleting employee:', employeeId);
       
       // Use EmployeeService.deleteEmployee which properly handles document deletion
       const result = await EmployeeService.deleteEmployee(employeeId);
@@ -261,7 +262,7 @@ export default function EmployeesPage() {
         throw new Error(result.error || 'Failed to delete employee');
       }
       
-      console.log('✅ Employee deleted successfully');
+      log.info('✅ Employee deleted successfully');
       return result;
     },
     onSuccess: () => {
@@ -274,7 +275,7 @@ export default function EmployeesPage() {
       setDeleteConfirmation({ isOpen: false, employee: null, isDeleting: false });
     },
     onError: (error) => {
-      console.error('❌ Delete mutation error:', error);
+      log.error('❌ Delete mutation error:', error);
       toast.error(`Failed to delete employee: ${error.message}`);
       setDeleteConfirmation(prev => ({ ...prev, isDeleting: false }));
     },

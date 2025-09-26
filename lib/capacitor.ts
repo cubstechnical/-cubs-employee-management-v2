@@ -3,24 +3,25 @@ import { StatusBar, Style } from '@capacitor/status-bar';
 import { SplashScreen } from '@capacitor/splash-screen';
 import { Keyboard, KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 import { App } from '@capacitor/app';
+import { log } from '@/lib/utils/productionLogger';
 
 export class CapacitorService {
   static async initialize() {
     if (!Capacitor.isNativePlatform()) {
-      console.log('Not running on native platform, skipping Capacitor initialization');
+      log.info('Not running on native platform, skipping Capacitor initialization');
       return; // Only run on native platforms
     }
 
     try {
-      console.log('Initializing Capacitor for mobile app...');
+      log.info('Initializing Capacitor for mobile app...');
       
       // Configure status bar with error handling
       try {
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: '#111827' });
-        console.log('Status bar configured successfully');
+        log.info('Status bar configured successfully');
       } catch (error) {
-        console.warn('Status bar configuration failed:', error);
+        log.warn('Status bar configuration failed:', error);
       }
 
       // Configure splash screen with delay for better UX
@@ -28,34 +29,34 @@ export class CapacitorService {
         // Add a small delay to ensure splash screen is visible
         setTimeout(async () => {
           await SplashScreen.hide();
-          console.log('Splash screen hidden');
+          log.info('Splash screen hidden');
         }, 1000);
       } catch (error) {
-        console.warn('Splash screen configuration failed:', error);
+        log.warn('Splash screen configuration failed:', error);
       }
 
       // Configure keyboard with error handling
       try {
         await Keyboard.setResizeMode({ mode: KeyboardResize.Body });
         await Keyboard.setStyle({ style: KeyboardStyle.Dark });
-        console.log('Keyboard configured successfully');
+        log.info('Keyboard configured successfully');
       } catch (error) {
-        console.warn('Keyboard configuration failed:', error);
+        log.warn('Keyboard configuration failed:', error);
       }
 
       // Handle app state changes
       App.addListener('appStateChange', ({ isActive }) => {
-        console.log('App state changed. Is active?', isActive);
+        log.info('App state changed. Is active?', isActive);
         // Handle app state changes for better mobile experience
         if (isActive) {
           // App became active, refresh data if needed
-          console.log('App became active, refreshing data...');
+          log.info('App became active, refreshing data...');
         }
       });
 
       // Handle back button (Android) with better logic
       App.addListener('backButton', ({ canGoBack }) => {
-        console.log('Back button pressed, canGoBack:', canGoBack);
+        log.info('Back button pressed, canGoBack:', canGoBack);
         if (!canGoBack) {
           // Show confirmation before exiting
           if (confirm('Are you sure you want to exit the app?')) {
@@ -68,13 +69,13 @@ export class CapacitorService {
 
       // Handle app URL open for deep linking
       App.addListener('appUrlOpen', (data) => {
-        console.log('App URL opened:', data);
+        log.info('App URL opened:', data);
         // Handle deep links here
       });
 
-      console.log('Capacitor initialized successfully');
+      log.info('Capacitor initialized successfully');
     } catch (error) {
-      console.error('Error initializing Capacitor:', error);
+      log.error('Error initializing Capacitor:', error);
       // Don't throw error, just log it to prevent app crashes
     }
   }
@@ -92,7 +93,7 @@ export class CapacitorService {
       try {
         await SplashScreen.hide();
       } catch (error) {
-        console.error('Error hiding splash screen:', error);
+        log.error('Error hiding splash screen:', error);
       }
     }
   }
@@ -102,7 +103,7 @@ export class CapacitorService {
       try {
         await SplashScreen.show();
       } catch (error) {
-        console.error('Error showing splash screen:', error);
+        log.error('Error showing splash screen:', error);
       }
     }
   }

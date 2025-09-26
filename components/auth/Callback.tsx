@@ -6,6 +6,7 @@ import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import AuthService from '@/lib/services/auth';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function Callback() {
   const router = useRouter();
@@ -47,7 +48,7 @@ export default function Callback() {
           router.push('/login');
         }
       } catch (error) {
-        console.error('Callback error:', error);
+        log.error('Callback error:', error);
         setStatus('error');
         setMessage('An unexpected error occurred during authentication');
       }

@@ -7,6 +7,7 @@ import Input from '@/components/ui/Input';
 import { createClient } from '@supabase/supabase-js';
 import toast from 'react-hot-toast';
 import { useRouter } from 'next/navigation';
+import { log } from '@/lib/utils/productionLogger';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -76,7 +77,7 @@ export default function DeleteAccountPage() {
         setIsDeleting(false);
       }
     } catch (error) {
-      console.error('Error deleting account:', error);
+      log.error('Error deleting account:', error);
       toast.error('An unexpected error occurred. Please try again.');
       setIsDeleting(false);
     }

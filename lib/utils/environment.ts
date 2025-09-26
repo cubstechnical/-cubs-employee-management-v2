@@ -1,3 +1,4 @@
+import { log } from '@/lib/utils/productionLogger';
 /**
  * Environment Variable Validation and Security Utilities
  * Ensures proper configuration and prevents exposure of sensitive data
@@ -106,25 +107,25 @@ export function getAppUrl(): string {
 export function logEnvironmentConfig(): void {
   if (!isDevelopment()) return;
 
-  console.group('🔧 Environment Configuration');
-  console.log('Environment:', process.env.NODE_ENV);
-  console.log('App URL:', getAppUrl());
+  log.group('🔧 Environment Configuration');
+  log.info('Environment:', process.env.NODE_ENV);
+  log.info('App URL:', getAppUrl());
 
   // Log required variables (without sensitive data)
-  console.log('Required Variables:');
+  log.info('Required Variables:');
   Object.keys(REQUIRED_ENV_VARS).forEach(key => {
     const value = process.env[key];
-    console.log(`  ${key}: ${value ? '✅ Set' : '❌ Missing'}`);
+    log.info(`  ${key}: ${value ? '✅ Set' : '❌ Missing'}`);
   });
 
   // Log optional variables
-  console.log('Optional Variables:');
+  log.info('Optional Variables:');
   Object.keys(OPTIONAL_ENV_VARS).forEach(key => {
     const value = process.env[key];
-    console.log(`  ${key}: ${value ? '✅ Set' : '⚠️ Not set'}`);
+    log.info(`  ${key}: ${value ? '✅ Set' : '⚠️ Not set'}`);
   });
 
-  console.groupEnd();
+  log.groupEnd();
 }
 
 /**
@@ -144,7 +145,7 @@ export function securityCheck(): void {
     // Client-side checks
     clientSideOnlyVars.forEach(varName => {
       if (process.env[varName]) {
-        console.warn(`⚠️  SECURITY WARNING: ${varName} is exposed on client-side!`);
+        log.warn(`⚠️  SECURITY WARNING: ${varName} is exposed on client-side!`);
       }
     });
   }
@@ -160,8 +161,8 @@ export function initializeEnvironment(): void {
   if (missing.length > 0) {
     const errorMessage = `Missing required environment variables: ${missing.join(', ')}`;
     if (isDevelopment()) {
-      console.error(`❌ ${errorMessage}`);
-      console.log('Please check your .env.local file or environment configuration.');
+      log.error(`❌ ${errorMessage}`);
+      log.info('Please check your .env.local file or environment configuration.');
     } else {
       throw new Error(errorMessage);
     }

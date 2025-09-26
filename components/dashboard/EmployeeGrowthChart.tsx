@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { MoreVertical } from "lucide-react";
 import { useState, useEffect, useMemo, useCallback, memo, useRef } from "react";
 import { DashboardService, CompanyStats } from "@/lib/services/dashboard";
+import { log } from '@/lib/utils/productionLogger';
 
 // Dynamically import the ReactApexChart component
 const ReactApexChart = dynamic(() => import("react-apexcharts"), {
@@ -45,20 +46,20 @@ const EmployeeGrowthChart = memo(function EmployeeGrowthChart({ data, loading = 
       
       const result = await DashboardService.getCompanyStats();
       if (result.error) {
-        console.warn('Company stats service returned error:', result.error);
+        log.warn('Company stats service returned error:', result.error);
         setError(result.error);
       }
       
       if (result.stats && result.stats.length > 0) {
         // Convert DashboardService CompanyStats to the format expected by the chart
         setCompanyStats(result.stats);
-        console.log('✅ Company stats loaded:', result.stats.length, 'companies');
+        log.info('✅ Company stats loaded:', result.stats.length, 'companies');
       } else {
-        console.log('⚠️ No company stats, using fallback data');
+        log.info('⚠️ No company stats, using fallback data');
         setCompanyStats(fallbackData);
       }
     } catch (error) {
-      console.error('Error fetching company stats:', error);
+      log.error('Error fetching company stats:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
       setCompanyStats(fallbackData);
     } finally {
@@ -187,7 +188,7 @@ const EmployeeGrowthChart = memo(function EmployeeGrowthChart({ data, loading = 
 
   // Debug logging (can be removed in production)
   if (process.env.NODE_ENV === 'development') {
-    console.log('Chart loaded with', companyStats.length, 'companies');
+    log.info('Chart loaded with', companyStats.length, 'companies');
   }
 
 

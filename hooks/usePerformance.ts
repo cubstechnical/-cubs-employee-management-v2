@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 export function usePerformance(operationName: string) {
   const startTime = useRef<number>(0);
@@ -14,9 +15,9 @@ export function usePerformance(operationName: string) {
     
     // Log performance metrics
     if (duration > 500) {
-      console.warn(`⚠️ Slow operation detected: ${operationName} took ${duration.toFixed(2)}ms`);
+      log.warn(`⚠️ Slow operation detected: ${operationName} took ${duration.toFixed(2)}ms`);
     } else {
-      console.log(`✅ ${operationName} completed in ${duration.toFixed(2)}ms`);
+      log.info(`✅ ${operationName} completed in ${duration.toFixed(2)}ms`);
     }
     
     return duration;

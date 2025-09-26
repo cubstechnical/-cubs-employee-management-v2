@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function PWARegistration() {
   useEffect(() => {
@@ -9,10 +10,10 @@ export default function PWARegistration() {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js')
           .then((registration) => {
-            console.log('SW registered: ', registration);
+            log.info('SW registered: ', registration);
           })
           .catch((registrationError) => {
-            console.log('SW registration failed: ', registrationError);
+            log.info('SW registration failed: ', registrationError);
           });
       });
     }
@@ -36,9 +37,9 @@ export default function PWARegistration() {
           // Wait for the user to respond to the prompt
           deferredPrompt.userChoice.then((choiceResult: any) => {
             if (choiceResult.outcome === 'accepted') {
-              console.log('User accepted the PWA install prompt');
+              log.info('User accepted the PWA install prompt');
             } else {
-              console.log('User dismissed the PWA install prompt');
+              log.info('User dismissed the PWA install prompt');
             }
             deferredPrompt = null;
           });
@@ -47,7 +48,7 @@ export default function PWARegistration() {
     };
 
     const handleAppInstalled = () => {
-      console.log('PWA was installed');
+      log.info('PWA was installed');
       // Hide install button
       const installButton = document.getElementById('pwa-install-button');
       if (installButton) {

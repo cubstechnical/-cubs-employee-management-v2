@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/client';
 import { BackblazeService } from './backblaze';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface Document {
   id: string;
@@ -154,7 +155,7 @@ export class DocumentService {
     this.cacheTimestamps.clear();
     this.isCurrentlyFetching = false;
     this.fetchPromise = null;
-    console.log('🧹 All document service caches cleared');
+    log.info('🧹 All document service caches cleared');
   }
 
   // Performance monitoring helper
@@ -165,11 +166,11 @@ export class DocumentService {
     this.performanceMetrics.get(operation)!.push(duration);
     
     if (duration > 2000) {
-      console.warn(`⚠️ Very slow operation: ${operation} took ${duration.toFixed(2)}ms`);
+      log.warn(`⚠️ Very slow operation: ${operation} took ${duration.toFixed(2)}ms`);
     } else if (duration > 1000) {
-      console.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`);
+      log.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`);
     } else if (duration > 500) {
-      console.log(`⚠️ Moderate operation: ${operation} took ${duration.toFixed(2)}ms`);
+      log.info(`⚠️ Moderate operation: ${operation} took ${duration.toFixed(2)}ms`);
     }
   }
 
@@ -178,7 +179,7 @@ export class DocumentService {
     switch (type) {
       case 'folders':
         this.foldersCache = null;
-        console.log('🧹 Cleared folders cache');
+        log.info('🧹 Cleared folders cache');
         break;
       case 'company':
         if (companyName) {
@@ -186,24 +187,24 @@ export class DocumentService {
           this.employeeFoldersInflight.delete(companyName);
           this.companyDocsRawCache.delete(companyName);
           this.companyDocsInflight.delete(companyName);
-          console.log(`🧹 Cleared company cache for: ${companyName}`);
+          log.info(`🧹 Cleared company cache for: ${companyName}`);
         } else {
           this.employeeFoldersCache.clear();
           this.employeeFoldersInflight.clear();
           this.companyDocsRawCache.clear();
           this.companyDocsInflight.clear();
-          console.log('🧹 Cleared all company caches');
+          log.info('🧹 Cleared all company caches');
         }
         break;
       case 'employee':
         if (employeeId) {
           this.employeeDocsCache.delete(employeeId);
           this.employeeDocsInflight.delete(employeeId);
-          console.log(`🧹 Cleared employee cache for: ${employeeId}`);
+          log.info(`🧹 Cleared employee cache for: ${employeeId}`);
         } else {
           this.employeeDocsCache.clear();
           this.employeeDocsInflight.clear();
-          console.log('🧹 Cleared all employee caches');
+          log.info('🧹 Cleared all employee caches');
         }
         break;
       case 'all':
@@ -223,18 +224,18 @@ export class DocumentService {
     if (companyName) {
       this.employeeFoldersCache.delete(companyName);
       this.employeeFoldersInflight.delete(companyName);
-      console.log(`🧹 Cleared employee folder cache for: ${companyName}`);
+      log.info(`🧹 Cleared employee folder cache for: ${companyName}`);
     } else {
       this.employeeFoldersCache.clear();
       this.employeeFoldersInflight.clear();
-      console.log('🧹 Cleared all employee folder caches');
+      log.info('🧹 Cleared all employee folder caches');
     }
   }
 
   // Fetch ALL documents using pagination to bypass Supabase 1000 record limit
   private static async fetchAllDocuments(): Promise<{ documents: any[]; error: string | null }> {
     try {
-      if (process.env.NODE_ENV !== 'production') console.log('📄 Fetching documents (paginated)...');
+      if (process.env.NODE_ENV !== 'production') log.info('📄 Fetching documents (paginated)...');
 
       const pageSize = this.SUPABASE_PAGE_SIZE;
       let from = 0;
@@ -253,13 +254,13 @@ export class DocumentService {
           .range(from, to);
 
         if (error) {
-          console.error('❌ Error fetching documents:', error);
+          log.error('❌ Error fetching documents:', error);
           return { documents: [], error: error.message };
         }
 
         const batch = data || [];
         allDocuments.push(...batch);
-        if (process.env.NODE_ENV !== 'production') console.log(`  • batch ${from}-${to} → ${batch.length}`);
+        if (process.env.NODE_ENV !== 'production') log.info(`  • batch ${from}-${to} → ${batch.length}`);
 
         if (batch.length < pageSize) break;
         from += pageSize;
@@ -267,10 +268,10 @@ export class DocumentService {
         batchCount++;
       }
 
-      if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${allDocuments.length} documents (across ${Math.ceil(allDocuments.length / pageSize)} page(s))`);
+      if (process.env.NODE_ENV !== 'production') log.info(`✅ Found ${allDocuments.length} documents (across ${Math.ceil(allDocuments.length / pageSize)} page(s))`);
       return { documents: allDocuments, error: null };
     } catch (error) {
-      console.error('❌ Error in fetchAllDocuments:', error);
+      log.error('❌ Error in fetchAllDocuments:', error);
       return { documents: [], error: 'Failed to fetch all documents' };
     }
   }
@@ -278,17 +279,17 @@ export class DocumentService {
   // Fetch ALL documents for a specific company using pagination
   private static async fetchAllCompanyDocuments(companyName: string): Promise<{ documents: any[]; error: string | null }> {
     try {
-      if (process.env.NODE_ENV !== 'production') console.log(`📄 Fetching documents for company (paginated): ${companyName}...`);
+      if (process.env.NODE_ENV !== 'production') log.info(`📄 Fetching documents for company (paginated): ${companyName}...`);
 
       // Cache and in-flight dedupe for heavy paginated call - OPTIMIZED
       const cached = this.companyDocsRawCache.get(companyName);
       if (cached && Date.now() - cached.timestamp < this.CACHE_DURATIONS.documents * 2) { // Extended cache duration
-        console.log('✅ Cache hit for company documents:', companyName);
+        log.info('✅ Cache hit for company documents:', companyName);
         return { documents: cached.docs, error: null };
       }
       const inflight = this.companyDocsInflight.get(companyName);
       if (inflight) {
-        console.log('🔄 Inflight request found for company documents:', companyName);
+        log.info('🔄 Inflight request found for company documents:', companyName);
         return inflight;
       }
 
@@ -340,7 +341,7 @@ export class DocumentService {
           const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
           
           if (error) {
-            console.error(`❌ Error fetching documents for ${companyName}:`, error);
+            log.error(`❌ Error fetching documents for ${companyName}:`, error);
             return { documents: [], error: error.message };
           }
           
@@ -349,7 +350,7 @@ export class DocumentService {
           
           const batchDuration = performance.now() - batchStartTime;
           if (process.env.NODE_ENV !== 'production') {
-            console.log(`  • ${companyName} batch ${from}-${to} → ${batch.length} (${batchDuration.toFixed(2)}ms)`);
+            log.info(`  • ${companyName} batch ${from}-${to} → ${batch.length} (${batchDuration.toFixed(2)}ms)`);
           }
           
           if (batch.length < pageSize) break;
@@ -364,11 +365,11 @@ export class DocumentService {
         
         const totalDuration = performance.now() - startTime;
         if (process.env.NODE_ENV !== 'production') {
-          console.log(`✅ Found ${allDocuments.length} documents for ${companyName} in ${totalDuration.toFixed(2)}ms`);
+          log.info(`✅ Found ${allDocuments.length} documents for ${companyName} in ${totalDuration.toFixed(2)}ms`);
         }
 
-        if (process.env.NODE_ENV !== 'production') console.log(`✅ Found ${allDocuments.length} documents for ${companyName}`);
-        console.log('🔍 Sample documents:', allDocuments.slice(0, 3).map(d => ({ employee_id: d.employee_id, file_path: d.file_path })));
+        if (process.env.NODE_ENV !== 'production') log.info(`✅ Found ${allDocuments.length} documents for ${companyName}`);
+        log.info('🔍 Sample documents:', allDocuments.slice(0, 3).map(d => ({ employee_id: d.employee_id, file_path: d.file_path })));
         // Save to cache
         this.companyDocsRawCache.set(companyName, { docs: allDocuments, timestamp: Date.now() });
         return { documents: allDocuments, error: null };
@@ -380,7 +381,7 @@ export class DocumentService {
       this.companyDocsInflight.set(companyName, promise);
       return promise;
     } catch (error) {
-      console.error(`❌ Error in fetchAllCompanyDocuments for ${companyName}:`, error);
+      log.error(`❌ Error in fetchAllCompanyDocuments for ${companyName}:`, error);
       return { documents: [], error: 'Failed to fetch company documents' };
     }
   }
@@ -398,8 +399,8 @@ export class DocumentService {
       const inflight = this.employeeDocsInflight.get(employeeId);
       if (inflight) return inflight;
 
-      console.log(`🔍 Fetching documents for employee ID: ${employeeId}...`);
-      console.log(`🔍 Employee ID type: ${typeof employeeId}, value: "${employeeId}"`);
+      log.info(`🔍 Fetching documents for employee ID: ${employeeId}...`);
+      log.info(`🔍 Employee ID type: ${typeof employeeId}, value: "${employeeId}"`);
       
       // Use paginated approach to handle Supabase's 1000-row limit
       const allDocs: Document[] = [];
@@ -416,12 +417,12 @@ export class DocumentService {
           .range(offset, offset + LIMIT - 1);
 
           if (error) {
-          console.error(`❌ Error fetching documents for employee ${employeeId} (offset: ${offset}):`, error);
+          log.error(`❌ Error fetching documents for employee ${employeeId} (offset: ${offset}):`, error);
             return { documents: [], error: error.message };
           }
 
         if (data && data.length > 0) {
-          console.log(`📄 Fetched ${data.length} documents for ${employeeId} (offset: ${offset})`);
+          log.info(`📄 Fetched ${data.length} documents for ${employeeId} (offset: ${offset})`);
           allDocs.push(...(data as unknown as Document[]));
           
           if (data.length < LIMIT) {
@@ -434,10 +435,10 @@ export class DocumentService {
         }
       }
 
-      console.log(`✅ Total documents loaded for ${employeeId}: ${allDocs.length}`);
+      log.info(`✅ Total documents loaded for ${employeeId}: ${allDocs.length}`);
       
       if (allDocs.length > 0) {
-        console.log('📄 Sample documents:', allDocs.slice(0, 3).map(d => ({ 
+        log.info('📄 Sample documents:', allDocs.slice(0, 3).map(d => ({ 
           id: d.id, 
           employee_id: d.employee_id, 
           file_name: d.file_name 
@@ -448,7 +449,7 @@ export class DocumentService {
       
       return { documents: allDocs, error: null };
     } catch (error) {
-      console.error('❌ Exception in getDocumentsForEmployee:', error);
+      log.error('❌ Exception in getDocumentsForEmployee:', error);
       return { documents: [], error: 'Failed to fetch documents for employee' };
     }
   }
@@ -456,7 +457,7 @@ export class DocumentService {
   // Get document by ID
   static async getDocumentById(documentId: string): Promise<{ data: Document | null; error: string | null }> {
     try {
-      console.log(`🔍 Fetching document by ID: ${documentId}...`);
+      log.info(`🔍 Fetching document by ID: ${documentId}...`);
       
       const { data, error } = await supabase
           .from('employee_documents')
@@ -465,19 +466,19 @@ export class DocumentService {
         .single();
 
           if (error) {
-        console.error(`❌ Error fetching document ${documentId}:`, error);
+        log.error(`❌ Error fetching document ${documentId}:`, error);
             return { data: null, error: error.message };
           }
 
       if (!data) {
-        console.warn(`⚠️ Document not found: ${documentId}`);
+        log.warn(`⚠️ Document not found: ${documentId}`);
         return { data: null, error: 'Document not found' };
       }
 
-      console.log(`✅ Document found: ${data.file_name}`);
+      log.info(`✅ Document found: ${data.file_name}`);
       return { data: data as unknown as Document, error: null };
     } catch (error) {
-      console.error('❌ Exception in getDocumentById:', error);
+      log.error('❌ Exception in getDocumentById:', error);
       return { data: null, error: 'Failed to fetch document' };
     }
   }
@@ -485,7 +486,7 @@ export class DocumentService {
   // Get company documents with pagination
   static async getCompanyDocuments(companyName?: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
-      console.log(`🔍 Fetching company documents for: ${companyName}...`);
+      log.info(`🔍 Fetching company documents for: ${companyName}...`);
       
       // Use paginated approach to handle Supabase's 1000-row limit
       const allDocs: Document[] = [];
@@ -502,12 +503,12 @@ export class DocumentService {
           .range(offset, offset + LIMIT - 1);
 
           if (error) {
-          console.error(`❌ Error fetching company documents for ${companyName} (offset: ${offset}):`, error);
+          log.error(`❌ Error fetching company documents for ${companyName} (offset: ${offset}):`, error);
             return { documents: [], error: error.message };
           }
 
         if (data && data.length > 0) {
-          console.log(`📄 Fetched ${data.length} company documents for ${companyName} (offset: ${offset})`);
+          log.info(`📄 Fetched ${data.length} company documents for ${companyName} (offset: ${offset})`);
           allDocs.push(...(data as unknown as Document[]));
           
           if (data.length < LIMIT) {
@@ -520,10 +521,10 @@ export class DocumentService {
         }
       }
 
-      console.log(`✅ Total company documents loaded for ${companyName}: ${allDocs.length}`);
+      log.info(`✅ Total company documents loaded for ${companyName}: ${allDocs.length}`);
       return { documents: allDocs, error: null };
     } catch (error) {
-      console.error('❌ Exception in getCompanyDocuments:', error);
+      log.error('❌ Exception in getCompanyDocuments:', error);
       return { documents: [], error: 'Failed to fetch company documents' };
     }
   }
@@ -632,7 +633,7 @@ export class DocumentService {
       // Check cache first with intelligent validation
       if (useCache && this.foldersCache && this.isCacheValid(cacheKey, this.CACHE_DURATIONS.companies)) {
         this.logPerformance('getDocumentFolders-cache-hit', performance.now() - startTime);
-        if (process.env.NODE_ENV !== 'production') console.log('⚡ Using cached company folders');
+        if (process.env.NODE_ENV !== 'production') log.info('⚡ Using cached company folders');
         return { folders: this.foldersCache.folders, error: null };
       }
 
@@ -686,10 +687,10 @@ export class DocumentService {
 
             if (folders.length > 1) {
               this.foldersCache = { folders, timestamp: Date.now() };
-              if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for company folders (deduped)');
+              if (process.env.NODE_ENV !== 'production') log.info('⚡ Using materialized view for company folders (deduped)');
               return { folders, error: null };
             }
-            if (process.env.NODE_ENV !== 'production') console.log('⚠️  MV returned too few folders; falling back to direct scan');
+            if (process.env.NODE_ENV !== 'production') log.info('⚠️  MV returned too few folders; falling back to direct scan');
           }
         } catch (e) {
           // View not available or RLS blocked – silently fallback
@@ -697,11 +698,11 @@ export class DocumentService {
       }
 
       // Fast alternative: Get unique company prefixes directly
-      console.log('⚡ Using fast company folders query...');
+      log.info('⚡ Using fast company folders query...');
       
       try {
         // Get unique company prefixes with optimized queries
-        console.log('⚡ Using optimized queries for company prefixes...');
+        log.info('⚡ Using optimized queries for company prefixes...');
         
         const companyPrefixes = new Set<string>();
         
@@ -713,7 +714,7 @@ export class DocumentService {
           .limit(1000);
 
         if (generalError) {
-          console.error('❌ Error fetching general company data:', generalError);
+          log.error('❌ Error fetching general company data:', generalError);
           throw generalError;
         }
 
@@ -743,21 +744,21 @@ export class DocumentService {
 
           if (!companyError && companyData && companyData.length > 0) {
             companyPrefixes.add(company);
-            console.log(`✅ Found missing company: ${company}`);
+            log.info(`✅ Found missing company: ${company}`);
           }
         }
 
         // Remove unwanted prefixes
         companyPrefixes.delete('FINAL_TEST');
 
-        console.log(`🏢 Found ${companyPrefixes.size} company prefixes:`, Array.from(companyPrefixes));
-        console.log(`🏢 Company prefixes sorted:`, Array.from(companyPrefixes).sort());
+        log.info(`🏢 Found ${companyPrefixes.size} company prefixes:`, Array.from(companyPrefixes));
+        log.info(`🏢 Company prefixes sorted:`, Array.from(companyPrefixes).sort());
         
         // Debug: Check for specific companies
         const hasAshbal = companyPrefixes.has('ASHBAL AL KHALEEJ');
         const hasCompanyDocs = companyPrefixes.has('Company Documents');
-        console.log(`🔍 ASHBAL AL KHALEEJ found: ${hasAshbal}`);
-        console.log(`🔍 Company Documents found: ${hasCompanyDocs}`);
+        log.info(`🔍 ASHBAL AL KHALEEJ found: ${hasAshbal}`);
+        log.info(`🔍 Company Documents found: ${hasCompanyDocs}`);
 
         // Create folders from prefixes
         const folders: DocumentFolder[] = [];
@@ -827,18 +828,18 @@ export class DocumentService {
         // Cache the result with timestamp
         this.foldersCache = { folders, timestamp: Date.now() };
         this.cacheTimestamps.set(cacheKey, Date.now());
-        console.log(`✅ Created ${folders.length} company folders in ${performance.now() - startTime}ms`);
-        console.log(`📁 Final folders:`, folders.map(f => f.name));
+        log.info(`✅ Created ${folders.length} company folders in ${performance.now() - startTime}ms`);
+        log.info(`📁 Final folders:`, folders.map(f => f.name));
         
         return { folders, error: null };
       } catch (error) {
-        console.error('❌ Error in fast company folders query:', error);
+        log.error('❌ Error in fast company folders query:', error);
         throw error;
       }
     } catch (error) {
       this.isCurrentlyFetching = false;
       this.fetchPromise = null;
-      console.error('❌ Error in getDocumentFolders:', error);
+      log.error('❌ Error in getDocumentFolders:', error);
       
       // Return fallback data to prevent infinite loading
       const fallbackFolders: DocumentFolder[] = [
@@ -888,7 +889,7 @@ export class DocumentService {
       const { documents: allDocuments, error: docsError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
 
       if (docsError) {
-        console.error('❌ Error fetching documents:', docsError);
+        log.error('❌ Error fetching documents:', docsError);
         // Return fallback data instead of empty array
         return { 
           folders: [
@@ -924,7 +925,7 @@ export class DocumentService {
         };
       }
 
-      if (process.env.NODE_ENV !== 'production') console.log(`📄 Found ${allDocuments?.length || 0} total documents (paginated)`);
+      if (process.env.NODE_ENV !== 'production') log.info(`📄 Found ${allDocuments?.length || 0} total documents (paginated)`);
 
       // Extract unique company prefixes from actual file paths
       const companyPrefixes = new Set<string>();
@@ -940,7 +941,7 @@ export class DocumentService {
       // Remove unwanted folders like FINAL_TEST
       companyPrefixes.delete('FINAL_TEST');
 
-      if (process.env.NODE_ENV !== 'production') console.log(`🏢 Found ${companyPrefixes.size} unique company prefixes in file paths:`, Array.from(companyPrefixes).sort());
+      if (process.env.NODE_ENV !== 'production') log.info(`🏢 Found ${companyPrefixes.size} unique company prefixes in file paths:`, Array.from(companyPrefixes).sort());
 
       // Create company folders based on actual file paths
       const companyFolders: DocumentFolder[] = [];
@@ -1018,8 +1019,8 @@ export class DocumentService {
       }
 
       if (process.env.NODE_ENV !== 'production') {
-        console.log(`📁 Created ${companyFolders.length} company folders`);
-        console.log('🔍 Company folders:', companyFolders.map(f => `${f.name} (${f.documentCount} docs)`));
+        log.info(`📁 Created ${companyFolders.length} company folders`);
+        log.info('🔍 Company folders:', companyFolders.map(f => `${f.name} (${f.documentCount} docs)`));
       }
 
       // Update cache
@@ -1028,10 +1029,10 @@ export class DocumentService {
         timestamp: Date.now()
       };
 
-      if (process.env.NODE_ENV !== 'production') console.log(`📁 Processed ${companyFolders.length} folders exactly as they appear in Backblaze`);
+      if (process.env.NODE_ENV !== 'production') log.info(`📁 Processed ${companyFolders.length} folders exactly as they appear in Backblaze`);
       return { folders: companyFolders, error: null };
     } catch (error) {
-      console.error('❌ Error in _buildFolders:', error);
+      log.error('❌ Error in _buildFolders:', error);
       return { folders: [], error: 'Failed to fetch document folders' };
     }
   }
@@ -1073,13 +1074,13 @@ export class DocumentService {
   // Get documents for a specific employee or company documents - FAST OPTIMIZED
   static async getEmployeeDocuments(companyName: string, employeeId: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
-      console.log(`⚡ FAST: Fetching documents for: ${companyName}/${employeeId}`);
+      log.info(`⚡ FAST: Fetching documents for: ${companyName}/${employeeId}`);
 
       // Check cache first
       const cacheKey = `${companyName}-${employeeId}`;
       const cached = this.employeeDocsCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < this.CACHE_DURATIONS.documents) {
-        console.log('✅ Cache hit for employee documents');
+        log.info('✅ Cache hit for employee documents');
         return { documents: cached.documents, error: null };
       }
 
@@ -1106,7 +1107,7 @@ export class DocumentService {
         .limit(500); // Reasonable limit for employee documents
 
       if (error) {
-        console.error('❌ Error in fast employee documents query:', error);
+        log.error('❌ Error in fast employee documents query:', error);
         return { documents: [], error: error.message };
       }
 
@@ -1120,10 +1121,10 @@ export class DocumentService {
         timestamp: Date.now() 
       });
 
-      console.log(`✅ Found ${documents.length} documents for employee ${employeeId}`);
+      log.info(`✅ Found ${documents.length} documents for employee ${employeeId}`);
       return { documents: documents as unknown as Document[], error: null };
     } catch (error) {
-      console.error('❌ Exception in getEmployeeDocuments:', error);
+      log.error('❌ Exception in getEmployeeDocuments:', error);
       return { documents: [], error: 'Failed to fetch employee documents' };
     }
   }
@@ -1135,7 +1136,7 @@ export class DocumentService {
         return { folders: [], error: null };
       }
 
-      console.log(`🔍 Searching employee folders for: "${searchTerm}"`);
+      log.info(`🔍 Searching employee folders for: "${searchTerm}"`);
 
       // Try RPC function first, fallback to manual query if RPC fails
       try {
@@ -1145,16 +1146,16 @@ export class DocumentService {
         });
 
         if (error) {
-          console.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
+          log.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
           throw error; // This will trigger the fallback
         }
 
         if (!data || !Array.isArray(data) || data.length === 0) {
-          console.log('❌ No employee folders found matching search term');
+          log.info('❌ No employee folders found matching search term');
           return { folders: [], error: null };
         }
 
-        console.log(`✅ Found ${data.length} employee folders matching search via RPC`);
+        log.info(`✅ Found ${data.length} employee folders matching search via RPC`);
 
         // Convert RPC result to DocumentFolder format
         const folders: DocumentFolder[] = data.map((item: any) => {
@@ -1173,11 +1174,11 @@ export class DocumentService {
           };
         });
 
-        console.log(`✅ Created ${folders.length} employee folders`);
+        log.info(`✅ Created ${folders.length} employee folders`);
         return { folders, error: null };
 
       } catch (rpcError) {
-        console.log('🔄 Falling back to manual employee folder search...');
+        log.info('🔄 Falling back to manual employee folder search...');
         
         // Fallback: Manual query without RPC
         const { data: employees, error: empError } = await supabase
@@ -1187,16 +1188,16 @@ export class DocumentService {
           .limit(100);
 
         if (empError) {
-          console.error('❌ Error searching employees:', empError);
+          log.error('❌ Error searching employees:', empError);
           return { folders: [], error: empError.message };
         }
 
         if (!employees || employees.length === 0) {
-          console.log('❌ No employees found matching search term');
+          log.info('❌ No employees found matching search term');
           return { folders: [], error: null };
         }
 
-        console.log(`✅ Found ${employees.length} employees matching search via fallback`);
+        log.info(`✅ Found ${employees.length} employees matching search via fallback`);
 
         // Get document counts for these employees
         const employeeIds = employees.map(emp => emp.employee_id);
@@ -1207,7 +1208,7 @@ export class DocumentService {
           .order('created_at', { ascending: false });
 
         if (docError) {
-          console.error('❌ Error fetching document counts:', docError);
+          log.error('❌ Error fetching document counts:', docError);
         }
 
         // Create document count map
@@ -1253,12 +1254,12 @@ export class DocumentService {
           .sort((a, b) => b.documentCount - a.documentCount)
           .slice(0, limit);
 
-        console.log(`✅ Created ${sortedFolders.length} employee folders via fallback`);
+        log.info(`✅ Created ${sortedFolders.length} employee folders via fallback`);
         return { folders: sortedFolders, error: null };
       }
 
     } catch (error) {
-      console.error('❌ Exception in searchEmployeeFolders:', error);
+      log.error('❌ Exception in searchEmployeeFolders:', error);
       return { folders: [], error: 'Failed to search employee folders' };
     }
   }
@@ -1270,7 +1271,7 @@ export class DocumentService {
         return { suggestions: [], error: null };
       }
 
-      console.log(`🔍 Getting search suggestions for: "${searchTerm}"`);
+      log.info(`🔍 Getting search suggestions for: "${searchTerm}"`);
 
       // Get employee suggestions
       const { data: employees, error: empError } = await supabase
@@ -1280,7 +1281,7 @@ export class DocumentService {
         .limit(limit);
 
       if (empError) {
-        console.error('❌ Error fetching employee suggestions:', empError);
+        log.error('❌ Error fetching employee suggestions:', empError);
         return { suggestions: [], error: empError.message };
       }
 
@@ -1292,7 +1293,7 @@ export class DocumentService {
         .limit(limit);
 
       if (compError) {
-        console.error('❌ Error fetching company suggestions:', compError);
+        log.error('❌ Error fetching company suggestions:', compError);
         return { suggestions: [], error: compError.message };
       }
 
@@ -1304,7 +1305,7 @@ export class DocumentService {
         .limit(limit);
 
       if (docError) {
-        console.error('❌ Error fetching document suggestions:', docError);
+        log.error('❌ Error fetching document suggestions:', docError);
         return { suggestions: [], error: docError.message };
       }
 
@@ -1353,11 +1354,11 @@ export class DocumentService {
         index === self.findIndex(s => s.displayText === suggestion.displayText)
       ).slice(0, limit);
 
-      console.log(`✅ Found ${uniqueSuggestions.length} search suggestions`);
+      log.info(`✅ Found ${uniqueSuggestions.length} search suggestions`);
       return { suggestions: uniqueSuggestions, error: null };
 
     } catch (error) {
-      console.error('❌ Error in getSearchSuggestions:', error);
+      log.error('❌ Error in getSearchSuggestions:', error);
       return { suggestions: [], error: 'Failed to get search suggestions' };
     }
   }
@@ -1369,7 +1370,7 @@ export class DocumentService {
         return { documents: [], error: null };
       }
 
-      console.log(`🔍 Searching documents for: "${searchTerm}"`);
+      log.info(`🔍 Searching documents for: "${searchTerm}"`);
 
       // Try RPC function first, fallback to manual query if RPC fails
       try {
@@ -1378,20 +1379,20 @@ export class DocumentService {
         });
 
         if (error) {
-          console.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
+          log.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
           throw error; // This will trigger the fallback
         }
 
         if (!data || !Array.isArray(data) || data.length === 0) {
-          console.log('❌ No documents found matching search term');
+          log.info('❌ No documents found matching search term');
           return { documents: [], error: null };
         }
 
-        console.log(`✅ Found ${data.length} documents matching search via RPC`);
+        log.info(`✅ Found ${data.length} documents matching search via RPC`);
         return { documents: data, error: null };
 
       } catch (rpcError) {
-        console.log('🔄 Falling back to manual search query...');
+        log.info('🔄 Falling back to manual search query...');
         
         // Fallback: Manual query without RPC
         const { data: documents, error: docError } = await supabase
@@ -1404,12 +1405,12 @@ export class DocumentService {
           .order('created_at', { ascending: false });
 
         if (docError) {
-          console.error('❌ Error in fallback search:', docError);
+          log.error('❌ Error in fallback search:', docError);
           return { documents: [], error: docError.message };
         }
 
         if (!documents || documents.length === 0) {
-          console.log('❌ No documents found matching search term');
+          log.info('❌ No documents found matching search term');
           return { documents: [], error: null };
         }
 
@@ -1420,12 +1421,12 @@ export class DocumentService {
           company_name: doc.employee_table?.company_name
         }));
 
-        console.log(`✅ Found ${transformedDocuments.length} documents matching search via fallback`);
+        log.info(`✅ Found ${transformedDocuments.length} documents matching search via fallback`);
         return { documents: transformedDocuments, error: null };
       }
 
     } catch (error) {
-      console.error('❌ Error in searchDocuments:', error);
+      log.error('❌ Error in searchDocuments:', error);
       return { documents: [], error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -1433,7 +1434,7 @@ export class DocumentService {
   // Get employee folders for a specific company with real document data - PERFORMANCE OPTIMIZED
   static async getEmployeeFolders(companyName: string, useCache = true): Promise<{ folders: DocumentFolder[]; error: string | null }> {
     try {
-      if (process.env.NODE_ENV !== 'production') console.log(`👥 Getting employee folders for company: ${companyName}`);
+      if (process.env.NODE_ENV !== 'production') log.info(`👥 Getting employee folders for company: ${companyName}`);
       
       // Create mapping from display names to file path company names
       const companyNameMapping: { [key: string]: string } = {
@@ -1454,16 +1455,16 @@ export class DocumentService {
         'AL HANA TOURS and TRAVELS': 'AL HANA TOURS & TRAVELS'
       };
       
-      console.log('🔍 Company name mapping for:', companyName, '→', companyNameMapping[companyName] || companyName);
+      log.info('🔍 Company name mapping for:', companyName, '→', companyNameMapping[companyName] || companyName);
       
       // Get the corresponding file path company name
       const filePathCompanyName = companyNameMapping[companyName] || companyName;
-      if (process.env.NODE_ENV !== 'production') console.log(`🔍 Using file path company name: ${filePathCompanyName} for display name: ${companyName}`);
-      console.log('🔍 Company name mapping:', { displayName: companyName, filePathName: filePathCompanyName });
+      if (process.env.NODE_ENV !== 'production') log.info(`🔍 Using file path company name: ${filePathCompanyName} for display name: ${companyName}`);
+      log.info('🔍 Company name mapping:', { displayName: companyName, filePathName: filePathCompanyName });
       
       // Special handling for Company Documents - show files directly, not employee folders
       if (companyName === 'Company Documents') {
-        if (process.env.NODE_ENV !== 'production') console.log('📁 Company Documents: Returning empty folders array (files should be shown directly)');
+        if (process.env.NODE_ENV !== 'production') log.info('📁 Company Documents: Returning empty folders array (files should be shown directly)');
         return { folders: [], error: null };
       }
       
@@ -1498,7 +1499,7 @@ export class DocumentService {
                 path: `${companyName}/${r.employee_id}`
               }));
             this.employeeFoldersCache.set(filePathCompanyName, { folders, timestamp: Date.now() });
-            if (process.env.NODE_ENV !== 'production') console.log('⚡ Using materialized view for employee folders');
+            if (process.env.NODE_ENV !== 'production') log.info('⚡ Using materialized view for employee folders');
             return { folders, error: null };
           }
         } catch (e) {
@@ -1508,7 +1509,7 @@ export class DocumentService {
 
       // FAST ALTERNATIVE: Direct employee folder query (bypass document fetching)
       const run = async (): Promise<{ folders: DocumentFolder[]; error: string | null }> => {
-        console.log('⚡ Using FAST employee folder query for:', filePathCompanyName);
+        log.info('⚡ Using FAST employee folder query for:', filePathCompanyName);
         
         try {
           // Direct query to get employee folders with counts - MUCH FASTER
@@ -1520,12 +1521,12 @@ export class DocumentService {
             .limit(2000); // Reasonable limit for folder creation
 
           if (employeeError) {
-            console.error('❌ Error in fast employee query:', employeeError);
+            log.error('❌ Error in fast employee query:', employeeError);
             return { folders: [], error: employeeError.message };
           }
 
           if (!employeeData || employeeData.length === 0) {
-            console.log('❌ No documents found for company:', filePathCompanyName);
+            log.info('❌ No documents found for company:', filePathCompanyName);
           this.employeeFoldersCache.set(filePathCompanyName, { folders: [], timestamp: Date.now() });
           return { folders: [], error: null };
         }
@@ -1557,7 +1558,7 @@ export class DocumentService {
           });
 
           const employeeIds = Array.from(employeeMap.keys());
-          console.log(`👥 Found ${employeeIds.length} unique employee IDs from fast query`);
+          log.info(`👥 Found ${employeeIds.length} unique employee IDs from fast query`);
 
         if (employeeIds.length === 0) {
           this.employeeFoldersCache.set(filePathCompanyName, { folders: [], timestamp: Date.now() });
@@ -1571,7 +1572,7 @@ export class DocumentService {
             .in('employee_id', employeeIds);
 
           if (nameError) {
-            console.error('❌ Error fetching employee names:', nameError);
+            log.error('❌ Error fetching employee names:', nameError);
             return { folders: [], error: nameError.message };
           }
 
@@ -1600,11 +1601,11 @@ export class DocumentService {
             });
           });
         
-          console.log(`✅ Created ${folders.length} employee folders in fast query`);
+          log.info(`✅ Created ${folders.length} employee folders in fast query`);
         this.employeeFoldersCache.set(filePathCompanyName, { folders, timestamp: Date.now() });
         return { folders, error: null };
         } catch (error) {
-          console.error('❌ Error in fast employee folder creation:', error);
+          log.error('❌ Error in fast employee folder creation:', error);
           return { folders: [], error: 'Failed to create employee folders' };
         }
       };
@@ -1614,7 +1615,7 @@ export class DocumentService {
       this.employeeFoldersInflight.set(filePathCompanyName, promise);
       return promise;
     } catch (error) {
-      console.error('❌ Exception in getEmployeeFolders:', error);
+      log.error('❌ Exception in getEmployeeFolders:', error);
       return { folders: [], error: 'Failed to fetch employee folders' };
     }
   }
@@ -1804,12 +1805,12 @@ export class DocumentService {
       try {
         const fileExists = await BackblazeService.fileExists(uploadData.file_path);
         if (!fileExists) {
-          console.error('❌ File upload verification failed: File not found in Backblaze');
+          log.error('❌ File upload verification failed: File not found in Backblaze');
           return { document: null, error: 'File upload verification failed' };
         }
-        console.log('✅ File upload verified in Backblaze');
+        log.info('✅ File upload verified in Backblaze');
       } catch (verifyError) {
-        console.error('❌ File upload verification error:', verifyError);
+        log.error('❌ File upload verification error:', verifyError);
         return { document: null, error: 'File upload verification failed' };
       }
 
@@ -1836,12 +1837,12 @@ export class DocumentService {
         try {
           await BackblazeService.deleteFile(uploadData.file_path);
         } catch (deleteError) {
-          console.error('Failed to delete file after database error:', deleteError);
+          log.error('Failed to delete file after database error:', deleteError);
         }
         return { document: null, error: dbError.message };
       }
 
-      console.log(`✅ Document uploaded successfully: ${uploadData.file_name}`);
+      log.info(`✅ Document uploaded successfully: ${uploadData.file_name}`);
       
       // Intelligent cache invalidation after upload
       const employeeId = uploadData.employee_id;
@@ -1857,7 +1858,7 @@ export class DocumentService {
       
       return { document: document as unknown as Document, error: null };
     } catch (error) {
-      console.error('❌ Error in uploadDocument:', error);
+      log.error('❌ Error in uploadDocument:', error);
       return { document: null, error: 'Failed to upload document' };
     }
   }
@@ -1884,7 +1885,7 @@ export class DocumentService {
         try {
           await BackblazeService.deleteFile(document.file_path);
         } catch (backblazeError) {
-          console.error('Failed to delete from Backblaze:', backblazeError);
+          log.error('Failed to delete from Backblaze:', backblazeError);
           // If B2 delete fails, abort to avoid orphaning metadata inconsistency
           return { error: 'Failed to delete file from Backblaze' };
         }
@@ -1973,19 +1974,19 @@ export class DocumentService {
       });
 
       if (edgeError) {
-        console.error('❌ Edge Function error:', edgeError);
+        log.error('❌ Edge Function error:', edgeError);
         return { downloadUrl: null, error: edgeError.message };
       }
 
       if (!edgeResult?.success || !edgeResult?.signedUrl) {
-        console.error('❌ Edge Function returned error:', edgeResult);
+        log.error('❌ Edge Function returned error:', edgeResult);
         return { downloadUrl: null, error: edgeResult?.error || 'Failed to generate signed URL' };
       }
 
-      console.log('✅ Document download URL generated via Edge Function');
+      log.info('✅ Document download URL generated via Edge Function');
       return { downloadUrl: edgeResult.signedUrl, error: null };
     } catch (error) {
-      console.error('❌ Exception in downloadDocument:', error);
+      log.error('❌ Exception in downloadDocument:', error);
       return { downloadUrl: null, error: 'Failed to download document' };
     }
   }
@@ -1993,7 +1994,7 @@ export class DocumentService {
   // Get document preview URL using API route
   static async getDocumentPreview(documentId: string): Promise<{ previewUrl: string | null; error: string | null }> {
     try {
-      console.log('👁️ Getting document preview:', documentId);
+      log.info('👁️ Getting document preview:', documentId);
       
       // Get document info first
       const { data: document, error: fetchError } = await supabase
@@ -2022,21 +2023,21 @@ export class DocumentService {
       });
 
       if (!response.ok) {
-        console.error('❌ API route error:', response.status, response.statusText);
+        log.error('❌ API route error:', response.status, response.statusText);
         return { previewUrl: null, error: `Failed to get preview URL: ${response.statusText}` };
       }
 
       const result = await response.json();
       
       if (!result.success) {
-        console.error('❌ API route returned error:', result);
+        log.error('❌ API route returned error:', result);
         return { previewUrl: null, error: result.error || 'Failed to generate preview URL' };
       }
 
-      console.log('✅ Document preview URL generated via API route');
+      log.info('✅ Document preview URL generated via API route');
       return { previewUrl: result.data.previewUrl, error: null };
     } catch (error) {
-      console.error('❌ Exception in getDocumentPreview:', error);
+      log.error('❌ Exception in getDocumentPreview:', error);
       
       // Fallbacks removed for brevity
       return { previewUrl: null, error: 'Failed to get document preview' };
@@ -2079,7 +2080,7 @@ export class DocumentService {
   // Debug method to see all documents in database
   static async debugAllDocuments(): Promise<{ documents: Document[]; error: string | null }> {
     try {
-      console.log('🔍 DEBUG: Fetching ALL documents from database...');
+      log.info('🔍 DEBUG: Fetching ALL documents from database...');
       
       const { data, error } = await supabase
         .from('employee_documents')
@@ -2087,12 +2088,12 @@ export class DocumentService {
         .order('uploaded_at', { ascending: false });
 
       if (error) {
-        console.error('❌ DEBUG Error:', error);
+        log.error('❌ DEBUG Error:', error);
         return { documents: [], error: error.message };
       }
 
       const documents = data as unknown as Document[];
-      console.log(`📄 DEBUG: Found ${documents.length} total documents`);
+      log.info(`📄 DEBUG: Found ${documents.length} total documents`);
       
       // Group by company for analysis
       const companyGroups = new Map<string, Document[]>();
@@ -2105,18 +2106,18 @@ export class DocumentService {
         companyGroups.get(companyName)!.push(doc);
       });
 
-      console.log('🏢 DEBUG: Documents by company:');
+      log.info('🏢 DEBUG: Documents by company:');
       companyGroups.forEach((docs, company) => {
-        console.log(`  ${company}: ${docs.length} documents`);
+        log.info(`  ${company}: ${docs.length} documents`);
         // Show first few documents for each company
         docs.slice(0, 3).forEach(doc => {
-          console.log(`    - ${doc.file_name} (${doc.employee_id})`);
+          log.info(`    - ${doc.file_name} (${doc.employee_id})`);
         });
       });
 
       return { documents, error: null };
     } catch (error) {
-      console.error('❌ DEBUG Exception:', error);
+      log.error('❌ DEBUG Exception:', error);
       return { documents: [], error: 'Failed to debug documents' };
     }
   }
@@ -2124,23 +2125,23 @@ export class DocumentService {
   // Debug method to see folder structure
   static async debugFolderStructure(): Promise<{ folders: DocumentFolder[]; error: string | null }> {
     try {
-      console.log('🔍 DEBUG: Fetching folder structure...');
+      log.info('🔍 DEBUG: Fetching folder structure...');
       
       const { folders, error } = await DocumentService.getDocumentFolders();
       
       if (error) {
-        console.error('❌ DEBUG Folder Error:', error);
+        log.error('❌ DEBUG Folder Error:', error);
         return { folders: [], error: error };
       }
 
-      console.log(`📁 DEBUG: Found ${folders.length} folders`);
+      log.info(`📁 DEBUG: Found ${folders.length} folders`);
       folders.forEach(folder => {
-        console.log(`  ${folder.name}: ${folder.documentCount} documents`);
+        log.info(`  ${folder.name}: ${folder.documentCount} documents`);
       });
 
       return { folders, error: null };
     } catch (error) {
-      console.error('❌ DEBUG Folder Exception:', error);
+      log.error('❌ DEBUG Folder Exception:', error);
       return { folders: [], error: 'Failed to debug folder structure' };
     }
   }
@@ -2148,7 +2149,7 @@ export class DocumentService {
   // Debug method to check company documents
   static async debugCompanyDocuments(companyName: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
-      console.log(`🔍 DEBUG: Checking documents for company: ${companyName}`);
+      log.info(`🔍 DEBUG: Checking documents for company: ${companyName}`);
       
       // Get all documents to see what's available
       const { data: allDocs, error: allError } = await supabase
@@ -2157,26 +2158,26 @@ export class DocumentService {
         .ilike('file_path', `%${companyName}%`);
 
       if (allError) {
-        console.error('❌ DEBUG Error fetching all documents:', allError);
+        log.error('❌ DEBUG Error fetching all documents:', allError);
         return { documents: [], error: allError.message };
       }
 
-      console.log(`📄 DEBUG: Found ${allDocs?.length || 0} documents containing "${companyName}" in path:`);
+      log.info(`📄 DEBUG: Found ${allDocs?.length || 0} documents containing "${companyName}" in path:`);
       allDocs?.forEach((doc, index) => {
-        console.log(`  ${index + 1}. ${doc.file_path} - ${doc.file_name} (Employee: ${doc.employee_id})`);
+        log.info(`  ${index + 1}. ${doc.file_path} - ${doc.file_name} (Employee: ${doc.employee_id})`);
       });
 
       // Now get company-specific documents
       const { documents, error } = await this.getCompanyDocuments(companyName);
       
-      console.log(`📄 DEBUG: Company documents for "${companyName}": ${documents.length}`);
+      log.info(`📄 DEBUG: Company documents for "${companyName}": ${documents.length}`);
       documents.forEach((doc, index) => {
-        console.log(`  ${index + 1}. ${doc.file_path} - ${doc.file_name}`);
+        log.info(`  ${index + 1}. ${doc.file_path} - ${doc.file_name}`);
       });
 
       return { documents, error };
     } catch (error) {
-      console.error('❌ DEBUG Exception in debugCompanyDocuments:', error);
+      log.error('❌ DEBUG Exception in debugCompanyDocuments:', error);
       return { documents: [], error: 'Failed to debug company documents' };
     }
   }
@@ -2198,7 +2199,7 @@ export class DocumentService {
 
       return edgeResult.url;
     } catch (error) {
-      console.error('Error getting signed URL:', error);
+      log.error('Error getting signed URL:', error);
       throw error;
     }
   }
@@ -2223,12 +2224,12 @@ export class DocumentService {
           .single();
 
         if (error) {
-          console.error('❌ Error fetching document:', error);
+          log.error('❌ Error fetching document:', error);
           return { data: null, error: error.message };
         }
 
         if (!document) {
-          console.error('❌ Document not found');
+          log.error('❌ Document not found');
           return { data: null, error: 'Document not found' };
         }
 
@@ -2271,7 +2272,7 @@ export class DocumentService {
             return { data: url, error: null };
           }
         } catch (edgeError) {
-          console.error('❌ Edge Function error:', edgeError);
+          log.error('❌ Edge Function error:', edgeError);
         }
 
         // 5) Fallback to local API route signing on Vercel
@@ -2289,10 +2290,10 @@ export class DocumentService {
               return { data: url, error: null };
             }
           } else {
-            console.error('❌ Preview API route failed:', resp.status, resp.statusText);
+            log.error('❌ Preview API route failed:', resp.status, resp.statusText);
           }
         } catch (apiErr) {
-          console.error('❌ Preview API route exception:', apiErr);
+          log.error('❌ Preview API route exception:', apiErr);
         }
 
         // 6) Final fallback: try to use the BackblazeService directly
@@ -2305,11 +2306,11 @@ export class DocumentService {
             }
           }
         } catch (b2Error) {
-          console.error('❌ BackblazeService fallback error:', b2Error);
+          log.error('❌ BackblazeService fallback error:', b2Error);
         }
 
         // 7) Final: do NOT return an unsigned URL for private buckets
-        console.error('❌ Failed to generate signed URL');
+        log.error('❌ Failed to generate signed URL');
         return { data: null, error: 'Failed to generate signed URL' };
       })();
 
@@ -2317,7 +2318,7 @@ export class DocumentService {
       const result = await promise.finally(() => this.presignedUrlInflight.delete(documentId));
       return result;
     } catch (error) {
-      console.error('❌ Exception in getDocumentPresignedUrl:', error);
+      log.error('❌ Exception in getDocumentPresignedUrl:', error);
       return { data: null, error: 'Failed to get presigned URL' };
     }
   }
@@ -2329,7 +2330,7 @@ export class DocumentService {
     error?: string;
   }> {
     try {
-      console.log('🚀 DocumentService: Fetching all documents with employees...');
+      log.info('🚀 DocumentService: Fetching all documents with employees...');
       
       // Fetch all documents first
       const { data: documents, error: docError } = await supabase
@@ -2338,7 +2339,7 @@ export class DocumentService {
         .order('created_at', { ascending: false });
 
       if (docError) {
-        console.error('❌ Error fetching documents:', docError);
+        log.error('❌ Error fetching documents:', docError);
         return { documents: [], employees: [], error: docError.message };
       }
 
@@ -2352,18 +2353,18 @@ export class DocumentService {
         .in('id', employeeIds);
 
       if (empError) {
-        console.error('❌ Error fetching employees:', empError);
+        log.error('❌ Error fetching employees:', empError);
         return { documents: documents || [], employees: [], error: empError.message };
       }
 
-      console.log(`✅ DocumentService: Fetched ${documents?.length || 0} documents and ${employees?.length || 0} employees`);
+      log.info(`✅ DocumentService: Fetched ${documents?.length || 0} documents and ${employees?.length || 0} employees`);
       
       return {
         documents: documents || [],
         employees: employees || []
       };
     } catch (error) {
-      console.error('❌ DocumentService: Error fetching all documents with employees:', error);
+      log.error('❌ DocumentService: Error fetching all documents with employees:', error);
       return {
         documents: [],
         employees: [],

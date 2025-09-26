@@ -1,5 +1,6 @@
 // Performance monitoring and optimization utilities
 import React from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface PerformanceMetric {
   operation: string;
@@ -42,9 +43,9 @@ class PerformanceMonitor {
 
     // Log slow operations
     if (duration > this.VERY_SLOW_THRESHOLD) {
-      console.warn(`🚨 Very slow operation: ${operation} took ${duration.toFixed(2)}ms`, metadata);
+      log.warn(`🚨 Very slow operation: ${operation} took ${duration.toFixed(2)}ms`, metadata);
     } else if (duration > this.SLOW_THRESHOLD) {
-      console.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`, metadata);
+      log.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`, metadata);
     }
   }
 
@@ -215,26 +216,26 @@ export function clearPerformanceData() {
 // Log performance report to console
 export function logPerformanceReport() {
   const report = getPerformanceReport();
-  console.group('📊 Performance Report');
-  console.log(`Total Operations: ${report.totalOperations}`);
-  console.log(`Average Duration: ${report.averageDuration.toFixed(2)}ms`);
-  console.log(`Cache Hit Rate: ${(report.cacheHitRate * 100).toFixed(1)}%`);
-  console.log(`Slow Operations: ${report.slowOperations.length}`);
+  log.group('📊 Performance Report');
+  log.info(`Total Operations: ${report.totalOperations}`);
+  log.info(`Average Duration: ${report.averageDuration.toFixed(2)}ms`);
+  log.info(`Cache Hit Rate: ${(report.cacheHitRate * 100).toFixed(1)}%`);
+  log.info(`Slow Operations: ${report.slowOperations.length}`);
   
   if (report.slowOperations.length > 0) {
-    console.group('🐌 Slow Operations:');
+    log.group('🐌 Slow Operations:');
     report.slowOperations.forEach(op => {
-      console.log(`${op.operation}: ${op.duration.toFixed(2)}ms`);
+      log.info(`${op.operation}: ${op.duration.toFixed(2)}ms`);
     });
-    console.groupEnd();
+    log.groupEnd();
   }
   
   if (report.recommendations.length > 0) {
-    console.group('💡 Recommendations:');
-    report.recommendations.forEach(rec => console.log(`• ${rec}`));
-    console.groupEnd();
+    log.group('💡 Recommendations:');
+    report.recommendations.forEach(rec => log.info(`• ${rec}`));
+    log.groupEnd();
   }
   
-  console.groupEnd();
+  log.groupEnd();
 }
 

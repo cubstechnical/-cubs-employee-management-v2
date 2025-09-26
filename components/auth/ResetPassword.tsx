@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import { Lock, CheckCircle, AlertCircle } from 'lucide-react';
 import AuthService from '@/lib/services/auth';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function ResetPassword() {
   const router = useRouter();
@@ -61,7 +62,7 @@ export default function ResetPassword() {
       toast.success('Password reset successfully!');
       router.push('/login');
     } catch (error) {
-      console.error('Reset password error:', error);
+      log.error('Reset password error:', error);
       toast.error('Failed to reset password. Please try again.');
     } finally {
       setIsLoading(false);

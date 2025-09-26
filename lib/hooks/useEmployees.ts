@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { EmployeeService, EmployeeFilters, PaginationParams, CreateEmployeeData, UpdateEmployeeData } from '@/lib/services/employees';
 import { Employee } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 // Query keys for consistent caching
 export const employeeKeys = {
@@ -83,7 +84,7 @@ export function useCreateEmployee() {
       }
     },
     onError: (error) => {
-      console.error('Error creating employee:', error);
+      log.error('Error creating employee:', error);
       toast.error('Failed to create employee');
     },
   });
@@ -109,7 +110,7 @@ export function useUpdateEmployee() {
       }
     },
     onError: (error) => {
-      console.error('Error updating employee:', error);
+      log.error('Error updating employee:', error);
       toast.error('Failed to update employee');
     },
   });
@@ -135,7 +136,7 @@ export function useDeleteEmployee() {
       }
     },
     onError: (error) => {
-      console.error('Error deleting employee:', error);
+      log.error('Error deleting employee:', error);
       toast.error('Failed to delete employee');
     },
   });

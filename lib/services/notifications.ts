@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client';
 import nodemailer from 'nodemailer';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface NotificationData {
   title: string;
@@ -45,7 +46,7 @@ export class NotificationService {
         }]);
 
       if (dbError) {
-        console.error('Error saving notification to database:', dbError);
+        log.error('Error saving notification to database:', dbError);
         // Continue with email sending even if DB save fails
       }
 
@@ -87,7 +88,7 @@ export class NotificationService {
 
       return { success: true };
     } catch (error) {
-      console.error('Error sending notification:', error);
+      log.error('Error sending notification:', error);
       
       // Update status to failed
       await supabase
@@ -127,7 +128,7 @@ export class NotificationService {
           .eq(columnName, false);
 
       if (error) {
-          console.error(`Error fetching employees for ${days} days:`, error);
+          log.error(`Error fetching employees for ${days} days:`, error);
           continue;
         }
 
@@ -157,16 +158,16 @@ export class NotificationService {
               .eq('id', employee.id as string);
             
             notificationsSent++;
-            console.log(`✅ Visa expiry notification sent to ${employee.name as string} (${days} days)`);
+            log.info(`✅ Visa expiry notification sent to ${employee.name as string} (${days} days)`);
           } else {
-            console.error(`❌ Failed to send notification to ${employee.name as string}:`, result.error);
+            log.error(`❌ Failed to send notification to ${employee.name as string}:`, result.error);
           }
         }
       }
 
       return { success: true, notificationsSent };
     } catch (error) {
-      console.error('Error checking visa expiries:', error);
+      log.error('Error checking visa expiries:', error);
       return { 
         success: false, 
         notificationsSent: 0, 
@@ -237,7 +238,7 @@ export class NotificationService {
         .select('status, created_at');
 
       if (error) {
-        console.error('Error fetching notification stats:', error);
+        log.error('Error fetching notification stats:', error);
         return { total: 0, sent: 0, pending: 0, failed: 0, today: 0, thisWeek: 0 };
       }
 
@@ -255,7 +256,7 @@ export class NotificationService {
 
       return stats;
     } catch (error) {
-      console.error('Error calculating notification stats:', error);
+      log.error('Error calculating notification stats:', error);
       return { total: 0, sent: 0, pending: 0, failed: 0, today: 0, thisWeek: 0 };
     }
   }

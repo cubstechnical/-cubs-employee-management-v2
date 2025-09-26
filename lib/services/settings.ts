@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface UserSettings {
   profile?: {
@@ -70,13 +71,13 @@ export class SettingsService {
           // No settings found, return default
           return { success: true, data: {} };
         }
-        console.error('❌ Error fetching user settings:', error);
+        log.error('❌ Error fetching user settings:', error);
         return { success: false, error: error.message };
       }
 
       return { success: true, data: data?.settings_data || {} };
     } catch (error) {
-      console.error('❌ Unexpected error fetching user settings:', error);
+      log.error('❌ Unexpected error fetching user settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -90,7 +91,7 @@ export class SettingsService {
         .eq('user_id', userId);
 
       if (error) {
-        console.error('❌ Error fetching all user settings:', error);
+        log.error('❌ Error fetching all user settings:', error);
         return { success: false, error: error.message };
       }
 
@@ -101,7 +102,7 @@ export class SettingsService {
 
       return { success: true, data: settings };
     } catch (error) {
-      console.error('❌ Unexpected error fetching all user settings:', error);
+      log.error('❌ Unexpected error fetching all user settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -119,14 +120,14 @@ export class SettingsService {
         });
 
       if (error) {
-        console.error('❌ Error updating user settings:', error);
+        log.error('❌ Error updating user settings:', error);
         return { success: false, error: error.message };
       }
 
-      console.log(`✅ User settings updated for ${settingsType}`);
+      log.info(`✅ User settings updated for ${settingsType}`);
       return { success: true };
     } catch (error) {
-      console.error('❌ Unexpected error updating user settings:', error);
+      log.error('❌ Unexpected error updating user settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -145,7 +146,7 @@ export class SettingsService {
       const { data, error } = await query;
 
       if (error) {
-        console.error('❌ Error fetching admin settings:', error);
+        log.error('❌ Error fetching admin settings:', error);
         return { success: false, error: error.message };
       }
 
@@ -165,7 +166,7 @@ export class SettingsService {
 
       return { success: true, data: settings };
     } catch (error) {
-      console.error('❌ Unexpected error fetching admin settings:', error);
+      log.error('❌ Unexpected error fetching admin settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -185,14 +186,14 @@ export class SettingsService {
         });
 
       if (error) {
-        console.error('❌ Error updating admin settings:', error);
+        log.error('❌ Error updating admin settings:', error);
         return { success: false, error: error.message };
       }
 
-      console.log(`✅ Admin settings updated for ${settingKey}`);
+      log.info(`✅ Admin settings updated for ${settingKey}`);
       return { success: true };
     } catch (error) {
-      console.error('❌ Unexpected error updating admin settings:', error);
+      log.error('❌ Unexpected error updating admin settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }
@@ -264,10 +265,10 @@ export class SettingsService {
         }
       }
 
-      console.log(`✅ User settings initialized for user ${userId}`);
+      log.info(`✅ User settings initialized for user ${userId}`);
       return { success: true };
     } catch (error) {
-      console.error('❌ Unexpected error initializing user settings:', error);
+      log.error('❌ Unexpected error initializing user settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
     }
   }

@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from "react";
 import { RefreshCw, CheckCircle, AlertCircle } from "lucide-react";
+import { log } from '@/lib/utils/productionLogger';
 
 interface DashboardRefreshButtonProps {
   onRefresh: () => Promise<void>;
@@ -22,7 +23,7 @@ export const DashboardRefreshButton = ({ onRefresh, lastUpdated }: DashboardRefr
       // Clear success status after 2 seconds
       setTimeout(() => setLastRefreshStatus(null), 2000);
     } catch (error) {
-      console.error('Refresh failed:', error);
+      log.error('Refresh failed:', error);
       setLastRefreshStatus('error');
       
       // Clear error status after 3 seconds

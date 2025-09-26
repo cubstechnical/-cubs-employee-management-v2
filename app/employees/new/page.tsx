@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase/client';
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
 import { EmployeeService } from '@/lib/services/employees';
+import { log } from '@/lib/utils/productionLogger';
 
 // Validation schema for the employee form - adapted to our schema
 const employeeSchema = z.object({
@@ -69,7 +70,7 @@ export default function NewEmployee() {
           .order('company_name');
 
         if (error) {
-          console.error('Error loading companies:', error);
+          log.error('Error loading companies:', error);
           setLoadingCompanies(false);
           return;
         }
@@ -86,7 +87,7 @@ export default function NewEmployee() {
         setCompanies(companyOptions);
         setLoadingCompanies(false);
       } catch (error) {
-        console.error('Error loading companies:', error);
+        log.error('Error loading companies:', error);
         setLoadingCompanies(false);
       }
     };
@@ -99,7 +100,7 @@ export default function NewEmployee() {
     try {
       return await EmployeeService.generateEmployeeId(companyName, employeeName);
     } catch (error) {
-      console.error('Error generating employee ID:', error);
+      log.error('Error generating employee ID:', error);
       // Fallback to timestamp-based ID
       const timestamp = Date.now().toString().slice(-4);
       const companyPrefix = EmployeeService.generateCompanyPrefix(companyName);
@@ -129,7 +130,7 @@ export default function NewEmployee() {
         created_at: new Date().toISOString(),
       };
 
-      console.log('💾 Creating employee:', employeeData);
+      log.info('💾 Creating employee:', employeeData);
 
       const { data: employee, error } = await supabase
         .from('employee_table')
@@ -138,7 +139,7 @@ export default function NewEmployee() {
         .single();
 
       if (error) {
-        console.error('❌ Error creating employee:', error);
+        log.error('❌ Error creating employee:', error);
         toast.error(`Failed to create employee: ${error.message}`);
         return;
       }
@@ -157,11 +158,11 @@ export default function NewEmployee() {
         });
       }
 
-      console.log('✅ Employee created successfully:', employee);
+      log.info('✅ Employee created successfully:', employee);
       toast.success('Employee added successfully!');
       router.push('/employees');
     } catch (error) {
-      console.error('Error creating employee:', error);
+      log.error('Error creating employee:', error);
       toast.error('An unexpected error occurred. Please try again.');
     } finally {
       setIsSubmitting(false);

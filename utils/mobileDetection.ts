@@ -1,3 +1,4 @@
+import { log } from '@/lib/utils/productionLogger';
 /**
  * Mobile Detection Utility
  * Simple, reliable mobile detection that works across all browsers
@@ -291,7 +292,7 @@ export const suppressMobileWarnings = (): void => {
       ) {
         // Log as warning instead of error for better visibility in development
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[SUPPRESSED]', ...args);
+          log.warn('[SUPPRESSED]', ...args);
         }
         return;
       }
@@ -301,6 +302,6 @@ export const suppressMobileWarnings = (): void => {
     };
   } catch (error) {
     // If we can't suppress warnings, just continue
-    console.warn('Could not suppress mobile warnings:', error);
+    log.warn('Could not suppress mobile warnings:', error);
   }
 };

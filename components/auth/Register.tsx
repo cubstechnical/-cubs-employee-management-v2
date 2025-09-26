@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import { User, Mail, Lock, ArrowLeft } from 'lucide-react';
 import AuthService from '@/lib/services/auth';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function Register() {
   const router = useRouter();
@@ -56,7 +57,7 @@ export default function Register() {
         router.push('/pending-approval');
       }
     } catch (error) {
-      console.error('Registration error:', error);
+      log.error('Registration error:', error);
       toast.error('An unexpected error occurred');
     } finally {
       setIsLoading(false);

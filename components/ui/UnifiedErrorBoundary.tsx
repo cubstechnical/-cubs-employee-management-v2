@@ -3,6 +3,7 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home, Wifi, WifiOff } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { log } from '@/lib/utils/productionLogger';
 
 interface UnifiedErrorBoundaryProps {
   children: ReactNode;
@@ -35,7 +36,7 @@ export class UnifiedErrorBoundary extends Component<UnifiedErrorBoundaryProps, U
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error(`Error in ${this.props.context || 'component'}:`, error, errorInfo);
+    log.error(`Error in ${this.props.context || 'component'}:`, error, errorInfo);
     this.setState({ errorInfo });
     
     // Show user-friendly error message

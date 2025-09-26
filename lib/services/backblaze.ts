@@ -1,5 +1,6 @@
 import { S3Client, PutObjectCommand, DeleteObjectCommand, GetObjectCommand, ListObjectsV2Command, HeadObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { log } from '@/lib/utils/productionLogger';
 // Avoid importing Node https in edge/browser contexts. Use dynamic require in Node only.
 let httpsAgent: any = undefined;
 try {
@@ -78,14 +79,14 @@ export class BackblazeService {
       keyLength: process.env.B2_APPLICATION_KEY?.length || 0
     };
 
-    console.log('🔧 Backblaze Configuration:', config);
+    log.info('🔧 Backblaze Configuration:', config);
 
     // Check for common issues
     if (!process.env.B2_APPLICATION_KEY_ID || !process.env.B2_APPLICATION_KEY) {
-      console.error('❌ Missing B2 credentials!');
+      log.error('❌ Missing B2 credentials!');
     }
     if (!process.env.B2_BUCKET_NAME) {
-      console.error('❌ Missing B2_BUCKET_NAME!');
+      log.error('❌ Missing B2_BUCKET_NAME!');
     }
 
     return config;
@@ -94,7 +95,7 @@ export class BackblazeService {
   // Debug method to test file access
   static async testFileAccess(fileKey: string): Promise<boolean> {
     try {
-      console.log('🔍 Testing file access for:', fileKey);
+      log.info('🔍 Testing file access for:', fileKey);
 
       const command = new HeadObjectCommand({
         Bucket: this.bucketName,
@@ -102,10 +103,10 @@ export class BackblazeService {
       });
 
       await s3Client.send(command);
-      console.log('✅ File exists and is accessible');
+      log.info('✅ File exists and is accessible');
       return true;
     } catch (error) {
-      console.error('❌ File access test failed:', error);
+      log.error('❌ File access test failed:', error);
       return false;
     }
   }
@@ -116,27 +117,27 @@ export class BackblazeService {
     
     // Decode URL-encoded characters in the file key
     const decodedFileKey = decodeURIComponent(fileKey);
-    console.log('🔄 Trying alternative buckets with decoded fileKey:', decodedFileKey);
+    log.info('🔄 Trying alternative buckets with decoded fileKey:', decodedFileKey);
     
     for (const bucketName of bucketNames) {
       try {
-        console.log(`🔄 Trying bucket: ${bucketName}`);
+        log.info(`🔄 Trying bucket: ${bucketName}`);
         const command = new GetObjectCommand({
           Bucket: bucketName,
           Key: decodedFileKey,
         });
         
         const url = await getSignedUrl(s3Client, command, { expiresIn });
-        console.log(`✅ Successfully generated signed URL with bucket: ${bucketName}`);
+        log.info(`✅ Successfully generated signed URL with bucket: ${bucketName}`);
         return url;
       } catch (error) {
-        console.log(`❌ Failed with bucket ${bucketName}:`, (error as Error).message);
-        console.log(`❌ Full error for ${bucketName}:`, error);
+        log.info(`❌ Failed with bucket ${bucketName}:`, (error as Error).message);
+        log.info(`❌ Full error for ${bucketName}:`, error);
         continue;
       }
     }
     
-    console.error('❌ All bucket attempts failed');
+    log.error('❌ All bucket attempts failed');
     throw new Error('Failed to generate signed URL with any bucket name');
   }
 
@@ -181,7 +182,7 @@ export class BackblazeService {
         fileKey: fileKey,
       };
     } catch (error) {
-      console.error('Backblaze upload error:', error);
+      log.error('Backblaze upload error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Upload failed',
@@ -203,7 +204,7 @@ export class BackblazeService {
         success: true,
       };
     } catch (error) {
-      console.error('Backblaze delete error:', error);
+      log.error('Backblaze delete error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Delete failed',
@@ -219,25 +220,25 @@ export class BackblazeService {
   // Generate presigned URL for secure file access
   static async getPresignedUrl(fileKey: string, expiresIn: number = 3600): Promise<string> {
     try {
-      console.log('🔍 Generating presigned URL for fileKey:', fileKey);
-      console.log('🔍 Using bucket:', this.bucketName);
+      log.info('🔍 Generating presigned URL for fileKey:', fileKey);
+      log.info('🔍 Using bucket:', this.bucketName);
       
       // Decode URL-encoded characters in the file key
       const decodedFileKey = decodeURIComponent(fileKey);
-      console.log('🔍 Decoded fileKey:', decodedFileKey);
+      log.info('🔍 Decoded fileKey:', decodedFileKey);
       
       const command = new GetObjectCommand({
         Bucket: this.bucketName,
         Key: decodedFileKey,
       });
 
-      console.log('🔍 Command created, generating signed URL...');
+      log.info('🔍 Command created, generating signed URL...');
       const signedUrl = await getSignedUrl(s3Client, command, { expiresIn });
-      console.log('✅ Presigned URL generated successfully');
+      log.info('✅ Presigned URL generated successfully');
       return signedUrl;
     } catch (error) {
-      console.error('❌ Error generating presigned URL with default bucket:', error);
-      console.error('❌ Error details:', {
+      log.error('❌ Error generating presigned URL with default bucket:', error);
+      log.error('❌ Error details:', {
         message: (error as Error).message,
         stack: (error as Error).stack
       });
@@ -263,7 +264,7 @@ export class BackblazeService {
       const result = await s3Client.send(command);
       return result.Contents || [];
     } catch (error) {
-      console.error('Error listing files:', error);
+      log.error('Error listing files:', error);
       throw error;
     }
   }
@@ -293,7 +294,7 @@ export class BackblazeService {
 
       return await s3Client.send(command);
     } catch (error) {
-      console.error('Error getting file metadata:', error);
+      log.error('Error getting file metadata:', error);
       return null;
     }
   }

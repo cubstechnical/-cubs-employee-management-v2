@@ -1,4 +1,5 @@
 import nodemailer from 'nodemailer';
+import { log } from '@/lib/utils/productionLogger';
 
 export interface EmailData {
   to: string;
@@ -80,10 +81,10 @@ export class EmailService {
       };
 
       const result = await transporter.sendMail(mailOptions);
-      console.log('Email sent successfully:', result.messageId);
+      log.info('Email sent successfully:', result.messageId);
       return { success: true };
     } catch (error) {
-      console.error('Email send error:', error);
+      log.error('Email send error:', error);
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Failed to send email',

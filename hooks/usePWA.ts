@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { log } from '@/lib/utils/productionLogger';
 
 interface PWAInstallPrompt {
   prompt: () => Promise<void>;
@@ -38,7 +39,7 @@ export function usePWA() {
       setIsStandalone(isStandaloneMode);
       setIsPWA(pwaMode);
       
-      console.log('🔍 Enhanced PWA Detection:', {
+      log.info('🔍 Enhanced PWA Detection:', {
         isStandaloneMode,
         isPWAIndicator,
         isMobilePWA,
@@ -71,7 +72,7 @@ export function usePWA() {
       window.addEventListener('appinstalled', () => {
         setIsInstallable(false);
         setInstallPrompt(null);
-        console.log('PWA was installed');
+        log.info('PWA was installed');
       });
 
       return () => {
@@ -116,16 +117,16 @@ export function usePWA() {
       const choiceResult = await installPrompt.userChoice;
       
       if (choiceResult.outcome === 'accepted') {
-        console.log('User accepted the install prompt');
+        log.info('User accepted the install prompt');
         setIsInstallable(false);
         setInstallPrompt(null);
         return true;
       } else {
-        console.log('User dismissed the install prompt');
+        log.info('User dismissed the install prompt');
         return false;
       }
     } catch (error) {
-      console.error('Error during app installation:', error);
+      log.error('Error during app installation:', error);
       return false;
     }
   };

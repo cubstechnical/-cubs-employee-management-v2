@@ -3,6 +3,7 @@
 import React, { Component, ReactNode } from 'react';
 import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { log } from '@/lib/utils/productionLogger';
 
 interface Props {
   children: ReactNode;
@@ -34,7 +35,7 @@ export class DashboardErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error('Dashboard Error Boundary caught an error:', error, errorInfo);
+    log.error('Dashboard Error Boundary caught an error:', error, errorInfo);
     
     this.setState({
       error,
@@ -44,7 +45,7 @@ export class DashboardErrorBoundary extends Component<Props, State> {
     // Log to external service in production
     if (process.env.NODE_ENV === 'production') {
       // You can integrate with Sentry or other error tracking services here
-      console.error('Production dashboard error:', { error, errorInfo });
+      log.error('Production dashboard error:', { error, errorInfo });
     }
   }
 
