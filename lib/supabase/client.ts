@@ -25,7 +25,6 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      flowType: 'pkce',
       // Add mobile-specific configuration
       ...(typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative ? {
         storage: window.localStorage, // Ensure localStorage is used for session persistence
