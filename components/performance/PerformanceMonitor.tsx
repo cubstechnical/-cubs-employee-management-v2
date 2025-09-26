@@ -8,7 +8,7 @@ interface PerformanceMetrics {
   lastRender: number;
 }
 
-export function PerformanceMonitor({ componentName }: { componentName: string }) {
+const PerformanceMonitorComponent = ({ componentName }: { componentName: string }) => {
   const [metrics, setMetrics] = useState<PerformanceMetrics>({
     loadTime: 0,
     renderCount: 0,
@@ -65,4 +65,7 @@ export function PerformanceMonitor({ componentName }: { componentName: string })
       <div>Last: {new Date(metrics.lastRender).toLocaleTimeString()}</div>
     </div>
   );
-}
+};
+
+// Memoize the component to prevent unnecessary re-renders
+export const PerformanceMonitor = React.memo(PerformanceMonitorComponent);

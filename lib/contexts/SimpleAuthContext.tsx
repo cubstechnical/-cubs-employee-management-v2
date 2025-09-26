@@ -96,9 +96,12 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setIsLoading(true)
     try {
-      const result = await AuthService.signIn(email, password)
+      const result = await AuthService.signIn({ email, password })
       if (result.user) {
         setUser(result.user)
+      }
+      if (result.error) {
+        throw new Error(result.error.message)
       }
     } catch (error) {
       log.error('SimpleAuthContext: Sign in error:', error)
