@@ -21,7 +21,7 @@ import {
   X,
   Info
 } from 'lucide-react';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { AuthService } from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';

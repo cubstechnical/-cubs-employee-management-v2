@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import Link from 'next/link';
 import AuthService, { LoginCredentials } from '@/lib/services/auth';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';

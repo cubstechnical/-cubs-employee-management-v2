@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { Plus, UserCheck, Sun, Moon } from "lucide-react";
 import { DashboardRefreshButton } from './DashboardRefreshButton';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { AuthService } from '@/lib/services/auth';
 import { useTheme } from '@/lib/theme';
 

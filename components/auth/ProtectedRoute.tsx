@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import AppLoadingScreen from '@/components/ui/AppLoadingScreen';
 
 interface ProtectedRouteProps {

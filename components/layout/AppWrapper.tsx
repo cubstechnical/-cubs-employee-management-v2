@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import AppLoadingScreen from '@/components/ui/AppLoadingScreen';
 import { isSupabaseAvailable, preloadAppData } from '@/lib/supabase/client';
 

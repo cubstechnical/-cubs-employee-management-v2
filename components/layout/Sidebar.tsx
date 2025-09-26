@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import ThemeToggle from '@/components/ui/ThemeToggle';
 import Image from 'next/image';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 

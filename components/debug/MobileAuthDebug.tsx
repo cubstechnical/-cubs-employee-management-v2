@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { AuthService } from '@/lib/services/auth';
 import { isCapacitorApp } from '@/utils/mobileDetection';
 import { log } from '@/lib/utils/logger';

@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import { AuthService } from '@/lib/services/auth';
-import { useAuth } from '@/lib/contexts/AuthContext';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import {
   Users,
   CheckCircle,
