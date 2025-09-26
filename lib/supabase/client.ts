@@ -27,7 +27,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
       detectSessionInUrl: true,
       flowType: 'pkce',
       // Add mobile-specific configuration
-      ...(typeof window !== 'undefined' && window.Capacitor ? {
+      ...(typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative ? {
         storage: window.localStorage, // Ensure localStorage is used for session persistence
         storageKey: 'cubs-auth-token', // Custom storage key for mobile app
       } : {}),
@@ -38,7 +38,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
     });
 
     // Add mobile-specific session recovery
-    if (typeof window !== 'undefined' && window.Capacitor) {
+    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
       log.info('Mobile app detected, initializing mobile-specific auth handling');
 
       // Ensure session is properly loaded on app start

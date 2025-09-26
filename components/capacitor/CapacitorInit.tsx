@@ -16,7 +16,7 @@ export default function CapacitorInit() {
         log.info('CapacitorInit: Initializing mobile authentication...');
 
         // Ensure Supabase is properly configured for mobile
-        if (typeof window !== 'undefined' && window.Capacitor) {
+        if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
           log.info('CapacitorInit: Mobile app detected, configuring Supabase...');
 
           // Check if we have stored session data
@@ -54,7 +54,7 @@ export default function CapacitorInit() {
 
           log.info('CapacitorInit: Mobile authentication configured successfully');
         } else {
-          log.info('CapacitorInit: Web environment detected, skipping mobile auth init');
+          log.info('CapacitorInit: Web or non-native environment detected, skipping mobile auth init');
         }
 
       } catch (error) {

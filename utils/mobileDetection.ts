@@ -73,8 +73,8 @@ export const isCapacitorApp = (): boolean => {
 
   try {
     // Check for Capacitor-specific indicators
-    const isCapacitor = !!(window as any).Capacitor;
-    const hasCapacitorPlugins = !!(window as any).Capacitor?.isNative;
+    const isCapacitor = !!window.Capacitor;
+    const hasCapacitorPlugins = !!window.Capacitor?.isNative;
     const userAgentContainsCapacitor = /Capacitor/i.test(navigator.userAgent || '');
 
     return isCapacitor || hasCapacitorPlugins || userAgentContainsCapacitor;
@@ -88,8 +88,8 @@ export const isNativePlatform = (): boolean => {
 
   try {
     // Check for native platform indicators
-    const capacitor = !!(window as any).Capacitor;
-    const isNative = !!(window as any).Capacitor?.isNative;
+    const capacitor = !!window.Capacitor;
+    const isNative = !!window.Capacitor?.isNative;
     const userAgent = navigator.userAgent || '';
 
     // Check for iOS/Android native app indicators

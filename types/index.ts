@@ -176,4 +176,22 @@ export interface UploadProgress {
   loaded: number;
   total: number;
   percentage: number;
-} 
+}
+
+// Capacitor type declarations for mobile app
+declare global {
+  interface Window {
+    Capacitor?: {
+      isNative?: boolean;
+      platform?: string;
+      isAvailable?: () => boolean;
+    };
+  }
+}
+
+// Capacitor global type
+declare const Capacitor: {
+  isNative?: boolean;
+  platform?: string;
+  isAvailable?: () => boolean;
+} | undefined; 
