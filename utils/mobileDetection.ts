@@ -76,8 +76,21 @@ export const isCapacitorApp = (): boolean => {
     const isCapacitor = !!window.Capacitor;
     const hasCapacitorPlugins = !!window.Capacitor?.isNative;
     const userAgentContainsCapacitor = /Capacitor/i.test(navigator.userAgent || '');
+    
+    // Additional checks for iPhone 13 and other iOS devices
+    const isIOSApp = /iPhone|iPad|iPod/.test(navigator.userAgent || '') && 
+                     !/Safari/.test(navigator.userAgent || '') &&
+                     !/Chrome/.test(navigator.userAgent || '');
+    
+    // Check for Capacitor in window object
+    const hasCapacitorWindow = !!(window as any).Capacitor;
+    
+    // Check for iOS WKWebView (Capacitor uses this)
+    const isWKWebView = /AppleWebKit/.test(navigator.userAgent || '') && 
+                       !/Safari/.test(navigator.userAgent || '') &&
+                       /iPhone|iPad|iPod/.test(navigator.userAgent || '');
 
-    return isCapacitor || hasCapacitorPlugins || userAgentContainsCapacitor;
+    return isCapacitor || hasCapacitorPlugins || userAgentContainsCapacitor || isIOSApp || hasCapacitorWindow || isWKWebView;
   } catch (error) {
     return false;
   }

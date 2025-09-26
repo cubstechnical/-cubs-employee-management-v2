@@ -53,75 +53,51 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    // Check if user is already logged in with enhanced session persistence
+    // Enhanced auth check for iPhone 13 and mobile devices
     const checkAuth = async () => {
       try {
-        // First check if we have stored user data in localStorage
-        if (typeof window !== 'undefined') {
-          const sessionPersisted = localStorage.getItem('cubs_session_persisted');
-          const lastLogin = localStorage.getItem('cubs_last_login');
-          const storedUserEmail = localStorage.getItem('cubs_user_email');
-          const storedUserId = localStorage.getItem('cubs_user_id');
+        // Quick timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Auth check timeout')), 4000)
+        );
 
-          // If session was persisted and last login was within 24 hours, try to maintain it
-          if (sessionPersisted === 'true' && lastLogin && storedUserEmail) {
-            const lastLoginTime = new Date(lastLogin);
-            const now = new Date();
-            const hoursSinceLogin = (now.getTime() - lastLoginTime.getTime()) / (1000 * 60 * 60);
-
-            if (hoursSinceLogin < 24) {
-              // Try to get current user from session
-              const user = await AuthService.getCurrentUser();
-              if (user) {
-                console.log('✅ Found valid session, redirecting to dashboard');
-                router.push('/dashboard');
-                return;
-              } else {
-                // Try to recover session if we have stored user data
-                console.log('🔄 Attempting session recovery with stored data');
-                try {
-                  // If we have stored user data but no active session, try to refresh
-                  const { session } = await AuthService.getSession();
-                  if (session && session.user) {
-                    console.log('✅ Recovered session, redirecting to dashboard');
-                    router.push('/dashboard');
-                    return;
-                  }
-                } catch (recoveryError) {
-                  console.warn('Session recovery failed:', recoveryError);
-                }
+        const authPromise = (async () => {
+          // For mobile devices, try multiple approaches
+          if (typeof window !== 'undefined' && window.Capacitor) {
+            try {
+              // Try session first for mobile
+              const { session } = await AuthService.getSession();
+              if (session) {
+                const user = await AuthService.getCurrentUser();
+                return user;
               }
-            } else {
-              // Session expired, clear stored data
-              console.log('⏰ Session expired, clearing stored data');
-              localStorage.removeItem('cubs_session_persisted');
-              localStorage.removeItem('cubs_last_login');
-              localStorage.removeItem('cubs_user_email');
-              localStorage.removeItem('cubs_user_id');
+            } catch (sessionError) {
+              console.log('Mobile session check failed, trying direct user fetch:', sessionError);
             }
           }
-        }
+          
+          // Fallback to direct user fetch
+          return await AuthService.getCurrentUser();
+        })();
 
-        // Final fallback: standard auth check
-        const user = await AuthService.getCurrentUser();
+        const user = await Promise.race([authPromise, timeoutPromise]) as any;
+
         if (user) {
-          console.log('✅ Standard auth check found user, redirecting to dashboard');
+          console.log('✅ User found, redirecting to dashboard');
           router.push('/dashboard');
         } else {
-          console.log('ℹ️ No authenticated user found, staying on login page');
+          console.log('ℹ️ No user found, staying on login page');
         }
       } catch (error) {
-        console.error('Auth check error:', error);
-        // Clear potentially corrupted session data but don't redirect
-        if (typeof window !== 'undefined') {
-          localStorage.removeItem('cubs_session_persisted');
-          localStorage.removeItem('cubs_last_login');
-          localStorage.removeItem('cubs_user_email');
-          localStorage.removeItem('cubs_user_id');
-        }
+        console.log('Auth check failed (non-critical):', error);
+        // Don't redirect on error - just stay on login page
       }
     };
-    checkAuth();
+
+    // Longer delay for mobile devices to ensure proper initialization
+    const delay = typeof window !== 'undefined' && window.Capacitor ? 1000 : 500;
+    const timer = setTimeout(checkAuth, delay);
+    return () => clearTimeout(timer);
   }, [router]);
 
   const onSubmit = async (data: LoginFormData) => {
@@ -137,28 +113,10 @@ export default function LoginPage() {
       // Use AuthContext signIn method which properly updates the context
       await signIn(data.email, data.password);
 
-      // Enhanced session persistence with error handling
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('cubs_session_persisted', 'true');
-          localStorage.setItem('cubs_last_login', new Date().toISOString());
-          // Store user info for persistence across page refreshes
-          const currentUser = await AuthService.getCurrentUser();
-          if (currentUser) {
-            localStorage.setItem('cubs_user_email', currentUser.email);
-            localStorage.setItem('cubs_user_id', currentUser.id);
-          }
-        } catch (storageError) {
-          console.warn('Failed to save session data to localStorage:', storageError);
-        }
-      }
-
       toast.success('Login successful! Redirecting...');
 
-      // Small delay to ensure context is updated before redirect
-      setTimeout(() => {
-        router.push('/dashboard');
-      }, 100);
+      // Simple redirect without complex session handling
+      router.push('/dashboard');
 
     } catch (error) {
       console.error('Login error:', error);
@@ -226,17 +184,28 @@ export default function LoginPage() {
         {/* Logo */}
         <div className="login-logo-container-image text-center">
           <div className="flex justify-center mb-4">
-            <Image
-              src="/assets/cubs.webp"
-              alt="CUBS Logo"
-              width={120}
-              height={120}
-              className="login-logo-image drop-shadow-lg"
-              priority
-              style={{ width: 'auto', height: 'auto' }}
-            />
+            <div className="relative">
+              <Image
+                src="/assets/cubs.webp"
+                alt="CUBS Logo"
+                width={120}
+                height={120}
+                className="login-logo-image drop-shadow-lg"
+                priority
+                style={{ width: '120px', height: '120px' }}
+                onError={(e) => {
+                  console.log('Logo failed to load, using fallback');
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              {/* Fallback logo */}
+              <div className="hidden w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                CUBS
+              </div>
+            </div>
           </div>
-          <p className="text-white dark:text-white mt-2 font-bold text-lg text-center drop-shadow-lg bg-black bg-opacity-40 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <p className="text-white dark:text-white mt-2 font-bold text-lg text-center drop-shadow-lg bg-black bg-opacity-50 px-4 py-2 rounded-lg backdrop-blur-sm">
             Employee Management Portal
           </p>
         </div>

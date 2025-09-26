@@ -83,9 +83,12 @@ export async function GET(
     } catch (edgeError) {
       log.warn('Edge function not available, falling back to direct file URL', { documentId, error: edgeError });
 
-      // Check if request is from mobile app
+      // Check if request is from mobile app (enhanced for iPhone 13)
       const userAgent = request.headers.get('user-agent') || '';
-      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(userAgent) || userAgent.includes('Capacitor');
+      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(userAgent) || 
+                      userAgent.includes('Capacitor') ||
+                      (/iPhone|iPad|iPod/.test(userAgent) && !/Safari/.test(userAgent)) ||
+                      /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent) && /iPhone|iPad|iPod/.test(userAgent);
 
       if (isMobile) {
         // For mobile apps, return the file URL as JSON for client-side handling

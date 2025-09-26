@@ -15,6 +15,8 @@ import { suppressMobileWarnings } from '@/utils/mobileDetection'
 import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
 import MobileAuthDebug from '@/components/debug/MobileAuthDebug'
+import MobileLoadingScreen from '@/components/ui/MobileLoadingScreen'
+import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -137,8 +139,9 @@ export default function RootLayout({
         <PWARegistration />
         <CapacitorInit />
         <ErrorBoundary>
-          <MobileOptimizedLayout>
-            <OptimizedLayout>
+          <MobileErrorBoundary>
+            <MobileOptimizedLayout>
+              <OptimizedLayout>
               <ClientOnly fallback={
                 <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                   <div className="text-center">
@@ -159,10 +162,13 @@ export default function RootLayout({
                   {children}
                 </Suspense>
               </ClientOnly>
-            </OptimizedLayout>
-          </MobileOptimizedLayout>
+              </OptimizedLayout>
+            </MobileOptimizedLayout>
+          </MobileErrorBoundary>
           {/* Mobile authentication debug - temporarily disabled for production builds */}
           {false && <MobileAuthDebug />}
+          {/* Mobile loading screen for Capacitor apps */}
+          <MobileLoadingScreen isLoading={true} />
         </ErrorBoundary>
       </body>
     </html>

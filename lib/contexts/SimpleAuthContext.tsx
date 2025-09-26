@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AuthService, type AuthUser } from '@/lib/services/auth'
+import { MobileAuthService } from '@/lib/services/mobileAuth'
 import { supabase } from '@/lib/supabase/client'
 import { log } from '@/lib/utils/logger'
 import { isCapacitorApp } from '@/utils/mobileDetection'
@@ -20,31 +21,57 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Simple session loading to prevent white page issues
+    // Ultra-simplified session loading to prevent white page issues
     const loadSession = async () => {
       try {
-        const isMobile = isCapacitorApp()
+        // Quick timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Session load timeout')), 2000)
+        )
 
-        if (isMobile) {
-          // Mobile session loading
-          const { session } = await AuthService.restoreMobileSession()
-          if (session) {
-            const userData = await AuthService.getCurrentUserWithApproval()
-            if (userData.user) {
-              setUser(userData.user)
+        const sessionPromise = (async () => {
+          const isMobile = isCapacitorApp()
+          
+          if (isMobile) {
+            // For mobile, use enhanced mobile auth service
+            try {
+              const { session, error } = await MobileAuthService.restoreMobileSession()
+              if (session && !error) {
+                const userData = await AuthService.getCurrentUser()
+                if (userData) {
+                  setUser(userData)
+                  return
+                }
+              }
+            } catch (mobileError) {
+              log.warn('Mobile session restoration failed, trying direct user fetch:', mobileError)
+              // Fallback: try direct user fetch for iPhone 13
+              try {
+                const userData = await AuthService.getCurrentUser()
+                if (userData) {
+                  setUser(userData)
+                  return
+                }
+              } catch (fallbackError) {
+                log.warn('Mobile fallback also failed:', fallbackError)
+              }
+            }
+          } else {
+            // For web, standard flow
+            const userData = await AuthService.getCurrentUser()
+            if (userData) {
+              setUser(userData)
+              return
             }
           }
-        } else {
-          // Web session loading
-          const userData = await AuthService.getCurrentUserWithApproval()
-          if (userData.user) {
-            setUser(userData.user)
-          }
-        }
+        })()
+
+        await Promise.race([sessionPromise, timeoutPromise])
       } catch (error) {
-        log.warn('SimpleAuthContext: Session loading failed:', error)
+        log.warn('SimpleAuthContext: Session loading failed (non-critical):', error)
+        // Don't throw - just continue without user
       } finally {
-        // Always set loading to false
+        // Always set loading to false immediately
         setIsLoading(false)
       }
     }
@@ -59,27 +86,19 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
             const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
             if (currentUser) {
               setUser(currentUser)
-              // Store session data for mobile app
+              // Use mobile auth service for session storage
               if (isCapacitorApp()) {
-                localStorage.setItem('cubs-auth-token', JSON.stringify({
-                  access_token: session.access_token,
-                  refresh_token: session.refresh_token,
-                  expires_at: session.expires_at
-                }))
+                MobileAuthService.storeMobileSession(session)
               }
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null)
             if (isCapacitorApp()) {
-              localStorage.removeItem('cubs-auth-token')
+              MobileAuthService.clearMobileSession()
             }
           } else if (event === 'TOKEN_REFRESHED' && session) {
             if (isCapacitorApp()) {
-              localStorage.setItem('cubs-auth-token', JSON.stringify({
-                access_token: session.access_token,
-                refresh_token: session.refresh_token,
-                expires_at: session.expires_at
-              }))
+              MobileAuthService.storeMobileSession(session)
             }
           }
         } catch (error) {
