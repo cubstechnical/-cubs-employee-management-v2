@@ -10,27 +10,27 @@ export function QueryProvider({ children }: { children: React.ReactNode }) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            // Cache data for 10 minutes by default (increased for better performance)
-            staleTime: 10 * 60 * 1000,
-            // Keep data in cache for 30 minutes (increased for better performance)
-            gcTime: 30 * 60 * 1000,
-            // Retry failed requests 2 times, with exponential backoff
+            // Optimized cache data for 2 minutes for fresher data
+            staleTime: 2 * 60 * 1000,
+            // Reduced cache time to 10 minutes for better memory usage
+            gcTime: 10 * 60 * 1000,
+            // Reduced retry attempts for faster failures
             retry: (failureCount, error: any) => {
               // Don't retry on 4xx errors (client errors)
               if (error?.status >= 400 && error?.status < 500) return false;
-              // Retry network errors up to 2 times
-              return failureCount < 2;
+              // Retry network errors only once for faster response
+              return failureCount < 1;
             },
             // Mobile-optimized: Don't refetch on window focus by default
             refetchOnWindowFocus: false,
-            // Mobile-optimized: Don't refetch on reconnect by default
-            refetchOnReconnect: false,
-            // Enable background refetch for better UX
-            refetchOnMount: true,
+            // Mobile-optimized: Re-enabled for mobile reliability
+            refetchOnReconnect: true,
+            // Always refetch on mount for consistency
+            refetchOnMount: 'always',
             // Reduce network requests - disabled by default
             refetchInterval: false,
-            // Optimize for performance and mobile data usage
-            notifyOnChangeProps: ['data', 'error'],
+            // Added isLoading for better UX
+            notifyOnChangeProps: ['data', 'error', 'isLoading'],
             // Mobile optimization: reduce refetch interval to save data
             refetchIntervalInBackground: false,
             // Add network timeout for mobile connections

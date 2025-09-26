@@ -145,12 +145,12 @@ export class EmployeeService {
   // In-memory cache and dedupe for employee lists
   private static employeesCache: Map<string, { data: PaginatedEmployeesResponse; timestamp: number }> = new Map();
   private static employeesInflight: Map<string, Promise<PaginatedEmployeesResponse>> = new Map();
-  private static readonly CACHE_DURATION_MS = 15 * 60 * 1000; // Increased to 15 minutes for better performance
+  private static readonly CACHE_DURATION_MS = 5 * 60 * 1000; // Optimized to 5 minutes for fresh data
   
   // Individual employee cache for better performance
   private static employeeCache: Map<string, { data: Employee; timestamp: number }> = new Map();
   private static employeeInflight: Map<string, Promise<{ employee: Employee | null; error: string | null }>> = new Map();
-  private static readonly EMPLOYEE_CACHE_DURATION_MS = 20 * 60 * 1000; // Increased to 20 minutes for better performance
+  private static readonly EMPLOYEE_CACHE_DURATION_MS = 10 * 60 * 1000; // Optimized to 10 minutes for fresh data
 
   // Filter options cache to reduce repeated API calls
   private static filterOptionsCache: { data: FilterOptions; timestamp: number } | null = null;

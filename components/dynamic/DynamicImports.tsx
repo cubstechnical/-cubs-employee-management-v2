@@ -3,10 +3,25 @@
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
 
-// Loading component for dynamic imports
+// Optimized loading components for different use cases
 const LoadingSpinner = () => (
-  <div className="flex items-center justify-center p-8">
-    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f]"></div>
+  <div className="flex items-center justify-center p-6">
+    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#d3194f]"></div>
+  </div>
+);
+
+const SmallLoadingSpinner = () => (
+  <div className="flex items-center justify-center p-2">
+    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-[#d3194f]"></div>
+  </div>
+);
+
+const ChartLoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[200px] bg-gray-50 dark:bg-gray-800 rounded-lg">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#d3194f] mx-auto mb-2"></div>
+      <p className="text-sm text-gray-500">Loading chart...</p>
+    </div>
   </div>
 );
 
@@ -14,7 +29,7 @@ const LoadingSpinner = () => (
 export const DynamicEmployeeGrowthChart = dynamic(
   () => import('@/components/dashboard/EmployeeGrowthChart'),
   {
-    loading: () => <LoadingSpinner />,
+    loading: () => <ChartLoadingSpinner />,
     ssr: false
   }
 );
@@ -22,7 +37,7 @@ export const DynamicEmployeeGrowthChart = dynamic(
 export const DynamicVisaExpiryTrendChart = dynamic(
   () => import('@/components/dashboard/VisaExpiryTrendChart'),
   {
-    loading: () => <LoadingSpinner />,
+    loading: () => <ChartLoadingSpinner />,
     ssr: false
   }
 );
@@ -30,7 +45,7 @@ export const DynamicVisaExpiryTrendChart = dynamic(
 export const DynamicVisaComplianceScore = dynamic(
   () => import('@/components/dashboard/VisaComplianceScore'),
   {
-    loading: () => <LoadingSpinner />,
+    loading: () => <ChartLoadingSpinner />,
     ssr: false
   }
 );
@@ -93,18 +108,42 @@ export const DynamicEmployees = dynamic(() => import('@/app/employees/page'), {
   ssr: false
 });
 
-// Heavy chart components - lazy load only when needed
+// Heavy chart components - lazy load only when needed (OPTIMIZED)
 export const DynamicApexChart = dynamic(() => import('react-apexcharts'), {
   ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-64 bg-gray-100 dark:bg-gray-800 rounded-lg">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-600 dark:text-gray-400">Loading chart...</p>
-      </div>
-    </div>
-  )
+  loading: () => <ChartLoadingSpinner />
 });
+
+// Optimized ApexCharts with specific chart types to reduce bundle size
+export const DynamicLineChart = dynamic(
+  () => import('react-apexcharts').then(mod => ({ 
+    default: (props: any) => <mod.default {...props} type="line" /> 
+  })),
+  {
+    ssr: false,
+    loading: () => <ChartLoadingSpinner />
+  }
+);
+
+export const DynamicBarChart = dynamic(
+  () => import('react-apexcharts').then(mod => ({ 
+    default: (props: any) => <mod.default {...props} type="bar" /> 
+  })),
+  {
+    ssr: false,
+    loading: () => <ChartLoadingSpinner />
+  }
+);
+
+export const DynamicDonutChart = dynamic(
+  () => import('react-apexcharts').then(mod => ({ 
+    default: (props: any) => <mod.default {...props} type="donut" /> 
+  })),
+  {
+    ssr: false,
+    loading: () => <ChartLoadingSpinner />
+  }
+);
 
 // Admin components - only load for admin users (optimized version)
 export const DynamicAdminPanelOptimized = dynamic(() => import('@/components/admin/PerformanceDashboard'), {

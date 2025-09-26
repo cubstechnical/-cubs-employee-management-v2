@@ -169,8 +169,8 @@ const baseConfig = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
-          minSize: 20000,
-          maxSize: 100000, // Limit chunk size to 100KB
+          minSize: 10000, // Reduced min size for better splitting
+          maxSize: 50000, // Reduced max size to 50KB for better mobile performance
           cacheGroups: {
             // React and React DOM - highest priority
             react: {
@@ -219,7 +219,7 @@ const baseConfig = {
               chunks: 'all',
               priority: 15,
               enforce: true,
-              maxSize: 50000,
+              maxSize: 30000, // Reduced common chunk size
             },
             // Default vendor chunk - everything else
             vendor: {
@@ -228,7 +228,7 @@ const baseConfig = {
               chunks: 'all',
               priority: 10,
               enforce: true,
-              maxSize: 300000, // Limit vendor chunk to 300KB
+              maxSize: 150000, // Reduced vendor chunk to 150KB for mobile
             },
           },
         },

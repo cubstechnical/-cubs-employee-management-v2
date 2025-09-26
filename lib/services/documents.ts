@@ -61,7 +61,7 @@ export class DocumentService {
   private static employeeDocsCache: Map<string, { documents: Document[]; timestamp: number }> = new Map();
   private static employeeDocsInflight: Map<string, Promise<{ documents: Document[]; error: string | null }>> = new Map();
 
-  private static readonly SUPABASE_PAGE_SIZE = 500; // Reduced for better performance // Supabase hard page limit
+  private static readonly SUPABASE_PAGE_SIZE = 100; // Optimized for better performance and memory usage
   
   // Performance monitoring
   private static performanceMetrics: Map<string, number[]> = new Map();
