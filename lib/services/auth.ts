@@ -3,6 +3,7 @@ import { supabase, isSupabaseAvailable } from '@/lib/supabase/client';
 import { DevAuthService } from './auth-dev';
 import { authRateLimiter } from './rateLimiter';
 import { isCapacitorApp } from '@/utils/mobileDetection';
+import { log } from '@/lib/utils/logger';
 
 export interface AuthUser {
   id: string;
