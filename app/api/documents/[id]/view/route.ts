@@ -22,12 +22,31 @@ export async function GET(
 
     log.info('Document view requested', { documentId });
 
-    // Get document metadata from database
-    const { data, error } = await supabase
-      .from('documents')
+    // Get document metadata from database - try both tables
+    let data = null;
+    let error = null;
+
+    // First try employee_documents table (primary storage)
+    const { data: empDocData, error: empDocError } = await supabase
+      .from('employee_documents')
       .select('file_url, file_name, mime_type, file_path, employee_id')
       .eq('id', documentId)
       .single();
+
+    if (empDocData && !empDocError) {
+      data = empDocData;
+      error = null;
+    } else {
+      // Fallback to documents table (legacy storage)
+      const { data: docData, error: docError } = await supabase
+        .from('documents')
+        .select('file_url, file_name, mime_type, file_path, employee_id')
+        .eq('id', documentId)
+        .single();
+
+      data = docData;
+      error = docError;
+    }
 
     if (error || !data) {
       log.error('Document not found or database error', { documentId, error: error?.message });

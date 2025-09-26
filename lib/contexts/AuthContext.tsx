@@ -5,6 +5,7 @@ import { AuthService, type AuthUser } from '@/lib/services/auth'
 import { supabase } from '@/lib/supabase/client'
 import { handleAuthError, isRefreshTokenError } from '@/lib/utils/authErrorHandler'
 import { log } from '@/lib/utils/logger'
+import { isCapacitorApp } from '@/utils/mobileDetection'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -28,7 +29,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTimeout(() => reject(new Error('Session load timeout')), 20000) // Increased to 20s for mobile
         );
 
-        const sessionPromise = AuthService.getCurrentUserWithApproval();
+        let sessionPromise;
+        if (isCapacitorApp()) {
+          // Use mobile-specific session restoration for mobile apps
+          sessionPromise = AuthService.restoreMobileSession().then(async (sessionResult) => {
+            if (sessionResult.session) {
+              return await AuthService.getCurrentUserWithApproval();
+            }
+            return { user: null };
+          });
+        } else {
+          // Use regular session for web
+          sessionPromise = AuthService.getCurrentUserWithApproval();
+        }
 
         const result = await Promise.race([sessionPromise, timeoutPromise]);
         const { user: currentUser } = result as { user: any };
@@ -39,7 +52,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           log.info('AuthContext: Session loaded successfully', {
             hasUser: !!currentUser,
             userRole: currentUser.role,
-            userEmail: currentUser.email
+            userEmail: currentUser.email,
+            isMobile: isCapacitorApp()
           });
 
           // Store session persistence data for mobile app
@@ -48,6 +62,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             localStorage.setItem('cubs_last_login', new Date().toISOString());
             localStorage.setItem('cubs_user_email', currentUser.email || '');
             localStorage.setItem('cubs_user_id', currentUser.id || '');
+
+            // Store session data for mobile app restoration
+            if (isCapacitorApp()) {
+              try {
+                const { session } = await AuthService.getSession();
+                if (session) {
+                  localStorage.setItem('cubs-auth-token', JSON.stringify({
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at
+                  }));
+                  log.info('AuthContext: Mobile session data stored for restoration');
+                }
+              } catch (error) {
+                log.warn('AuthContext: Failed to store mobile session data:', error);
+              }
+            }
           }
         } else {
           // Only clear user if we're certain there's no valid session
@@ -98,7 +129,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Listen for auth state changes with improved error handling
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        log.info('AuthContext: Auth state changed', { event, hasSession: !!session });
+        log.info('AuthContext: Auth state changed', {
+          event,
+          hasSession: !!session,
+          isMobile: isCapacitorApp()
+        });
 
         try {
           if (event === 'SIGNED_IN' && session) {
@@ -106,6 +141,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const { user: currentUser } = await AuthService.getCurrentUserWithApproval();
               if (currentUser) {
                 setUser(currentUser);
+
+                // Store session data for mobile app restoration
+                if (isCapacitorApp()) {
+                  localStorage.setItem('cubs-auth-token', JSON.stringify({
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at
+                  }));
+                  localStorage.setItem('cubs_session_persisted', 'true');
+                  localStorage.setItem('cubs_last_login', new Date().toISOString());
+                  localStorage.setItem('cubs_user_email', currentUser.email || '');
+                  localStorage.setItem('cubs_user_id', currentUser.id || '');
+                  log.info('AuthContext: Mobile session data stored after sign in');
+                }
               } else {
                 // If no user data but session exists, keep current user or clear
                 setUser(null);
@@ -116,12 +165,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null);
+            // Clear mobile session data
+            if (isCapacitorApp()) {
+              localStorage.removeItem('cubs-auth-token');
+              localStorage.removeItem('cubs_session_persisted');
+              localStorage.removeItem('cubs_last_login');
+              localStorage.removeItem('cubs_user_email');
+              localStorage.removeItem('cubs_user_id');
+            }
             log.info('AuthContext: User signed out');
           } else if (event === 'TOKEN_REFRESHED') {
             if (!session) {
               log.warn('AuthContext: Token refresh failed, clearing user');
               setUser(null);
             } else {
+              // Store updated session data for mobile app
+              if (isCapacitorApp()) {
+                localStorage.setItem('cubs-auth-token', JSON.stringify({
+                  access_token: session.access_token,
+                  refresh_token: session.refresh_token,
+                  expires_at: session.expires_at
+                }));
+                log.info('AuthContext: Mobile session data updated after token refresh');
+              }
+
               // Token refreshed successfully, try to get fresh user data
               try {
                 const { user: currentUser } = await AuthService.getCurrentUserWithApproval();
@@ -135,6 +202,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } else if (event === 'PASSWORD_RECOVERY') {
             // Keep user state for password recovery
             log.info('AuthContext: Password recovery initiated');
+          }
+
+          // Mobile-specific session handling
+          if (isCapacitorApp()) {
+            log.info('AuthContext: Mobile app auth state change detected');
+
+            if (session) {
+              // Ensure session data is always up to date
+              localStorage.setItem('cubs-auth-token', JSON.stringify({
+                access_token: session.access_token,
+                refresh_token: session.refresh_token,
+                expires_at: session.expires_at
+              }));
+              log.info('AuthContext: Mobile session data synchronized');
+            } else {
+              // Session lost, attempt recovery
+              log.warn('AuthContext: Mobile session lost, attempting recovery...');
+              setTimeout(async () => {
+                try {
+                  const { session: recoveredSession } = await AuthService.restoreMobileSession();
+                  if (recoveredSession) {
+                    log.info('AuthContext: Mobile session recovered successfully');
+                    // Re-trigger user data loading
+                    const { user: currentUser } = await AuthService.getCurrentUserWithApproval();
+                    if (currentUser) {
+                      setUser(currentUser);
+                    }
+                  }
+                } catch (error) {
+                  log.warn('AuthContext: Mobile session recovery failed:', error);
+                }
+              }, 1000);
+            }
           }
         } catch (error) {
           log.error('AuthContext: Error handling auth state change:', error);

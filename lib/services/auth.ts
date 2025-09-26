@@ -2,6 +2,7 @@ import { Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseAvailable } from '@/lib/supabase/client';
 import { DevAuthService } from './auth-dev';
 import { authRateLimiter } from './rateLimiter';
+import { isCapacitorApp } from '@/utils/mobileDetection';
 
 export interface AuthUser {
   id: string;
@@ -52,13 +53,14 @@ export class AuthService {
   private static userCache: { user: AuthUser | null; timestamp: number } | null = null;
   private static CACHE_DURATION = 30 * 1000; // 30 seconds cache
 
-  // Get current session
+  // Get current session with mobile-specific handling
   static async getSession(): Promise<{ session: Session | null; error: { message: string } | null }> {
     if (!isSupabaseAvailable) {
       return await DevAuthService.getSession();
     }
     try {
       const { data: { session }, error } = await supabase.auth.getSession();
+
       if (error) {
         // Handle refresh token errors specifically
         if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
@@ -71,10 +73,85 @@ export class AuthService {
         }
         return { session: null, error: { message: error.message } };
       }
+
+      // Mobile-specific session validation
+      if (isCapacitorApp() && session) {
+        console.log('AuthService: Mobile app session detected, validating...');
+
+        // Additional validation for mobile sessions
+        const now = Math.floor(Date.now() / 1000);
+        const expiresAt = session.expires_at;
+
+        if (expiresAt && expiresAt < now) {
+          console.warn('AuthService: Mobile session expired, attempting refresh...');
+          try {
+            const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession();
+            if (refreshError) {
+              console.error('AuthService: Failed to refresh mobile session:', refreshError);
+              return { session: null, error: { message: 'Session expired' } };
+            }
+            return { session: refreshData.session, error: null };
+          } catch (refreshError) {
+            console.error('AuthService: Mobile session refresh error:', refreshError);
+            return { session: null, error: { message: 'Session refresh failed' } };
+          }
+        }
+      }
+
       return { session, error: null };
     } catch (error) {
       console.error('AuthService: Session error:', error);
       return { session: null, error: { message: 'An unexpected error occurred' } };
+    }
+  }
+
+  // Mobile-specific session restoration
+  static async restoreMobileSession(): Promise<{ session: Session | null; error: { message: string } | null }> {
+    if (!isCapacitorApp()) {
+      return await this.getSession(); // Use regular session for web
+    }
+
+    console.log('AuthService: Attempting to restore mobile session...');
+
+    try {
+      // Check if there's a stored session in localStorage
+      if (typeof window !== 'undefined') {
+        const storedSession = localStorage.getItem('cubs-auth-token');
+        if (storedSession) {
+          try {
+            const sessionData = JSON.parse(storedSession);
+            if (sessionData && sessionData.access_token) {
+              console.log('AuthService: Found stored mobile session, validating...');
+
+              // Set the session in Supabase
+              const { data, error } = await supabase.auth.setSession({
+                access_token: sessionData.access_token,
+                refresh_token: sessionData.refresh_token,
+              });
+
+              if (error) {
+                console.warn('AuthService: Failed to restore mobile session:', error.message);
+                // Clear invalid stored session
+                localStorage.removeItem('cubs-auth-token');
+                return { session: null, error: { message: error.message } };
+              }
+
+              console.log('AuthService: Mobile session restored successfully');
+              return { session: data.session, error: null };
+            }
+          } catch (parseError) {
+            console.warn('AuthService: Failed to parse stored mobile session:', parseError);
+            // Clear corrupted stored session
+            localStorage.removeItem('cubs-auth-token');
+          }
+        }
+      }
+
+      // If no stored session or restoration failed, try to get current session
+      return await this.getSession();
+    } catch (error) {
+      console.error('AuthService: Mobile session restoration error:', error);
+      return { session: null, error: { message: 'Session restoration failed' } };
     }
   }
 
