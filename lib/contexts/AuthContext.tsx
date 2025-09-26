@@ -21,123 +21,39 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Load user session from Supabase with enhanced error handling and mobile optimization
+    // Simplified session loading to prevent white page issues
     const loadSession = async () => {
       try {
-        // Add longer timeout for mobile networks
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session load timeout')), 25000) // Increased to 25s for mobile
-        );
-
-        let sessionPromise;
         const isMobile = isCapacitorApp();
-        log.info('AuthContext: Starting session load', { isMobile });
 
+        // Simplified mobile session loading
         if (isMobile) {
-          // Use mobile-specific session restoration for mobile apps
-          log.info('AuthContext: Using mobile session restoration');
-          sessionPromise = AuthService.restoreMobileSession().then(async (sessionResult) => {
-            log.info('AuthContext: Mobile session restoration result', {
-              hasSession: !!sessionResult.session,
-              hasError: !!sessionResult.error,
-              errorMessage: sessionResult.error?.message
-            });
-            if (sessionResult.session) {
-              return await AuthService.getCurrentUserWithApproval();
-            }
-            return { user: null };
-          });
-        } else {
-          // Use regular session for web
-          log.info('AuthContext: Using web session restoration');
-          sessionPromise = AuthService.getCurrentUserWithApproval();
-        }
-
-        const result = await Promise.race([sessionPromise, timeoutPromise]);
-        const { user: currentUser } = result as { user: any };
-
-        log.info('AuthContext: Session load completed', {
-          hasUser: !!currentUser,
-          isMobile,
-          userEmail: currentUser?.email,
-          userRole: currentUser?.role
-        });
-
-        // Only set user if we actually got one, don't clear existing user on errors
-        if (currentUser) {
-          setUser(currentUser);
-          log.info('AuthContext: Session loaded successfully', {
-            hasUser: !!currentUser,
-            userRole: currentUser.role,
-            userEmail: currentUser.email,
-            isMobile: isCapacitorApp()
-          });
-
-          // Store session persistence data for mobile app
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('cubs_session_persisted', 'true');
-            localStorage.setItem('cubs_last_login', new Date().toISOString());
-            localStorage.setItem('cubs_user_email', currentUser.email || '');
-            localStorage.setItem('cubs_user_id', currentUser.id || '');
-
-            // Store session data for mobile app restoration
-            if (isCapacitorApp()) {
-              try {
-                const { session } = await AuthService.getSession();
-                if (session) {
-                  localStorage.setItem('cubs-auth-token', JSON.stringify({
-                    access_token: session.access_token,
-                    refresh_token: session.refresh_token,
-                    expires_at: session.expires_at
-                  }));
-                  log.info('AuthContext: Mobile session data stored for restoration');
-                }
-              } catch (error) {
-                log.warn('AuthContext: Failed to store mobile session data:', error);
-              }
+          const { session, error } = await AuthService.restoreMobileSession();
+          if (session) {
+            const userData = await AuthService.getCurrentUserWithApproval();
+            if (userData.user) {
+              setUser(userData.user);
+              log.info('AuthContext: Mobile session loaded successfully');
             }
           }
         } else {
-          // Only clear user if we're certain there's no valid session
-          const { session } = await AuthService.getSession();
-          if (!session) {
-            setUser(null);
-            log.info('AuthContext: No valid session found, clearing user');
-          } else {
-            log.info('AuthContext: Session exists but no user data, keeping current state');
+          // Web session loading
+          const userData = await AuthService.getCurrentUserWithApproval();
+          if (userData.user) {
+            setUser(userData.user);
+            log.info('AuthContext: Web session loaded successfully');
           }
         }
       } catch (error) {
-        console.log('⚠️ AuthContext: Session load warning (keeping current state):', error);
-        // Don't immediately clear user on session load errors
-        // Try to maintain current session if possible
-        try {
-          const { session } = await AuthService.getSession();
-          if (!session) {
-            console.log('⚠️ AuthContext: No session found, but keeping current user state');
-            // Don't clear user immediately - let them try to use the app
-          } else {
-            console.log('✅ AuthContext: Session exists, attempting user recovery');
-            // Try to recover user data from existing session
-            try {
-              const user = await AuthService.getCurrentUser();
-              if (user) {
-                setUser(user);
-                console.log('✅ AuthContext: Recovered user from existing session');
-              }
-            } catch (recoveryError) {
-              console.log('⚠️ AuthContext: User recovery failed, but keeping current state:', recoveryError);
-            }
-          }
-        } catch (sessionError) {
-          console.log('⚠️ AuthContext: Session check failed, but keeping current state:', sessionError);
-        }
+        log.warn('AuthContext: Session loading failed (keeping current state):', error);
+        // Don't clear user on session load errors to prevent white page
+        // The app will still be usable even without authentication
       } finally {
-        // Ensure loading is always set to false with a small delay
+        // Always set loading to false to prevent infinite loading
         setTimeout(() => {
           setIsLoading(false);
           log.info('AuthContext: Loading state set to false');
-        }, 200);
+        }, 100);
       }
     };
 

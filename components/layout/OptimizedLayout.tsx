@@ -3,7 +3,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { ThemeProvider } from '@/lib/theme';
-import { AuthProvider, useAuth } from '@/lib/contexts/AuthContext';
+import { SimpleAuthProvider, useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { QueryProvider } from '@/components/providers/QueryProvider';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
@@ -263,11 +263,11 @@ export default function OptimizedLayout({ children, className }: OptimizedLayout
     <ErrorBoundary>
       <QueryProvider>
         <ThemeProvider>
-          <AuthProvider>
+          <SimpleAuthProvider>
             <OptimizedLayoutContent className={className}>
               {children}
             </OptimizedLayoutContent>
-          </AuthProvider>
+          </SimpleAuthProvider>
         </ThemeProvider>
       </QueryProvider>
     </ErrorBoundary>

@@ -1,7 +1,7 @@
 'use client';
 
 import { ThemeProvider } from '@/lib/theme';
-import { AuthProvider } from '@/lib/contexts/AuthContext';
+import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext';
 import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import OfflineIndicator from '@/components/ui/OfflineIndicator';
@@ -18,7 +18,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
   return (
     <ThemeProvider>
       <ErrorBoundary>
-        <AuthProvider>
+        <SimpleAuthProvider>
           {children}
           <OfflineIndicator />
           <Toaster
@@ -32,7 +32,7 @@ export function ClientLayout({ children }: ClientLayoutProps) {
               },
             }}
           />
-        </AuthProvider>
+        </SimpleAuthProvider>
       </ErrorBoundary>
     </ThemeProvider>
   );

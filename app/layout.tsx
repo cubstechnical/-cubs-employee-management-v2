@@ -161,8 +161,8 @@ export default function RootLayout({
               </ClientOnly>
             </OptimizedLayout>
           </MobileOptimizedLayout>
-          {/* Mobile authentication debug - only show in development */}
-          {process.env.NODE_ENV === 'development' && <MobileAuthDebug />}
+          {/* Mobile authentication debug - temporarily disabled for production builds */}
+          {false && <MobileAuthDebug />}
         </ErrorBoundary>
       </body>
     </html>
