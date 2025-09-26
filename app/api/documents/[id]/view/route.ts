@@ -83,6 +83,21 @@ export async function GET(
     } catch (edgeError) {
       log.warn('Edge function not available, falling back to direct file URL', { documentId, error: edgeError });
 
+      // Check if request is from mobile app
+      const userAgent = request.headers.get('user-agent') || '';
+      const isMobile = /iPhone|iPad|iPod|Android|Mobile/i.test(userAgent) || userAgent.includes('Capacitor');
+
+      if (isMobile) {
+        // For mobile apps, return the file URL as JSON for client-side handling
+        return NextResponse.json({
+          success: true,
+          fileUrl: file_url,
+          fileName: file_name,
+          mimeType: mime_type,
+          message: 'File URL provided for mobile app handling'
+        });
+      }
+
       // Fallback: redirect directly to file URL (works for public files)
       return NextResponse.redirect(file_url, {
         headers: {

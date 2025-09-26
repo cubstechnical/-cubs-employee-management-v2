@@ -309,13 +309,31 @@ export class AuthService {
     try {
       console.log('🔍 AuthService: getCurrentUserWithApproval called');
       
-      // Add timeout to prevent hanging - consistent with mobile timeout
+      // Add timeout to prevent hanging - reduced timeout for better UX
       const userPromise = supabase.auth.getUser();
       const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('getUser timeout')), 10000) // Consistent 10s timeout
+        setTimeout(() => reject(new Error('getUser timeout')), 5000) // Reduced to 5s timeout
       );
       
-      const { data: { user }, error } = await Promise.race([userPromise, timeoutPromise]) as any;
+      let result;
+      try {
+        result = await Promise.race([userPromise, timeoutPromise]);
+      } catch (timeoutError) {
+        console.warn('getUser timed out, trying once more...');
+        // Try one more time with a shorter timeout
+        const retryPromise = supabase.auth.getUser();
+        const shortTimeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('getUser retry timeout')), 2000)
+        );
+        try {
+          result = await Promise.race([retryPromise, shortTimeoutPromise]);
+        } catch (retryError) {
+          console.warn('getUser retry also failed, returning null');
+          return { user: null, isApproved: false };
+        }
+      }
+      
+      const { data: { user }, error } = result as any;
       console.log('🔍 AuthService: getUser result:', { hasUser: !!user, hasError: !!error });
       
       if (error || !user) {

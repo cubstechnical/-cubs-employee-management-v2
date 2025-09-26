@@ -211,7 +211,7 @@ export default function LoginPage() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col items-center justify-start pt-8 pb-4 px-4 login-background-image relative safe-area-all overflow-y-auto ${
+      className={`min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto ${
         backgroundLoaded ? 'loaded' : 'loading'
       }`}
       style={{
@@ -222,9 +222,9 @@ export default function LoginPage() {
         WebkitOverflowScrolling: 'touch'
       }}
     >
-      <div className="w-full max-w-sm mobile-optimized flex-1 flex flex-col justify-center min-h-0">
+      <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-6">
         {/* Logo */}
-        <div className="login-logo-container-image mb-8">
+        <div className="login-logo-container-image text-center">
           <div className="flex justify-center mb-4">
             <Image
               src="/assets/cubs.webp"
@@ -233,14 +233,15 @@ export default function LoginPage() {
               height={120}
               className="login-logo-image drop-shadow-lg"
               priority
+              style={{ width: 'auto', height: 'auto' }}
             />
           </div>
-          <p className="text-white dark:text-white mt-2 font-bold text-lg text-center drop-shadow-lg bg-black bg-opacity-30 px-4 py-2 rounded-lg backdrop-blur-sm">
+          <p className="text-white dark:text-white mt-2 font-bold text-lg text-center drop-shadow-lg bg-black bg-opacity-40 px-4 py-2 rounded-lg backdrop-blur-sm">
             Employee Management Portal
           </p>
         </div>
 
-        <Card className="p-6 login-card-image max-w-sm shadow-2xl">
+        <Card className="w-full p-6 login-card-image shadow-2xl">
           {!isForgotPassword ? (
             <>
               <div className="text-center mb-6">
