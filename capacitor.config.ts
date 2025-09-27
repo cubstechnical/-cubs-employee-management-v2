@@ -9,19 +9,19 @@ const config: CapacitorConfig = {
     // PRODUCTION: Use deployed web app URL
     // // // url: 'https://your-deployed-app.vercel.app', // Production URL
     
-    // DEVELOPMENT: Use network IP (mobile devices can't access localhost!)
-    url: 'http://192.168.29.12:3000', // Development: network IP for mobile access
+    // PRODUCTION: Use deployed web app (BEST SOLUTION!)
+    url: 'https://cubsgroups.com', // Use the actual deployed app
     
     androidScheme: 'https',
     allowNavigation: [
-      'http://localhost:3000',
-      'http://192.168.29.12:3000', // Your network IP
       'https://cubsgroups.com',
       'https://*.cubsgroups.com',
       'https://f005.backblazeb2.com',
-      'https://s3.us-east-005.backblazeb2.com'
+      'https://s3.us-east-005.backblazeb2.com',
+      'http://localhost:3000', // For development fallback
+      'http://192.168.29.12:3000' // For development fallback
     ],
-    cleartext: true // Allow localhost for development
+    cleartext: false // Production security (HTTPS only)
   },
   plugins: {
     SplashScreen: {

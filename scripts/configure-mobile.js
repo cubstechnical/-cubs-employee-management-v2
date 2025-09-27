@@ -40,19 +40,15 @@ if (mode === 'development') {
   console.log(`📱 Mobile devices can now access: http://${networkIP}:3000`);
   
 } else if (mode === 'production') {
-  const productionUrl = args[1];
-  if (!productionUrl) {
-    console.error('❌ Production URL required: npm run configure:mobile production https://your-app.com');
-    process.exit(1);
-  }
+  const productionUrl = args[1] || 'https://cubsgroups.com';
   
   // Production: Use deployed web app
   config = config.replace(
-    /url: 'http:\/\/localhost:3000'.*$/m,
+    /url: 'http:\/\/.*:3000'.*$/m,
     "// url: 'http://localhost:3000', // Development mode"
   );
   config = config.replace(
-    /\/\/ url: 'https:\/\/.*$/m,
+    /url: 'https:\/\/.*$/m,
     `url: '${productionUrl}', // Production: deployed app`
   );
   config = config.replace(
