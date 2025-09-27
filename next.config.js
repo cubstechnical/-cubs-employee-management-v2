@@ -83,7 +83,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 /** @type {import('next').NextConfig} */
 const baseConfig = {
   // Mobile-optimized build configuration for Capacitor
-  // output: 'export', // Disabled - API routes not compatible with static export
+  // output: 'export', // Temporarily disabled for dynamic routes
   trailingSlash: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
@@ -162,8 +162,8 @@ const baseConfig = {
     B2_ENDPOINT: process.env.B2_ENDPOINT || '',
     B2_BUCKET_ID: process.env.B2_BUCKET_ID || '',
   },
-  webpack: (config, { isServer, dev, nextRuntime }) => {
-    // Optimize bundle splitting and chunk loading for mobile
+  webpack: (config, { isServer, dev }) => {
+    // Optimize bundle splitting and chunk loading
     if (!isServer && !dev) {
       config.optimization = {
         ...config.optimization,
@@ -178,14 +178,6 @@ const baseConfig = {
               name: 'react',
               chunks: 'all',
               priority: 40,
-              enforce: true,
-            },
-            // Capacitor - mobile framework
-            capacitor: {
-              test: /[\\/]node_modules[\\/]@capacitor[\\/]/,
-              name: 'capacitor',
-              chunks: 'all',
-              priority: 39,
               enforce: true,
             },
             // ApexCharts - very heavy library
@@ -240,15 +232,6 @@ const baseConfig = {
             },
           },
         },
-      };
-    }
-
-    // Optimize for mobile performance
-    if (!isServer && !dev) {
-      config.optimization = {
-        ...config.optimization,
-        moduleIds: 'deterministic',
-        chunkIds: 'deterministic',
       };
     }
 

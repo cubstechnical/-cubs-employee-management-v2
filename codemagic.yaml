@@ -21,43 +21,42 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Apply mobile app fixes
-        script: |
-          echo "🔧 Applying mobile app fixes to prevent issues..."
-          node scripts/fix-mobile-app.js
-          echo "✅ Mobile app fixes applied successfully"
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          echo "🔧 Using existing build-mobile.js script..."
-          node scripts/build-mobile.js
-          echo "✅ Mobile build completed successfully"
+          npm run build:mobile
+      - name: Sync Capacitor iOS
+        script: |
+          echo "🔄 Syncing web assets with Capacitor iOS..."
+          echo "📁 Checking for out directory..."
+          if [ -d "out" ]; then
+            echo "✅ Found out directory"
+            ls -la out/
+          else
+            echo "❌ out directory not found!"
+            echo "📋 Available directories:"
+            ls -la
+            echo "❌ Build process failed to create out directory"
+            exit 1
+          fi
+
+          echo "📄 Checking for index.html..."
+          if [ -f "out/index.html" ]; then
+            echo "✅ Found index.html"
+          else
+            echo "❌ index.html not found in out directory!"
+            echo "📋 Contents of out directory:"
+            ls -la out/
+            exit 1
+          fi
+
+          echo "🔄 Syncing with Capacitor..."
+          npx cap sync ios
       - name: Install CocoaPods
         script: |
           echo "📱 Installing CocoaPods dependencies..."
           cd ios/App
-
-          # Check if CocoaPods is installed
-          if ! command -v pod &> /dev/null; then
-            echo "❌ CocoaPods not found, installing..."
-            sudo gem install cocoapods
-          else
-            echo "✅ CocoaPods is already installed"
-          fi
-
-          # Install dependencies
-          echo "📦 Installing iOS dependencies..."
-          pod install --verbose
-
-          # Verify Pods were installed
-          if [ -d "Pods" ]; then
-            echo "✅ Pods directory created"
-            ls -la Pods/ | head -10
-          else
-            echo "❌ Pods directory not found after install!"
-            exit 1
-          fi
-
+          pod install
           cd ../..
       - name: Set build number
         script: |
@@ -96,65 +95,6 @@ workflows:
           fi
           
           cd ../..
-      - name: Verify iOS project setup
-        script: |
-          echo "🔍 Verifying iOS project setup..."
-          cd ios/App
-
-          echo "Current directory: $(pwd)"
-          echo "Directory contents:"
-          ls -la
-
-          # Check if workspace exists (it's a directory, not a file)
-          if [ ! -d "App.xcworkspace" ]; then
-            echo "❌ App.xcworkspace not found!"
-            echo "Looking for workspace files:"
-            find . -name "*.xcworkspace" -type d 2>/dev/null || echo "No workspace directories found"
-            exit 1
-          fi
-
-          # Check if workspace contents file exists
-          if [ ! -f "App.xcworkspace/contents.xcworkspacedata" ]; then
-            echo "❌ App.xcworkspace/contents.xcworkspacedata not found!"
-            echo "Workspace contents:"
-            ls -la App.xcworkspace/
-            exit 1
-          fi
-
-          # Check if project file exists
-          if [ ! -f "App.xcodeproj/project.pbxproj" ]; then
-            echo "❌ App.xcodeproj not found!"
-            echo "Looking for project files:"
-            find . -name "*.xcodeproj" -type d 2>/dev/null || echo "No project directories found"
-            exit 1
-          fi
-
-          # Check if scheme exists
-          if [ ! -f "App.xcodeproj/xcshareddata/xcschemes/App.xcscheme" ]; then
-            echo "❌ App.xcscheme not found!"
-            echo "Schemes directory contents:"
-            ls -la App.xcodeproj/xcshareddata/xcschemes/ 2>/dev/null || echo "Schemes directory not found"
-            exit 1
-          fi
-
-          # Verify team ID in project
-          if grep -q "DEVELOPMENT_TEAM = GQCYASP5XS" App.xcodeproj/project.pbxproj; then
-            echo "✅ DEVELOPMENT_TEAM found in project"
-          else
-            echo "❌ DEVELOPMENT_TEAM not found in project!"
-            echo "Checking project configuration..."
-            grep -n "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj || echo "DEVELOPMENT_TEAM not set in project"
-            exit 1
-          fi
-
-          echo "✅ iOS project setup verified"
-          cd ../..
-      - name: Prepare build directories
-        script: |
-          echo "📁 Preparing build directories..."
-          mkdir -p build/ios/archive
-          mkdir -p build/ios/derivedData
-          echo "✅ Build directories created"
       - name: Use provisioning profiles
         script: |
           echo "🔐 Using provisioning profiles..."
@@ -163,29 +103,8 @@ workflows:
         script: |
           echo "🏗️ Building and archiving iOS app..."
           cd ios/App
-
-          # Check if workspace exists (it's a directory, not a file)
-          if [ ! -d "App.xcworkspace" ]; then
-            echo "❌ App.xcworkspace not found!"
-            echo "Current directory: $(pwd)"
-            echo "Directory contents:"
-            ls -la
-            echo "Looking for workspace directories:"
-            find . -name "*.xcworkspace" -type d 2>/dev/null || echo "No workspace directories found"
-            exit 1
-          fi
-
-          # Clean previous builds
-          echo "🧹 Cleaning previous iOS builds..."
-          xcodebuild clean -workspace App.xcworkspace -scheme App
-
+          
           # Build and archive with explicit team and signing settings
-          echo "📦 Building iOS archive..."
-          echo "Current working directory: $(pwd)"
-          echo "Workspace path: $(pwd)/App.xcworkspace"
-          echo "Scheme: App"
-
-          # Use workspace in current directory
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
@@ -198,67 +117,23 @@ workflows:
             PROVISIONING_PROFILE="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             -allowProvisioningUpdates \
-            -allowProvisioningDeviceRegistration \
-            ONLY_ACTIVE_ARCH=NO \
-            -derivedDataPath ../../build/ios/derivedData \
-            -UseModernBuildSystem=YES
-
-          # Check if archive was created
-          if [ -d "../../build/ios/archive/App.xcarchive" ]; then
-            echo "✅ iOS archive created successfully"
-            echo "Archive contents:"
-            ls -la ../../build/ios/archive/App.xcarchive/
-            echo "Archive Info.plist:"
-            cat "../../build/ios/archive/App.xcarchive/Info.plist" 2>/dev/null || echo "Info.plist not found in archive"
-          else
-            echo "❌ iOS archive was not created!"
-            echo "Current directory: $(pwd)"
-            echo "Build directory structure:"
-            find ../../build -type d -name "*" 2>/dev/null | head -20 || echo "Build directory not found or empty"
-            echo "Files in build directory:"
-            ls -la ../../build/ 2>/dev/null || echo "Cannot access build directory"
-            echo "xcodebuild exit code: $?"
-            exit 1
-          fi
-
+            -allowProvisioningDeviceRegistration
           cd ../..
       - name: Verify archive has team
         script: |
           echo "🔍 Verifying archive has development team..."
-
-          # Check if build directory exists
-          if [ ! -d "build" ]; then
-            echo "❌ Build directory not found!"
-            ls -la
-            exit 1
-          fi
-
-          # Check if archive exists
           if [ -d "build/ios/archive/App.xcarchive" ]; then
             echo "✅ Archive created successfully"
             echo "Archive contents:"
             ls -la build/ios/archive/App.xcarchive/
-
+            
             # Check if the archive has team information
             if [ -f "build/ios/archive/App.xcarchive/Info.plist" ]; then
               echo "Archive Info.plist content:"
-              cat build/ios/archive/App.xcarchive/Info.plist
-
-              # Check for team information
-              if grep -q "DevelopmentTeam" build/ios/archive/App.xcarchive/Info.plist; then
-                echo "✅ Archive has development team information"
-              else
-                echo "⚠️ Archive may not have development team information"
-              fi
-            else
-              echo "⚠️ Archive Info.plist not found"
+              cat build/ios/archive/App.xcarchive/Info.plist | grep -i team || echo "No team information found in archive"
             fi
           else
             echo "❌ Archive not found!"
-            echo "Available directories:"
-            find build -type d -name "*" 2>/dev/null || echo "No build directories found"
-            echo "Current directory contents:"
-            ls -la
             exit 1
           fi
       - name: Debug Environment Variables
@@ -578,16 +453,10 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Apply mobile app fixes
-        script: |
-          echo "🔧 Applying mobile app fixes to prevent issues..."
-          node scripts/fix-mobile-app.js
-          echo "✅ Mobile app fixes applied successfully"
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
           npm run build:mobile
-          echo "✅ Mobile build completed successfully"
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
@@ -674,16 +543,10 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
-      - name: Apply mobile app fixes
-        script: |
-          echo "🔧 Applying mobile app fixes to prevent issues..."
-          node scripts/fix-mobile-app.js
-          echo "✅ Mobile app fixes applied successfully"
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
           npm run build:mobile
-          echo "✅ Mobile build completed successfully"
       - name: Sync Capacitor Android
         script: |
           echo "🔄 Syncing web assets with Capacitor Android..."

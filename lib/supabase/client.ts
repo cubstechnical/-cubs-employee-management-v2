@@ -1,54 +1,217 @@
 import { createClient } from '@supabase/supabase-js';
+import { log } from '@/lib/utils/productionLogger';
 
-// Simple Supabase client configuration - same for web and mobile
+// Use the correct Supabase URL from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-// Create Supabase client - throw error if credentials are missing
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase credentials. Please check your environment variables.');
-}
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: {
+
+// Environment variables check (production optimized)
+
+// Create Supabase client with robust fallback
+let supabase: ReturnType<typeof createClient>;
+let isSupabaseAvailable = true;
+
+if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey === '') {
+  isSupabaseAvailable = false;
+  log.warn('Supabase credentials not configured. Using mock client for development.');
+  // Create a minimal mock client
+  supabase = createClient('https://mock.supabase.co', 'mock-key');
+} else {
+  try {
+    // Enhanced auth configuration for mobile apps
+    const authConfig = {
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-  },
-});
+      // Add mobile-specific configuration
+      ...(typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative ? {
+        storage: window.localStorage, // Ensure localStorage is used for session persistence
+        storageKey: 'cubs-auth-token', // Custom storage key for mobile app
+      } : {}),
+    };
 
-// Export availability status for backward compatibility
-export const isSupabaseAvailable = true;
+    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: authConfig,
+    });
 
-// Simple auth helper - just get the current session
-export const getAuthState = async () => {
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) {
-      console.warn('Auth error:', error);
-      return { user: null, session: null };
+    // Add mobile-specific session recovery
+    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
+      log.info('Mobile app detected, initializing mobile-specific auth handling');
+
+      // Ensure session is properly loaded on app start
+      supabase.auth.onAuthStateChange((event, session) => {
+        if (event === 'SIGNED_OUT') {
+          log.info('User signed out in mobile app');
+        } else if (event === 'SIGNED_IN' && session) {
+          log.info('User session restored in mobile app', { userId: session.user.id });
+        } else if (event === 'TOKEN_REFRESHED' && session) {
+          log.info('Auth token refreshed in mobile app');
+        }
+      });
     }
-    return { user: session?.user || null, session };
   } catch (error) {
-    console.warn('Auth state error:', error);
-    return { user: null, session: null };
+    isSupabaseAvailable = false;
+    // Fallback to mock client
+    supabase = createClient('https://mock.supabase.co', 'mock-key');
   }
-};
+}
 
-// Preload app data for backward compatibility
-export const preloadAppData = async () => {
-  // Simple preload - just ensure Supabase is ready
+// Export availability status
+export { isSupabaseAvailable };
+
+export { supabase };
+
+// Auth state cache to improve performance
+let authStateCache: {
+  user: any;
+  session: any;
+  timestamp: number;
+} | null = null;
+
+const AUTH_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+let authPromise: Promise<any> | null = null; // Prevent multiple simultaneous calls
+
+// OPTIMIZED: Enhanced auth state management with faster timeout and better caching
+export const getAuthState = async () => {
+  const now = Date.now();
+  
+  log.info('🔍 Supabase: getAuthState called, isSupabaseAvailable:', isSupabaseAvailable);
+
+  // If Supabase is not available, return empty state immediately
+  if (!isSupabaseAvailable) {
+    log.info('⚠️ Supabase: Not available, returning empty state');
+    return { user: null, session: null, timestamp: now };
+  }
+
+  // Return cached auth state if still valid
+  if (authStateCache && (now - authStateCache.timestamp) < AUTH_CACHE_DURATION) {
+    return authStateCache;
+  }
+
+  // If there's already an auth request in progress, wait for it
+  if (authPromise) {
+    try {
+      return await authPromise;
+    } catch (error) {
+      // If the existing promise fails, continue with new request
+      authPromise = null;
+    }
+  }
+
   try {
-    await getAuthState();
+    log.info('🔍 Supabase: Creating new auth promise...');
+    // Create new auth promise
+    authPromise = (async () => {
+      log.info('🔍 Supabase: Calling supabase.auth.getSession()...');
+      // PERFORMANCE: Reduced timeout from 5s to 2s for faster initial load
+      const sessionPromise = supabase.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth timeout')), 2000)
+      );
+
+      const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
+      
+      log.info('🔍 Supabase: Session result:', { 
+        hasSession: !!session, 
+        hasError: !!error,
+        errorMessage: error?.message 
+      });
+
+      if (error) {
+        log.error('❌ Supabase: Auth state error:', error);
+        
+        // Handle refresh token errors specifically
+        if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
+          log.warn('🔄 Supabase: Refresh token error detected, clearing session');
+          try {
+            await supabase.auth.signOut();
+          } catch (signOutError) {
+            log.error('Error during sign out:', signOutError);
+          }
+        }
+        
+        return { user: null, session: null, timestamp: now };
+      }
+
+      // Cache the result
+      authStateCache = {
+        user: session?.user || null,
+        session,
+        timestamp: now
+      };
+
+      log.info('✅ Supabase: Auth state cached successfully');
+      return authStateCache;
+    })();
+
+    const result = await authPromise;
+    authPromise = null; // Clear the promise after completion
+    log.info('✅ Supabase: Auth promise completed');
+    return result;
   } catch (error) {
-    // Ignore preload errors
+    log.error('❌ Supabase: Auth state timeout or error:', error);
+    authPromise = null; // Clear the promise on error
+    // PERFORMANCE: Return empty state on timeout to prevent blocking
+    return { user: null, session: null, timestamp: now };
   }
 };
 
-// Clear auth cache for backward compatibility
+// Clear auth cache when needed
 export const clearAuthCache = () => {
-  // Simple implementation - just log for now
-  console.log('Auth cache cleared');
+  authStateCache = null;
+  authPromise = null;
+};
+
+// Clear auth state and sign out when refresh token errors occur
+export const handleRefreshTokenError = async () => {
+  log.warn('🔄 Clearing auth state due to refresh token error');
+  clearAuthCache();
+  try {
+    await supabase.auth.signOut();
+  } catch (error) {
+    log.error('Error during sign out:', error);
+  }
+};
+
+// Preload critical app data
+export const preloadAppData = async () => {
+  if (!isSupabaseAvailable) return;
+
+  try {
+    // Preloading critical app data...
+
+    // Preload common data in background
+    const preloadPromises = [
+      // Preload user profile if logged in
+      getAuthState().then(async (auth) => {
+        if (auth.session) {
+          try {
+            await supabase.from('profiles').select('id, full_name, role').limit(1);
+          } catch (e) {
+            // Ignore preload errors
+          }
+        }
+      }),
+
+      // Preload basic employee count
+      (async () => {
+        try {
+          await supabase.from('employee_table').select('count').limit(1);
+        } catch (error) {
+          // Ignore preload errors
+        }
+        return null;
+      })(),
+    ];
+
+    // Don't wait for preload, just initiate
+    Promise.allSettled(preloadPromises);
+
+  } catch (error) {
+    // Ignore preload errors - continue silently
+  }
 };
 
 // Type definitions for our database tables

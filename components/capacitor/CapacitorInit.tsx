@@ -1,85 +1,69 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { CapacitorService } from '@/lib/capacitor';
-import { log } from '@/lib/utils/productionLogger';
+import { AuthService } from '@/lib/services/auth';
+import { log } from '@/lib/utils/logger';
 
 export default function CapacitorInit() {
-  const [isInitialized, setIsInitialized] = useState(false);
-
   useEffect(() => {
-    let initTimeout: NodeJS.Timeout;
+    // Initialize Capacitor when the app loads
+    CapacitorService.initialize();
 
-    const initializeCapacitor = async () => {
+    // Mobile-specific authentication initialization
+    const initializeMobileAuth = async () => {
       try {
-        log.info('🚀 Starting Capacitor initialization...');
+        log.info('CapacitorInit: Initializing mobile authentication...');
 
-        // Initialize Capacitor service
-        await CapacitorService.initialize();
-        setIsInitialized(true);
+        // Ensure Supabase is properly configured for mobile
+        if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
+          log.info('CapacitorInit: Mobile app detected, configuring Supabase...');
 
-        // Check if we're in a mobile app environment with better detection
-        if (typeof window !== 'undefined') {
-          const checkCapacitorEnvironment = () => {
-            try {
-              const isCapacitorAvailable = !!(window.Capacitor);
-              const isNativePlatform = !!(window.Capacitor && (window.Capacitor as any).isNativePlatform && (window.Capacitor as any).isNativePlatform());
-              const platform = (window.Capacitor as any)?.getPlatform ? (window.Capacitor as any).getPlatform() : 'unknown';
-
-              log.info('🔍 Capacitor environment detection:', {
-                isCapacitorAvailable,
-                isNativePlatform,
-                platform,
-                userAgent: navigator.userAgent
-              });
-
-              if (isCapacitorAvailable && isNativePlatform) {
-                log.info('📱 Native mobile app detected - enabling full mobile features');
-
-                // Mark as fully initialized after a short delay to ensure everything is ready
-                initTimeout = setTimeout(() => {
-                  log.info('✅ Native mobile app fully initialized and ready');
-                  // Dispatch custom event for other components to listen to
-                  window.dispatchEvent(new CustomEvent('capacitorReady'));
-                }, 500);
-              } else if (isCapacitorAvailable) {
-                log.info('🌐 PWA/Capacitor web environment detected');
-                // Still dispatch ready event for PWA compatibility
-                window.dispatchEvent(new CustomEvent('capacitorReady'));
-              } else {
-                log.info('⚠️ Standard web environment - no Capacitor detected');
-                // Still dispatch ready event for consistency
-                window.dispatchEvent(new CustomEvent('capacitorReady'));
-              }
-            } catch (error) {
-              log.error('❌ Error during Capacitor environment detection:', error);
-              // Still dispatch ready event to prevent app from hanging
-              window.dispatchEvent(new CustomEvent('capacitorReady'));
-            }
-          };
-
-          // Wait for DOM to be ready, then check environment
-          if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', checkCapacitorEnvironment);
+          // Check if we have stored session data
+          const storedSession = localStorage.getItem('cubs-auth-token');
+          if (storedSession) {
+            log.info('CapacitorInit: Found stored session data, attempting restoration...');
           } else {
-            checkCapacitorEnvironment();
+            log.info('CapacitorInit: No stored session data found');
           }
+
+          // Restore mobile session if available
+          const { session, error } = await AuthService.restoreMobileSession();
+
+          if (error) {
+            log.warn('CapacitorInit: Mobile session restoration failed:', error.message);
+          } else if (session) {
+            log.info('CapacitorInit: Mobile session restored successfully', {
+              userId: session.user.id,
+              expiresAt: session.expires_at
+            });
+
+            // Force a small delay to ensure the session is properly set
+            await new Promise(resolve => setTimeout(resolve, 500));
+
+            // Verify the session is still active
+            const { session: verifySession } = await AuthService.getSession();
+            if (verifySession) {
+              log.info('CapacitorInit: Session verification successful');
+            } else {
+              log.warn('CapacitorInit: Session verification failed');
+            }
+          } else {
+            log.info('CapacitorInit: No mobile session to restore');
+          }
+
+          log.info('CapacitorInit: Mobile authentication configured successfully');
+        } else {
+          log.info('CapacitorInit: Web or non-native environment detected, skipping mobile auth init');
         }
+
       } catch (error) {
-        log.error('❌ Capacitor initialization failed:', error);
-        // Ensure we still mark as initialized to prevent app from hanging
-        setIsInitialized(true);
-        window.dispatchEvent(new CustomEvent('capacitorReady'));
+        log.error('CapacitorInit: Error during mobile auth initialization:', error);
+        // Don't throw error to prevent app crashes
       }
     };
 
-    initializeCapacitor();
-
-    return () => {
-      if (initTimeout) {
-        clearTimeout(initTimeout);
-      }
-    };
+    initializeMobileAuth();
   }, []);
 
   return null; // This component doesn't render anything

@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase/server';
 import { log } from '@/lib/utils/logger';
 
-// Required for static export
-// Removed for static export compatibility
-
 export async function GET(request: NextRequest) {
   try {
     // Get notifications from database
