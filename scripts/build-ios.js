@@ -95,16 +95,36 @@ try {
     cssFiles = fs.readdirSync(cssDir).filter(file => file.endsWith('.css'));
   }
   
-  // Read actual JS chunk files
+  // Read actual JS chunk files and build manifests
   const chunksDir = path.join('out', '_next', 'static', 'chunks');
+  const staticDir = path.join('out', '_next', 'static');
+  
   let jsFiles = {
     webpack: '',
     mainApp: '',
     polyfills: '',
     react: [],
     layout: '',
-    page: ''
+    page: '',
+    buildManifest: '',
+    ssgManifest: ''
   };
+  
+  // Find build manifests
+  if (fs.existsSync(staticDir)) {
+    const staticContents = fs.readdirSync(staticDir);
+    const buildIdDir = staticContents.find(dir => dir.length > 10 && dir !== 'chunks' && dir !== 'css' && dir !== 'media');
+    
+    if (buildIdDir) {
+      const manifestDir = path.join(staticDir, buildIdDir);
+      if (fs.existsSync(path.join(manifestDir, '_buildManifest.js'))) {
+        jsFiles.buildManifest = `${buildIdDir}/_buildManifest.js`;
+      }
+      if (fs.existsSync(path.join(manifestDir, '_ssgManifest.js'))) {
+        jsFiles.ssgManifest = `${buildIdDir}/_ssgManifest.js`;
+      }
+    }
+  }
   
   if (fs.existsSync(chunksDir)) {
     const allChunks = fs.readdirSync(chunksDir).filter(file => file.endsWith('.js'));
@@ -133,12 +153,25 @@ try {
     `  <link rel="preload" href="/_next/static/css/${file}" as="style" />`
   ).join('\n');
   
-  // Create JS script tags
+  // Create JS script tags in proper loading order
   const jsScripts = [
-    jsFiles.webpack ? `  <script src="/_next/static/chunks/${jsFiles.webpack}"></script>` : '',
-    jsFiles.mainApp ? `  <script src="/_next/static/chunks/${jsFiles.mainApp}"></script>` : '',
+    // 1. Load build manifests first (critical for Next.js)
+    jsFiles.buildManifest ? `  <script src="/_next/static/${jsFiles.buildManifest}"></script>` : '',
+    jsFiles.ssgManifest ? `  <script src="/_next/static/${jsFiles.ssgManifest}"></script>` : '',
+    
+    // 2. Load polyfills
     jsFiles.polyfills ? `  <script src="/_next/static/chunks/${jsFiles.polyfills}"></script>` : '',
+    
+    // 3. Load webpack runtime
+    jsFiles.webpack ? `  <script src="/_next/static/chunks/${jsFiles.webpack}"></script>` : '',
+    
+    // 4. Load React chunks
     ...jsFiles.react.map(file => `  <script src="/_next/static/chunks/${file}"></script>`),
+    
+    // 5. Load main app
+    jsFiles.mainApp ? `  <script src="/_next/static/chunks/${jsFiles.mainApp}"></script>` : '',
+    
+    // 6. Load layout and page
     jsFiles.layout ? `  <script src="/_next/static/chunks/app/${jsFiles.layout}"></script>` : '',
     jsFiles.page ? `  <script src="/_next/static/chunks/app/${jsFiles.page}"></script>` : ''
   ].filter(Boolean).join('\n');
@@ -210,22 +243,41 @@ ${cssLinks}
 ${jsScripts}
   
   <script>
-    // Initialize Next.js app data
+    // Initialize Next.js app data (must match web app structure)
     window.__NEXT_DATA__ = {
-      props: { pageProps: {} },
+      props: { 
+        pageProps: {}
+      },
       page: "/",
       query: {},
-      buildId: "static",
+      buildId: "${jsFiles.buildManifest ? jsFiles.buildManifest.split('/')[0] : 'static'}",
       isFallback: false,
       gssp: false,
+      gsp: false,
       appGip: true,
-      scriptLoader: []
+      scriptLoader: [],
+      assetPrefix: "",
+      runtimeConfig: {},
+      nextExport: true,
+      autoExport: true,
+      dynamicIds: []
     };
     
-    // Debug logging
-    console.log('Static index.html loaded');
-    console.log('CSS files:', ${JSON.stringify(cssFiles)});
-    console.log('JS files:', ${JSON.stringify(jsFiles)});
+    // Initialize Next.js router
+    window.__NEXT_ROUTER_BASEPATH__ = "";
+    
+    // Debug logging for troubleshooting
+    console.log('🚀 Static Next.js app initializing...');
+    console.log('📄 CSS files loaded:', ${JSON.stringify(cssFiles)});
+    console.log('📦 JS chunks loaded:', Object.keys(${JSON.stringify(jsFiles)}).filter(k => ${JSON.stringify(jsFiles)}[k]));
+    console.log('🔧 Build ID:', window.__NEXT_DATA__.buildId);
+    
+    // Wait for Next.js to be ready
+    if (typeof window !== 'undefined') {
+      window.addEventListener('DOMContentLoaded', function() {
+        console.log('✅ DOM loaded, Next.js should initialize now');
+      });
+    }
   </script>
 </body>
 </html>`;
