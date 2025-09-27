@@ -164,16 +164,20 @@ workflows:
           echo "🏗️ Building and archiving iOS app..."
           cd ios/App
 
-          # Check if workspace exists
-          if [ ! -f "App.xcworkspace" ]; then
+          # Check if workspace exists (it's a directory, not a file)
+          if [ ! -d "App.xcworkspace" ]; then
             echo "❌ App.xcworkspace not found!"
+            echo "Current directory: $(pwd)"
+            echo "Directory contents:"
             ls -la
+            echo "Looking for workspace directories:"
+            find . -name "*.xcworkspace" -type d 2>/dev/null || echo "No workspace directories found"
             exit 1
           fi
 
           # Clean previous builds
           echo "🧹 Cleaning previous iOS builds..."
-          xcodebuild clean -workspace "$(pwd)/App.xcworkspace" -scheme App
+          xcodebuild clean -workspace App.xcworkspace -scheme App
 
           # Build and archive with explicit team and signing settings
           echo "📦 Building iOS archive..."
@@ -181,8 +185,8 @@ workflows:
           echo "Workspace path: $(pwd)/App.xcworkspace"
           echo "Scheme: App"
 
-          # Use absolute path to workspace since we're in ios/App directory
-          xcodebuild -workspace "$(pwd)/App.xcworkspace" \
+          # Use workspace in current directory
+          xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
             -destination generic/platform=iOS \
@@ -197,8 +201,7 @@ workflows:
             -allowProvisioningDeviceRegistration \
             ONLY_ACTIVE_ARCH=NO \
             -derivedDataPath ../../build/ios/derivedData \
-            -UseModernBuildSystem=YES \
-            -verbose
+            -UseModernBuildSystem=YES
 
           # Check if archive was created
           if [ -d "../../build/ios/archive/App.xcarchive" ]; then
