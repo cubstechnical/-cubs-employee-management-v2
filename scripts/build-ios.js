@@ -85,9 +85,17 @@ try {
     }
   });
 
-  // 6. Create index.html for Capacitor
-  console.log('📄 Creating index.html for Capacitor...');
-  const indexHtml = `<!DOCTYPE html>
+  // 6. Copy the actual Next.js build output instead of creating custom index.html
+  console.log('📄 Copying Next.js build output...');
+  
+  // Copy the main index.html from Next.js build
+  if (fs.existsSync('.next/server/app/index.html')) {
+    const nextIndexHtml = fs.readFileSync('.next/server/app/index.html', 'utf8');
+    fs.writeFileSync(path.join('out', 'index.html'), nextIndexHtml);
+    console.log('✅ Copied Next.js index.html');
+  } else {
+    // Fallback: Create a proper index.html that loads the Next.js app
+    const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -127,13 +135,27 @@ try {
 </head>
 <body>
   <div id="__next"></div>
+  <script>
+    // Load the Next.js app
+    window.__NEXT_DATA__ = {
+      props: {},
+      page: "/",
+      query: {},
+      buildId: "static",
+      isFallback: false,
+      gssp: false,
+      appGip: true,
+      scriptLoader: []
+    };
+  </script>
   <script src="/_next/static/chunks/webpack.js"></script>
   <script src="/_next/static/chunks/main.js"></script>
   <script src="/_next/static/chunks/pages/_app.js"></script>
 </body>
 </html>`;
-
-  fs.writeFileSync(path.join('out', 'index.html'), indexHtml);
+    fs.writeFileSync(path.join('out', 'index.html'), indexHtml);
+    console.log('✅ Created fallback index.html');
+  }
 
   // 4. Copy iOS-specific files
   console.log('📱 Copying iOS-specific files...');
