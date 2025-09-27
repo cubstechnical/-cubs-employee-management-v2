@@ -65,6 +65,12 @@ try {
         destPath = path.join('out', path.basename(file));
       }
       
+      // Create destination directory if it doesn't exist
+      const destDir = path.dirname(destPath);
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+      
       if (fs.statSync(file).isDirectory()) {
         // Use cross-platform copy command
         if (process.platform === 'win32') {
