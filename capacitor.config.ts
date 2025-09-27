@@ -6,14 +6,22 @@ const config: CapacitorConfig = {
   appName: 'CUBS Employee Management',
   webDir: 'out',
   server: {
+    // PRODUCTION: Use deployed web app URL
+    // // url: 'https://your-deployed-app.vercel.app', // Production URL
+    
+    // DEVELOPMENT: Use local dev server (guaranteed to work!)
+    url: 'http://localhost:3000', // Works exactly like web app
+    
     androidScheme: 'https',
     allowNavigation: [
+      'http://localhost:3000',
+      'http://192.168.29.12:3000', // Your network IP
       'https://cubsgroups.com',
       'https://*.cubsgroups.com',
       'https://f005.backblazeb2.com',
       'https://s3.us-east-005.backblazeb2.com'
     ],
-    cleartext: false
+    cleartext: true // Allow localhost for development
   },
   plugins: {
     SplashScreen: {

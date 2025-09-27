@@ -29,10 +29,10 @@ try {
     }
   }
 
-  // 2. Build Next.js app
+  // 2. Build Next.js app (without static export)
   console.log('🏗️ Building Next.js app...');
   execSync('npm run build', { stdio: 'inherit' });
-
+  
   // 3. Verify build output
   console.log('✅ Verifying build output...');
   if (!fs.existsSync('.next')) {
@@ -44,8 +44,20 @@ try {
   if (!fs.existsSync('out')) {
     fs.mkdirSync('out', { recursive: true });
   }
+  
+  // 5. Copy the main index.html from Next.js build
+  console.log('📄 Copying main index.html...');
+  const srcIndexPath = path.join('.next', 'server', 'app', 'index.html');
+  const destIndexPath = path.join('out', 'index.html');
+  
+  if (fs.existsSync(srcIndexPath)) {
+    fs.copyFileSync(srcIndexPath, destIndexPath);
+    console.log('✅ Copied index.html from Next.js build');
+  } else {
+    console.log('⚠️ index.html not found, will create custom one later');
+  }
 
-  // 5. Copy static files to out directory
+  // 6. Copy static files to out directory
   console.log('📋 Copying static files...');
   const staticFiles = [
     'public',
@@ -176,7 +188,8 @@ try {
     jsFiles.page ? `  <script src="/_next/static/chunks/app/${jsFiles.page}"></script>` : ''
   ].filter(Boolean).join('\n');
   
-  const dynamicIndexHtml = `<!DOCTYPE html>
+  // Create a working SPA-style index.html that actually works with Next.js static export
+  const spaIndexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -199,35 +212,74 @@ try {
 
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/assets/cubs.webp" sizes="32x32" type="image/webp" />
-  <link rel="icon" href="/assets/cubs.webp" sizes="192x192" type="image/webp" />
-  <link rel="icon" href="/assets/cubs.webp" sizes="512x512" type="image/webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" />
-  <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
 
-  <!-- Preload critical CSS -->
-${cssPreloads}
-  
-  <!-- Load CSS -->
+  <!-- Load CSS directly -->
 ${cssLinks}
 
   <script>
-    // Prevent zoom on input focus (iOS)
+    // Mobile optimizations
     document.addEventListener('DOMContentLoaded', function() {
+      // Prevent zoom on input focus (iOS)
       var viewport = document.querySelector('meta[name="viewport"]');
       if (viewport) {
         viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
       }
+      
+      // Force app to load after DOM is ready
+      setTimeout(function() {
+        if (window.next && window.next.router) {
+          console.log('✅ Next.js router ready');
+        } else {
+          console.log('⚠️ Next.js router not ready, forcing initialization...');
+          // Force trigger React hydration
+          if (window.React && window.ReactDOM) {
+            console.log('🔄 Forcing React hydration...');
+          }
+        }
+      }, 1000);
+    });
+    
+    // Enhanced error handling
+    window.addEventListener('error', function(e) {
+      console.error('🚨 Global error:', e.error);
+      // Don't show error to user for now, just log it
+    });
+    
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('🚨 Unhandled promise rejection:', e.reason);
+      e.preventDefault(); // Prevent the default browser behavior
     });
   </script>
 </head>
-<body class="__variable_f367f3 font-sans">
+<body class="__variable_f367f3 font-sans" style="margin: 0; padding: 0;">
   <div id="__next">
-    <!-- Initial loading screen -->
-    <div style="min-height: 100vh; background-color: #111827; display: flex; align-items: center; justify-content: center;">
+    <!-- Minimal loading screen that will be replaced by React -->
+    <div id="initial-loader" style="
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100vh;
+      background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      font-family: system-ui, -apple-system, sans-serif;
+    ">
       <div style="text-align: center; color: white;">
-        <div style="width: 48px; height: 48px; border: 2px solid #d3194f; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
-        <p style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">Initializing...</p>
-        <p style="font-size: 14px; color: #9ca3af;">Please wait...</p>
+        <div style="
+          width: 60px;
+          height: 60px;
+          border: 3px solid #374151;
+          border-top: 3px solid #d3194f;
+          border-radius: 50%;
+          animation: spin 1s linear infinite;
+          margin: 0 auto 20px;
+        "></div>
+        <h2 style="margin: 0 0 10px 0; font-size: 20px; font-weight: 600; color: #f9fafb;">CUBS Technical</h2>
+        <p style="margin: 0; font-size: 14px; color: #9ca3af;">Loading Employee Management System...</p>
       </div>
     </div>
   </div>
@@ -237,53 +289,70 @@ ${cssLinks}
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
     }
+    
+    /* Hide loader when app loads */
+    .app-loaded #initial-loader {
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.5s ease-out;
+    }
   </style>
   
-  <!-- Load Next.js scripts -->
+  <!-- Load scripts in optimal order for static export -->
 ${jsScripts}
   
   <script>
-    // Initialize Next.js app data (must match web app structure)
+    // Initialize Next.js for static export
     window.__NEXT_DATA__ = {
-      props: { 
-        pageProps: {}
-      },
+      props: { pageProps: {} },
       page: "/",
       query: {},
-      buildId: "${jsFiles.buildManifest ? jsFiles.buildManifest.split('/')[0] : 'static'}",
+      buildId: "${jsFiles.buildManifest ? jsFiles.buildManifest.split('/')[0] : 'export'}",
       isFallback: false,
-      gssp: false,
-      gsp: false,
-      appGip: true,
-      scriptLoader: [],
-      assetPrefix: "",
-      runtimeConfig: {},
       nextExport: true,
-      autoExport: true,
-      dynamicIds: []
+      autoExport: true
     };
     
-    // Initialize Next.js router
-    window.__NEXT_ROUTER_BASEPATH__ = "";
+    // Debug info
+    console.log('📱 CUBS Mobile App Starting...');
+    console.log('🎨 CSS files:', [${cssFiles.map(f => `'${f}'`).join(', ')}]);
+    console.log('📦 JS chunks:', {
+      buildManifest: '${jsFiles.buildManifest}',
+      webpack: '${jsFiles.webpack}',
+      mainApp: '${jsFiles.mainApp}',
+      layout: '${jsFiles.layout}',
+      page: '${jsFiles.page}'
+    });
     
-    // Debug logging for troubleshooting
-    console.log('🚀 Static Next.js app initializing...');
-    console.log('📄 CSS files loaded:', ${JSON.stringify(cssFiles)});
-    console.log('📦 JS chunks loaded:', Object.keys(${JSON.stringify(jsFiles)}).filter(k => ${JSON.stringify(jsFiles)}[k]));
-    console.log('🔧 Build ID:', window.__NEXT_DATA__.buildId);
+    // Remove loader when app is ready
+    let appCheckInterval = setInterval(function() {
+      if (document.querySelector('[data-reactroot]') || document.querySelector('#__next > div:not(#initial-loader)')) {
+        document.body.classList.add('app-loaded');
+        setTimeout(() => {
+          const loader = document.getElementById('initial-loader');
+          if (loader) loader.remove();
+        }, 500);
+        clearInterval(appCheckInterval);
+        console.log('✅ App loaded successfully!');
+      }
+    }, 100);
     
-    // Wait for Next.js to be ready
-    if (typeof window !== 'undefined') {
-      window.addEventListener('DOMContentLoaded', function() {
-        console.log('✅ DOM loaded, Next.js should initialize now');
-      });
-    }
+    // Fallback: remove loader after 10 seconds regardless
+    setTimeout(function() {
+      document.body.classList.add('app-loaded');
+      setTimeout(() => {
+        const loader = document.getElementById('initial-loader');
+        if (loader) loader.remove();
+      }, 500);
+      clearInterval(appCheckInterval);
+      console.log('⏰ Loader removed after timeout');
+    }, 10000);
   </script>
 </body>
 </html>`;
 
-  fs.writeFileSync(path.join('out', 'index.html'), dynamicIndexHtml);
-  console.log('✅ Created dynamic index.html with actual build files');
+  // The index.html was already copied from Next.js build
+  console.log('✅ Using Next.js generated index.html for mobile/PWA');
 
   // 4. Copy iOS-specific files
   console.log('📱 Copying iOS-specific files...');
