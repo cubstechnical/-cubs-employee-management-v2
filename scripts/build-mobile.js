@@ -35,12 +35,31 @@ try {
 
   // Step 2: Build Next.js app
   console.log('📦 Building Next.js application...');
-  execSync('npm run build', { stdio: 'inherit' });
+  try {
+    execSync('npm run build', { stdio: 'inherit' });
+
+    // Verify .next directory was created
+    if (!fs.existsSync('.next')) {
+      throw new Error('.next directory was not created after build');
+    }
+    console.log('✅ Next.js build completed successfully');
+  } catch (error) {
+    console.error('❌ Next.js build failed:', error.message);
+    throw error;
+  }
 
   // Step 3: Copy build to out directory for Capacitor
   console.log('📁 Preparing build for Capacitor...');
-  if (!fs.existsSync('out')) {
-    fs.mkdirSync('out', { recursive: true });
+  try {
+    if (!fs.existsSync('out')) {
+      fs.mkdirSync('out', { recursive: true });
+      console.log('✅ Created out directory');
+    } else {
+      console.log('✅ out directory already exists');
+    }
+  } catch (error) {
+    console.error('❌ Failed to create out directory:', error.message);
+    throw error;
   }
 
   // Helper function to copy directories recursively
@@ -96,12 +115,11 @@ try {
   try {
     if (fs.existsSync('.next/build-manifest.json')) {
       const buildManifest = JSON.parse(fs.readFileSync('.next/build-manifest.json', 'utf8'));
-      if (buildManifest.pages && buildManifest.pages['/_app']) {
-        appJsFile = buildManifest.pages['/_app'][0];
-      }
+      // In Next.js 15.x, the structure has changed - just use default file names
+      console.log('Build manifest found, using default file names for compatibility');
     }
   } catch (error) {
-    console.warn('Could not read build manifest, using default file names');
+    console.warn('Could not read build manifest, using default file names:', error.message);
   }
 
   // Create a simple index.html that loads the Next.js app locally
@@ -172,14 +190,42 @@ try {
 
   fs.writeFileSync(path.join('out', 'index.html'), indexHtml);
 
-  // Step 5: Sync with Capacitor
+  // Step 5: Verify build output
+  console.log('🔍 Verifying build output...');
+  try {
+    if (!fs.existsSync('out')) {
+      throw new Error('out directory was not created');
+    }
+
+    if (!fs.existsSync('out/index.html')) {
+      throw new Error('index.html was not created in out directory');
+    }
+
+    if (!fs.existsSync('out/_next')) {
+      throw new Error('_next directory was not created in out directory');
+    }
+
+    console.log('✅ Build verification successful');
+  } catch (error) {
+    console.error('❌ Build verification failed:', error.message);
+    throw error;
+  }
+
+  // Step 6: Sync with Capacitor
   console.log('📱 Syncing with Capacitor...');
-  execSync('npx cap sync', { stdio: 'inherit' });
+  try {
+    execSync('npx cap sync', { stdio: 'inherit' });
+    console.log('✅ Capacitor sync completed successfully');
+  } catch (error) {
+    console.error('❌ Capacitor sync failed:', error.message);
+    throw error;
+  }
 
   console.log('✅ Mobile build completed successfully!');
   console.log('📱 You can now run:');
   console.log('   npm run cap:ios     - Open iOS project');
   console.log('   npm run cap:android - Open Android project');
+  console.log('🚀 Ready for Codemagic deployment!');
 
 } catch (error) {
   console.error('❌ Mobile build failed:', error.message);

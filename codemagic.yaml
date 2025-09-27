@@ -26,37 +26,12 @@ workflows:
           echo "🔧 Applying mobile app fixes to prevent issues..."
           node scripts/fix-mobile-app.js
           echo "✅ Mobile app fixes applied successfully"
-      - name: Build Next.js app for mobile        script: |
+      - name: Build Next.js app for mobile
+        script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
           echo "🔧 Using existing build-mobile.js script..."
           node scripts/build-mobile.js
           echo "✅ Mobile build completed successfully"
-        script: |
-          echo "🔄 Syncing web assets with Capacitor iOS..."
-          echo "📁 Checking for out directory..."
-          if [ -d "out" ]; then
-            echo "✅ Found out directory"
-            ls -la out/
-          else
-            echo "❌ out directory not found!"
-            echo "📋 Available directories:"
-            ls -la
-            echo "❌ Build process failed to create out directory"
-            exit 1
-          fi
-
-          echo "📄 Checking for index.html..."
-          if [ -f "out/index.html" ]; then
-            echo "✅ Found index.html"
-          else
-            echo "❌ index.html not found in out directory!"
-            echo "📋 Contents of out directory:"
-            ls -la out/
-            exit 1
-          fi
-
-          echo "🔄 Syncing with Capacitor..."
-          npx cap sync ios
       - name: Install CocoaPods
         script: |
           echo "📱 Installing CocoaPods dependencies..."
