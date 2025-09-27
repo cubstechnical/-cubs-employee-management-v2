@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
 
 const args = process.argv.slice(2);
 const mode = args[0] || 'development';
@@ -10,10 +11,22 @@ const configPath = path.join(__dirname, '..', 'capacitor.config.ts');
 let config = fs.readFileSync(configPath, 'utf8');
 
 if (mode === 'development') {
-  // Development: Use local dev server
+  // Get network IP automatically
+  let networkIP = '192.168.29.12'; // Default fallback
+  try {
+    const result = execSync('ipconfig | findstr "IPv4"', { encoding: 'utf8' });
+    const match = result.match(/IPv4.*?(\d+\.\d+\.\d+\.\d+)/);
+    if (match) {
+      networkIP = match[1];
+    }
+  } catch (e) {
+    console.log('⚠️ Could not auto-detect IP, using fallback');
+  }
+  
+  // Development: Use network IP (mobile devices can't access localhost!)
   config = config.replace(
-    /\/\/ url: 'http:\/\/localhost:3000'.*$/m,
-    "url: 'http://localhost:3000', // Development: local server"
+    /url: 'http:\/\/.*:3000'.*$/m,
+    `url: 'http://${networkIP}:3000', // Development: network IP for mobile access`
   );
   config = config.replace(
     /url: 'https:\/\/.*$/m,
@@ -21,9 +34,10 @@ if (mode === 'development') {
   );
   config = config.replace(
     /cleartext: false/,
-    'cleartext: true // Allow localhost for development'
+    'cleartext: true // Allow HTTP for development'
   );
-  console.log('✅ Configured for development (localhost:3000)');
+  console.log(`✅ Configured for development (${networkIP}:3000)`);
+  console.log(`📱 Mobile devices can now access: http://${networkIP}:3000`);
   
 } else if (mode === 'production') {
   const productionUrl = args[1];

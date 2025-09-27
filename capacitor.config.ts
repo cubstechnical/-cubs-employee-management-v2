@@ -7,10 +7,10 @@ const config: CapacitorConfig = {
   webDir: 'out',
   server: {
     // PRODUCTION: Use deployed web app URL
-    // // url: 'https://your-deployed-app.vercel.app', // Production URL
+    // // // url: 'https://your-deployed-app.vercel.app', // Production URL
     
-    // DEVELOPMENT: Use local dev server (guaranteed to work!)
-    url: 'http://localhost:3000', // Works exactly like web app
+    // DEVELOPMENT: Use network IP (mobile devices can't access localhost!)
+    url: 'http://192.168.29.12:3000', // Development: network IP for mobile access
     
     androidScheme: 'https',
     allowNavigation: [
