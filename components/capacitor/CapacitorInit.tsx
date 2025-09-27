@@ -19,6 +19,9 @@ export default function CapacitorInit() {
         if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
           log.info('CapacitorInit: Mobile app detected, configuring Supabase...');
 
+          // Add delay to ensure Capacitor is fully initialized
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
           // Check if we have stored session data
           const storedSession = localStorage.getItem('cubs-auth-token');
           if (storedSession) {
@@ -32,6 +35,8 @@ export default function CapacitorInit() {
 
           if (error) {
             log.warn('CapacitorInit: Mobile session restoration failed:', error.message);
+            // Clear invalid session data
+            localStorage.removeItem('cubs-auth-token');
           } else if (session) {
             log.info('CapacitorInit: Mobile session restored successfully', {
               userId: session.user.id,
@@ -47,6 +52,8 @@ export default function CapacitorInit() {
               log.info('CapacitorInit: Session verification successful');
             } else {
               log.warn('CapacitorInit: Session verification failed');
+              // Clear invalid session
+              localStorage.removeItem('cubs-auth-token');
             }
           } else {
             log.info('CapacitorInit: No mobile session to restore');
@@ -59,6 +66,12 @@ export default function CapacitorInit() {
 
       } catch (error) {
         log.error('CapacitorInit: Error during mobile auth initialization:', error);
+        // Clear any corrupted session data
+        try {
+          localStorage.removeItem('cubs-auth-token');
+        } catch (e) {
+          // Ignore localStorage errors
+        }
         // Don't throw error to prevent app crashes
       }
     };

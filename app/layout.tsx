@@ -26,6 +26,7 @@ import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
 import IOSLoadingScreen from '@/components/ios/IOSLoadingScreen'
 import '@/lib/utils/iosErrorHandler'
+import '@/lib/utils/mobileErrorRecovery'
 
 const inter = Inter({ 
   subsets: ['latin'],

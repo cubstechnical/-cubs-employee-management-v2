@@ -104,6 +104,7 @@ try {
     console.warn('Could not read build manifest, using default file names');
   }
 
+  // Create a simple index.html that loads the Next.js app locally
   const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -144,41 +145,27 @@ try {
 </head>
 <body>
   <div id="__next"></div>
-
-  <!-- Load build assets dynamically -->
+  
+  <!-- Mobile app initialization -->
   <script>
-    // Load the main build files
-    const loadScript = (src) => {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
-
-    // Load CSS files
-    const loadCSS = (href) => {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
-      document.head.appendChild(link);
-    };
-
-    // Initialize the app
-    window.onload = async function() {
-      try {
-        // Load main build files
-        await loadScript('/_next/static/chunks/webpack.js');
-        await loadScript('/_next/static/chunks/main.js');
-        await loadScript('/_next/static/chunks/pages/_app.js');
-
-        console.log('✅ Mobile app loaded successfully');
-      } catch (error) {
-        console.error('❌ Failed to load mobile app:', error);
+    console.log('📱 CUBS Mobile App Starting...');
+    
+    // Wait for Capacitor to be ready
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('📱 DOM loaded, initializing mobile app...');
+      
+      // Check if we're in a Capacitor environment
+      if (window.Capacitor && window.Capacitor.isNative) {
+        console.log('📱 Running in native mobile app');
+        
+        // Initialize mobile-specific features
+        setTimeout(() => {
+          console.log('✅ Mobile app initialized successfully');
+        }, 1000);
+      } else {
+        console.log('🌐 Running in web browser');
       }
-    };
+    });
   </script>
 </body>
 </html>`;

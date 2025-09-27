@@ -26,11 +26,15 @@ export class CapacitorService {
 
       // Configure splash screen with delay for better UX
       try {
-        // Add a small delay to ensure splash screen is visible
+        // Add a longer delay to ensure splash screen is visible and app is ready
         setTimeout(async () => {
-          await SplashScreen.hide();
-          log.info('Splash screen hidden');
-        }, 1000);
+          try {
+            await SplashScreen.hide();
+            log.info('Splash screen hidden');
+          } catch (hideError) {
+            log.warn('Error hiding splash screen:', hideError);
+          }
+        }, 2000); // Increased delay for better mobile experience
       } catch (error) {
         log.warn('Splash screen configuration failed:', error);
       }

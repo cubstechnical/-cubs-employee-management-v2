@@ -77,13 +77,20 @@
     "test:report": "playwright show-report",
     "test:install": "playwright install",
     "build:optimized": "NODE_ENV=production next build",
-    "build:mobile:optimized": "NODE_ENV=production npm run build:mobile",
+    "build:mobile:optimized": "npm run verify:pre-build && npm run build:mobile && npm run verify:post-build && npm run optimize:ios && npm run notify:build-success",
     "start:optimized": "NODE_ENV=production next start",
     "lint:fix": "next lint --fix",
     "clean": "rm -rf .next out node_modules/.cache",
     "precommit": "npm run lint:fix && npm run type-check",
     "debug:ios": "node scripts/debug-ios.js",
-    "fix:ios": "node scripts/fix-ios-white-page.js"
+    "fix:ios": "node scripts/fix-ios-white-page.js",
+    "fix:mobile": "node scripts/fix-mobile-app.js",
+    "verify:mobile": "node scripts/verify-mobile-build.js",
+    "build:mobile:clean": "npm run fix:mobile && npm run build:mobile",
+    "verify:pre-build": "bash scripts/pre-build-verification.sh",
+    "verify:post-build": "bash scripts/post-build-verification.sh",
+    "optimize:ios": "bash scripts/ios-optimization.sh",
+    "notify:build-success": "bash scripts/build-success-notification.sh"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.450.0",

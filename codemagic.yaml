@@ -21,10 +21,16 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
+      - name: Apply mobile app fixes
+        script: |
+          echo "🔧 Applying mobile app fixes to prevent issues..."
+          node scripts/fix-mobile-app.js
+          echo "✅ Mobile app fixes applied successfully"
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          npm run build:ios
+          npm run build:mobile
+          echo "✅ Mobile build completed successfully"
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
@@ -453,10 +459,16 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
+      - name: Apply mobile app fixes
+        script: |
+          echo "🔧 Applying mobile app fixes to prevent issues..."
+          node scripts/fix-mobile-app.js
+          echo "✅ Mobile app fixes applied successfully"
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          npm run build:ios
+          npm run build:mobile
+          echo "✅ Mobile build completed successfully"
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
@@ -543,10 +555,16 @@ workflows:
         script: |
           echo "📦 Installing Node.js dependencies..."
           npm ci
+      - name: Apply mobile app fixes
+        script: |
+          echo "🔧 Applying mobile app fixes to prevent issues..."
+          node scripts/fix-mobile-app.js
+          echo "✅ Mobile app fixes applied successfully"
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          npm run build:ios
+          npm run build:mobile
+          echo "✅ Mobile build completed successfully"
       - name: Sync Capacitor Android
         script: |
           echo "🔄 Syncing web assets with Capacitor Android..."
