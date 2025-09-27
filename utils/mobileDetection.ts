@@ -73,9 +73,20 @@ export const isCapacitorApp = (): boolean => {
   if (typeof window === 'undefined') return false;
 
   try {
-    // Simple check: if Capacitor exists and is native, it's a mobile app
-    return !!(window.Capacitor && (window.Capacitor as any).isNativePlatform && (window.Capacitor as any).isNativePlatform());
+    // More robust check: ensure Capacitor exists and has native platform capability
+    const capacitor = window.Capacitor;
+    if (!capacitor) return false;
+
+    // Check if isNativePlatform method exists and returns true
+    const isNativeMethod = (capacitor as any).isNativePlatform;
+    if (typeof isNativeMethod !== 'function') return false;
+
+    return isNativeMethod();
   } catch (error) {
+    // Log error in development but don't break functionality
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('Error detecting Capacitor app:', error);
+    }
     return false;
   }
 };

@@ -55,44 +55,58 @@ export default function LoginPage() {
   }, []);
 
   useEffect(() => {
-    // Enhanced auth check for iPhone 13 and mobile devices
+    // Enhanced auth check for mobile devices with better error handling
     const checkAuth = async () => {
       try {
-        // Quick timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth check timeout')), 4000)
+        // More robust timeout handling
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth check timeout')), 6000) // Increased timeout
         );
 
         const authPromise = (async () => {
-          // Enhanced mobile/iPhone detection
-          const isMobile = typeof window !== 'undefined' && window.Capacitor;
+          // Better mobile detection
+          const isCapacitorAvailable = typeof window !== 'undefined' && window.Capacitor;
+          const isNativePlatform = isCapacitorAvailable && (window.Capacitor as any).isNativePlatform && (window.Capacitor as any).isNativePlatform();
           const isIPhone = typeof window !== 'undefined' && /iPhone/.test(navigator.userAgent || '');
-          const isIPhoneApp = isIPhone && !/Safari/.test(navigator.userAgent || '');
-          
-          // For mobile/iPhone devices, try multiple approaches
-          if (isMobile || isIPhone || isIPhoneApp) {
-            log.info('Login: Mobile/iPhone device detected', { isMobile, isIPhone, isIPhoneApp });
+          const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent || '');
+
+          // For native mobile apps, use different auth strategy
+          if (isNativePlatform) {
+            log.info('Login: Native mobile app detected', { isIPhone, userAgent: navigator.userAgent });
             try {
-              // Try session first for mobile/iPhone
+              // For native apps, try session first, then user
               const { session } = await AuthService.getSession();
-              if (session) {
-                const user = await AuthService.getCurrentUser();
-                return user;
+              if (session?.user) {
+                return session.user;
               }
             } catch (sessionError) {
-              log.info('Mobile/iPhone session check failed, trying direct user fetch:', sessionError);
+              log.info('Native app session check failed, trying user fetch:', sessionError);
+            }
+
+            // Fallback to user fetch for native apps
+            try {
+              return await AuthService.getCurrentUser();
+            } catch (userError) {
+              log.warn('Native app user fetch failed:', userError);
+              return null;
             }
           }
-          
-          // Fallback to direct user fetch
-          return await AuthService.getCurrentUser();
+
+          // For web/PWA or other environments
+          try {
+            return await AuthService.getCurrentUser();
+          } catch (error) {
+            log.info('Web auth check failed:', error);
+            return null;
+          }
         })();
 
         const user = await Promise.race([authPromise, timeoutPromise]) as any;
 
         if (user) {
           log.info('✅ User found, redirecting to dashboard');
-          router.push('/dashboard');
+          // Use replace to avoid back button issues
+          router.replace('/dashboard');
         } else {
           log.info('ℹ️ No user found, staying on login page');
         }
@@ -102,10 +116,35 @@ export default function LoginPage() {
       }
     };
 
-    // Longer delay for mobile devices to ensure proper initialization
-    const delay = typeof window !== 'undefined' && window.Capacitor ? 1000 : 500;
-    const timer = setTimeout(checkAuth, delay);
-    return () => clearTimeout(timer);
+    // Listen for capacitor ready event before checking auth
+    const handleCapacitorReady = () => {
+      log.info('Capacitor ready, starting auth check');
+      // Shorter delay for mobile devices after capacitor is ready
+      const delay = typeof window !== 'undefined' && window.Capacitor ? 500 : 1000;
+      setTimeout(checkAuth, delay);
+    };
+
+    if (typeof window !== 'undefined') {
+      // Check if capacitor is already ready
+      if (window.Capacitor && (window.Capacitor as any).isNativePlatform) {
+        handleCapacitorReady();
+      } else {
+        // Wait for capacitor ready event or use longer timeout
+        window.addEventListener('capacitorReady', handleCapacitorReady);
+        // Fallback timeout
+        setTimeout(() => {
+          if (!window.Capacitor || !(window.Capacitor as any).isNativePlatform) {
+            handleCapacitorReady();
+          }
+        }, 2000);
+      }
+    }
+
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('capacitorReady', handleCapacitorReady);
+      }
+    };
   }, [router]);
 
   const onSubmit = async (data: LoginFormData) => {

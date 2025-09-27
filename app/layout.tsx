@@ -20,6 +20,7 @@ import { Suspense } from 'react'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
 import IOSLoadingScreen from '@/components/ios/IOSLoadingScreen'
+import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -149,31 +150,33 @@ export default function RootLayout({
         <CapacitorInit />
         <ErrorBoundary>
           <ThemeProvider>
-            <QueryProvider>
-              <IOSLoadingScreen>
-                <OptimizedLayout>
-                  <ClientOnly fallback={
-                    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-                      </div>
-                    </div>
-                  }>
-                    <Suspense fallback={
+            <SimpleAuthProvider>
+              <QueryProvider>
+                <IOSLoadingScreen>
+                  <OptimizedLayout>
+                    <ClientOnly fallback={
                       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                          <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
+                          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
                         </div>
                       </div>
                     }>
-                      {children}
-                    </Suspense>
-                  </ClientOnly>
-                </OptimizedLayout>
-              </IOSLoadingScreen>
-            </QueryProvider>
+                      <Suspense fallback={
+                        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                          <div className="text-center">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+                            <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
+                          </div>
+                        </div>
+                      }>
+                        {children}
+                      </Suspense>
+                    </ClientOnly>
+                  </OptimizedLayout>
+                </IOSLoadingScreen>
+              </QueryProvider>
+            </SimpleAuthProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </body>
