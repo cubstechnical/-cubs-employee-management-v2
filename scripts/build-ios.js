@@ -85,11 +85,65 @@ try {
     }
   });
 
-  // 6. Create a proper static index.html for PWA/mobile
-  console.log('📄 Creating static index.html for PWA/mobile...');
+  // 6. Create a dynamic index.html based on actual build output
+  console.log('📄 Creating dynamic index.html for PWA/mobile...');
   
-  // Create a proper static index.html that works with PWA and mobile
-  const staticIndexHtml = `<!DOCTYPE html>
+  // Read actual CSS files
+  const cssDir = path.join('out', '_next', 'static', 'css');
+  let cssFiles = [];
+  if (fs.existsSync(cssDir)) {
+    cssFiles = fs.readdirSync(cssDir).filter(file => file.endsWith('.css'));
+  }
+  
+  // Read actual JS chunk files
+  const chunksDir = path.join('out', '_next', 'static', 'chunks');
+  let jsFiles = {
+    webpack: '',
+    mainApp: '',
+    polyfills: '',
+    react: [],
+    layout: '',
+    page: ''
+  };
+  
+  if (fs.existsSync(chunksDir)) {
+    const allChunks = fs.readdirSync(chunksDir).filter(file => file.endsWith('.js'));
+    
+    // Find specific chunks
+    jsFiles.webpack = allChunks.find(file => file.startsWith('webpack-')) || '';
+    jsFiles.mainApp = allChunks.find(file => file.startsWith('main-app-')) || '';
+    jsFiles.polyfills = allChunks.find(file => file.startsWith('polyfills-')) || '';
+    jsFiles.react = allChunks.filter(file => file.startsWith('react-'));
+    
+    // Find layout and page chunks
+    const appDir = path.join(chunksDir, 'app');
+    if (fs.existsSync(appDir)) {
+      const appChunks = fs.readdirSync(appDir).filter(file => file.endsWith('.js'));
+      jsFiles.layout = appChunks.find(file => file.startsWith('layout-')) || '';
+      jsFiles.page = appChunks.find(file => file.startsWith('page-')) || '';
+    }
+  }
+  
+  // Create CSS links
+  const cssLinks = cssFiles.map(file => 
+    `  <link rel="stylesheet" href="/_next/static/css/${file}" />`
+  ).join('\n');
+  
+  const cssPreloads = cssFiles.map(file => 
+    `  <link rel="preload" href="/_next/static/css/${file}" as="style" />`
+  ).join('\n');
+  
+  // Create JS script tags
+  const jsScripts = [
+    jsFiles.webpack ? `  <script src="/_next/static/chunks/${jsFiles.webpack}"></script>` : '',
+    jsFiles.mainApp ? `  <script src="/_next/static/chunks/${jsFiles.mainApp}"></script>` : '',
+    jsFiles.polyfills ? `  <script src="/_next/static/chunks/${jsFiles.polyfills}"></script>` : '',
+    ...jsFiles.react.map(file => `  <script src="/_next/static/chunks/${file}"></script>`),
+    jsFiles.layout ? `  <script src="/_next/static/chunks/app/${jsFiles.layout}"></script>` : '',
+    jsFiles.page ? `  <script src="/_next/static/chunks/app/${jsFiles.page}"></script>` : ''
+  ].filter(Boolean).join('\n');
+  
+  const dynamicIndexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -117,17 +171,11 @@ try {
   <link rel="apple-touch-icon" href="/assets/cubs.webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
 
-  <!-- Preload critical resources -->
-  <link rel="preload" href="/_next/static/css/a3555e678bd5d024.css" as="style" />
-  <link rel="preload" href="/_next/static/css/041aafb0eaf4613c.css" as="style" />
-  <link rel="preload" href="/_next/static/css/15d6c795b9c2fcaf.css" as="style" />
-  <link rel="preload" href="/_next/static/css/544f237784b80ff5.css" as="style" />
+  <!-- Preload critical CSS -->
+${cssPreloads}
   
   <!-- Load CSS -->
-  <link rel="stylesheet" href="/_next/static/css/a3555e678bd5d024.css" />
-  <link rel="stylesheet" href="/_next/static/css/041aafb0eaf4613c.css" />
-  <link rel="stylesheet" href="/_next/static/css/15d6c795b9c2fcaf.css" />
-  <link rel="stylesheet" href="/_next/static/css/544f237784b80ff5.css" />
+${cssLinks}
 
   <script>
     // Prevent zoom on input focus (iOS)
@@ -137,12 +185,34 @@ try {
         viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
       }
     });
-    
+  </script>
+</head>
+<body class="__variable_f367f3 font-sans">
+  <div id="__next">
+    <!-- Initial loading screen -->
+    <div style="min-height: 100vh; background-color: #111827; display: flex; align-items: center; justify-content: center;">
+      <div style="text-align: center; color: white;">
+        <div style="width: 48px; height: 48px; border: 2px solid #d3194f; border-top: 2px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 16px;"></div>
+        <p style="font-size: 18px; font-weight: 500; margin-bottom: 8px;">Initializing...</p>
+        <p style="font-size: 14px; color: #9ca3af;">Please wait...</p>
+      </div>
+    </div>
+  </div>
+  
+  <style>
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+  
+  <!-- Load Next.js scripts -->
+${jsScripts}
+  
+  <script>
     // Initialize Next.js app data
     window.__NEXT_DATA__ = {
-      props: {
-        pageProps: {}
-      },
+      props: { pageProps: {} },
       page: "/",
       query: {},
       buildId: "static",
@@ -151,43 +221,17 @@ try {
       appGip: true,
       scriptLoader: []
     };
-  </script>
-</head>
-<body>
-  <div id="__next">
-    <!-- Loading screen for PWA/mobile -->
-    <div class="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div class="text-center space-y-4">
-        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3194f] mx-auto"></div>
-        <p class="text-white text-lg font-medium">Initializing...</p>
-        <p class="text-gray-400 text-sm">Please wait...</p>
-      </div>
-    </div>
-  </div>
-  
-  <!-- Load Next.js scripts -->
-  <script src="/_next/static/chunks/webpack-ba9f98305ca13bce.js"></script>
-  <script src="/_next/static/chunks/main-app-a0e8ab46bb6360cc.js"></script>
-  <script src="/_next/static/chunks/polyfills-42372ed130431b0a.js"></script>
-  <script src="/_next/static/chunks/react-d031d8a3-b717d54361277a72.js"></script>
-  <script src="/_next/static/chunks/react-ec847047-6b7b1def18eeb552.js"></script>
-  <script src="/_next/static/chunks/app/layout-55cbeb360efd671c.js"></script>
-  <script src="/_next/static/chunks/app/page-f3956634-f5adae3b48a692e5.js"></script>
-  
-  <!-- Initialize the app -->
-  <script>
-    // Initialize Next.js app
-    if (typeof window !== 'undefined' && window.next) {
-      window.next.router.ready(() => {
-        console.log('Next.js app initialized');
-      });
-    }
+    
+    // Debug logging
+    console.log('Static index.html loaded');
+    console.log('CSS files:', ${JSON.stringify(cssFiles)});
+    console.log('JS files:', ${JSON.stringify(jsFiles)});
   </script>
 </body>
 </html>`;
 
-  fs.writeFileSync(path.join('out', 'index.html'), staticIndexHtml);
-  console.log('✅ Created static index.html for PWA/mobile');
+  fs.writeFileSync(path.join('out', 'index.html'), dynamicIndexHtml);
+  console.log('✅ Created dynamic index.html with actual build files');
 
   // 4. Copy iOS-specific files
   console.log('📱 Copying iOS-specific files...');
