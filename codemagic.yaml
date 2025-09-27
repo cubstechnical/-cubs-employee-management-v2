@@ -101,10 +101,17 @@ workflows:
           echo "🔍 Verifying iOS project setup..."
           cd ios/App
 
-          # Check if workspace exists
-          if [ ! -f "App.xcworkspace" ]; then
+          # Check if workspace exists (it's a directory, not a file)
+          if [ ! -d "App.xcworkspace" ]; then
             echo "❌ App.xcworkspace not found!"
-            ls -la *.xcworkspace 2>/dev/null || echo "No workspace files found"
+            ls -la *.xcworkspace 2>/dev/null || echo "No workspace directories found"
+            exit 1
+          fi
+
+          # Check if workspace contents file exists
+          if [ ! -f "App.xcworkspace/contents.xcworkspacedata" ]; then
+            echo "❌ App.xcworkspace/contents.xcworkspacedata not found!"
+            ls -la App.xcworkspace/
             exit 1
           fi
 
@@ -167,7 +174,8 @@ workflows:
             -allowProvisioningUpdates \
             -allowProvisioningDeviceRegistration \
             ONLY_ACTIVE_ARCH=NO \
-            -derivedDataPath ../../build/ios/derivedData
+            -derivedDataPath ../../build/ios/derivedData \
+            -UseModernBuildSystem=YES
 
           # Check if archive was created
           if [ -d "../../build/ios/archive/App.xcarchive" ]; then
