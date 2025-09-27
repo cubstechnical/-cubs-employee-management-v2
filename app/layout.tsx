@@ -16,17 +16,10 @@ const PerformanceMonitor = dynamic(() => import('@/components/ui/PerformanceMoni
 import { ClientOnly } from '@/components/common/ClientOnly'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
-import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
-import MobileAuthDebug from '@/components/debug/MobileAuthDebug'
-import MobileLoadingScreen from '@/components/ui/MobileLoadingScreen'
-import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
-import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
 import IOSLoadingScreen from '@/components/ios/IOSLoadingScreen'
-import '@/lib/utils/iosErrorHandler'
-import '@/lib/utils/mobileErrorRecovery'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -139,10 +132,9 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
-        {/* Suppress harmless mobile app warnings and initialize environment */}
+        {/* Suppress harmless mobile app warnings */}
         {(() => {
           suppressMobileWarnings();
-          initializeEnvironment();
           return null;
         })()}
         {/* Only load performance monitor in development - with error handling */}
@@ -157,39 +149,32 @@ export default function RootLayout({
         <CapacitorInit />
         <ErrorBoundary>
           <ThemeProvider>
-            <SimpleAuthProvider>
-              <QueryProvider>
-                <IOSLoadingScreen>
-                  <OptimizedLayout>
-                    <ClientOnly fallback={
+            <QueryProvider>
+              <IOSLoadingScreen>
+                <OptimizedLayout>
+                  <ClientOnly fallback={
+                    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                      <div className="text-center">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+                        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+                      </div>
+                    </div>
+                  }>
+                    <Suspense fallback={
                       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                         <div className="text-center">
                           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+                          <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
                         </div>
                       </div>
                     }>
-                      {/* Optimized Suspense boundary for lazy loading */}
-                      <Suspense fallback={
-                        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                          <div className="text-center">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                            <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
-                          </div>
-                        </div>
-                      }>
-                        {children}
-                      </Suspense>
-                    </ClientOnly>
-                  </OptimizedLayout>
-                </IOSLoadingScreen>
-              </QueryProvider>
-            </SimpleAuthProvider>
+                      {children}
+                    </Suspense>
+                  </ClientOnly>
+                </OptimizedLayout>
+              </IOSLoadingScreen>
+            </QueryProvider>
           </ThemeProvider>
-          {/* Mobile authentication debug - temporarily disabled for production builds */}
-          {false && <MobileAuthDebug />}
-          {/* Mobile loading screen for Capacitor apps - only show during actual loading */}
-          <MobileLoadingScreen isLoading={false} />
         </ErrorBoundary>
       </body>
     </html>

@@ -146,7 +146,5 @@ export class MobileErrorRecovery {
   }
 }
 
-// Initialize on import
-if (typeof window !== 'undefined') {
-  MobileErrorRecovery.init();
-}
+// Don't auto-initialize - let components handle error recovery
+// This prevents conflicts with other error handling systems

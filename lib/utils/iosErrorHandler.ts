@@ -56,7 +56,5 @@ export class IOSErrorHandler {
   }
 }
 
-// Initialize on import
-if (typeof window !== 'undefined') {
-  IOSErrorHandler.init();
-}
+// Don't auto-initialize - let components handle error recovery
+// This prevents conflicts with other error handling systems
