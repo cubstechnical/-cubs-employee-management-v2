@@ -101,16 +101,22 @@ workflows:
           echo "🔍 Verifying iOS project setup..."
           cd ios/App
 
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+
           # Check if workspace exists (it's a directory, not a file)
           if [ ! -d "App.xcworkspace" ]; then
             echo "❌ App.xcworkspace not found!"
-            ls -la *.xcworkspace 2>/dev/null || echo "No workspace directories found"
+            echo "Looking for workspace files:"
+            find . -name "*.xcworkspace" -type d 2>/dev/null || echo "No workspace directories found"
             exit 1
           fi
 
           # Check if workspace contents file exists
           if [ ! -f "App.xcworkspace/contents.xcworkspacedata" ]; then
             echo "❌ App.xcworkspace/contents.xcworkspacedata not found!"
+            echo "Workspace contents:"
             ls -la App.xcworkspace/
             exit 1
           fi
@@ -118,7 +124,16 @@ workflows:
           # Check if project file exists
           if [ ! -f "App.xcodeproj/project.pbxproj" ]; then
             echo "❌ App.xcodeproj not found!"
-            ls -la *.xcodeproj 2>/dev/null || echo "No project files found"
+            echo "Looking for project files:"
+            find . -name "*.xcodeproj" -type d 2>/dev/null || echo "No project directories found"
+            exit 1
+          fi
+
+          # Check if scheme exists
+          if [ ! -f "App.xcodeproj/xcshareddata/xcschemes/App.xcscheme" ]; then
+            echo "❌ App.xcscheme not found!"
+            echo "Schemes directory contents:"
+            ls -la App.xcodeproj/xcshareddata/xcschemes/ 2>/dev/null || echo "Schemes directory not found"
             exit 1
           fi
 
@@ -127,6 +142,8 @@ workflows:
             echo "✅ DEVELOPMENT_TEAM found in project"
           else
             echo "❌ DEVELOPMENT_TEAM not found in project!"
+            echo "Checking project configuration..."
+            grep -n "DEVELOPMENT_TEAM" App.xcodeproj/project.pbxproj || echo "DEVELOPMENT_TEAM not set in project"
             exit 1
           fi
 
@@ -156,11 +173,16 @@ workflows:
 
           # Clean previous builds
           echo "🧹 Cleaning previous iOS builds..."
-          xcodebuild clean -workspace App.xcworkspace -scheme App
+          xcodebuild clean -workspace "$(pwd)/App.xcworkspace" -scheme App
 
           # Build and archive with explicit team and signing settings
           echo "📦 Building iOS archive..."
-          xcodebuild -workspace App.xcworkspace \
+          echo "Current working directory: $(pwd)"
+          echo "Workspace path: $(pwd)/App.xcworkspace"
+          echo "Scheme: App"
+
+          # Use absolute path to workspace since we're in ios/App directory
+          xcodebuild -workspace "$(pwd)/App.xcworkspace" \
             -scheme App \
             -configuration Release \
             -destination generic/platform=iOS \
@@ -175,16 +197,24 @@ workflows:
             -allowProvisioningDeviceRegistration \
             ONLY_ACTIVE_ARCH=NO \
             -derivedDataPath ../../build/ios/derivedData \
-            -UseModernBuildSystem=YES
+            -UseModernBuildSystem=YES \
+            -verbose
 
           # Check if archive was created
           if [ -d "../../build/ios/archive/App.xcarchive" ]; then
             echo "✅ iOS archive created successfully"
-            ls -la ../../build/ios/archive/
+            echo "Archive contents:"
+            ls -la ../../build/ios/archive/App.xcarchive/
+            echo "Archive Info.plist:"
+            cat "../../build/ios/archive/App.xcarchive/Info.plist" 2>/dev/null || echo "Info.plist not found in archive"
           else
             echo "❌ iOS archive was not created!"
-            echo "Build directory contents:"
-            ls -la ../../build/ios/ || echo "Build directory not found"
+            echo "Current directory: $(pwd)"
+            echo "Build directory structure:"
+            find ../../build -type d -name "*" 2>/dev/null | head -20 || echo "Build directory not found or empty"
+            echo "Files in build directory:"
+            ls -la ../../build/ 2>/dev/null || echo "Cannot access build directory"
+            echo "xcodebuild exit code: $?"
             exit 1
           fi
 
