@@ -2,10 +2,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AuthService, type AuthUser } from '@/lib/services/auth'
-import { MobileAuthService } from '@/lib/services/mobileAuth'
 import { supabase } from '@/lib/supabase/client'
 import { log } from '@/lib/utils/logger'
-import { isCapacitorApp, isIPhoneCapacitorApp, isIPhoneDevice } from '@/utils/mobileDetection'
 
 interface AuthContextType {
   user: AuthUser | null
@@ -21,58 +19,32 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Ultra-simplified session loading to prevent white page issues
+    // Simple session loading - same for web and mobile
     const loadSession = async () => {
       try {
         // Quick timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
+        const timeoutPromise = new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Session load timeout')), 2000)
         )
 
         const sessionPromise = (async () => {
-          const isMobile = isCapacitorApp()
-          const isIPhone = isIPhoneDevice()
-          const isIPhoneApp = isIPhoneCapacitorApp()
-          
-          // Enhanced detection for all iPhone models
-          if (isMobile || isIPhone || isIPhoneApp) {
-            log.info('SimpleAuthContext: Mobile/iPhone device detected', { 
-              isMobile, 
-              isIPhone, 
-              isIPhoneApp 
-            })
-            
-            // For mobile/iPhone, use enhanced mobile auth service
-            try {
-              const { session, error } = await MobileAuthService.restoreMobileSession()
-              if (session && !error) {
-                const userData = await AuthService.getCurrentUser()
-                if (userData) {
-                  setUser(userData)
-                  return
-                }
-              }
-            } catch (mobileError) {
-              log.warn('Mobile session restoration failed, trying direct user fetch:', mobileError)
-              // Fallback: try direct user fetch for all iPhone models
-              try {
-                const userData = await AuthService.getCurrentUser()
-                if (userData) {
-                  setUser(userData)
-                  return
-                }
-              } catch (fallbackError) {
-                log.warn('Mobile fallback also failed:', fallbackError)
-              }
-            }
-          } else {
-            // For web, standard flow
+          // Simple session check - works for both web and mobile
+          const { data: { session }, error } = await supabase.auth.getSession()
+
+          if (error) {
+            log.warn('Session error:', error)
+            return null
+          }
+
+          if (session?.user) {
             const userData = await AuthService.getCurrentUser()
             if (userData) {
               setUser(userData)
               return
             }
           }
+
+          return null
         })()
 
         await Promise.race([sessionPromise, timeoutPromise])
@@ -92,28 +64,15 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         try {
           if (event === 'SIGNED_IN' && session) {
-            const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
-            if (currentUser) {
-              setUser(currentUser)
-              // Use mobile auth service for session storage on all mobile/iPhone devices
-              if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
-                MobileAuthService.storeMobileSession(session)
-              }
+            const userData = await AuthService.getCurrentUser()
+            if (userData) {
+              setUser(userData)
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null)
-            if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
-              MobileAuthService.clearMobileSession()
-            }
-          } else if (event === 'TOKEN_REFRESHED' && session) {
-            if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
-              MobileAuthService.storeMobileSession(session)
-            }
           }
         } catch (error) {
-          log.warn('SimpleAuthContext: Auth state change error:', error)
-        } finally {
-          setIsLoading(false)
+          log.error('Auth state change error:', error)
         }
       }
     )

@@ -7,43 +7,45 @@ import { log } from '@/lib/utils/productionLogger';
 
 export class CapacitorService {
   static async initialize() {
-    if (!Capacitor.isNativePlatform()) {
-      log.info('Not running on native platform, skipping Capacitor initialization');
-      return; // Only run on native platforms
-    }
-
+    // Always run Capacitor initialization - check for native platform inside try block
     try {
       log.info('Initializing Capacitor for mobile app...');
-      
-      // Configure status bar with error handling
+
+      // Configure status bar with error handling (only on native platforms)
       try {
-        await StatusBar.setStyle({ style: Style.Dark });
-        await StatusBar.setBackgroundColor({ color: '#111827' });
-        log.info('Status bar configured successfully');
+        if (Capacitor.isNativePlatform()) {
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: '#111827' });
+          log.info('Status bar configured successfully');
+        }
       } catch (error) {
         log.warn('Status bar configuration failed:', error);
       }
 
       // Configure splash screen with delay for better UX
       try {
-        // Add a longer delay to ensure splash screen is visible and app is ready
-        setTimeout(async () => {
-          try {
-            await SplashScreen.hide();
-            log.info('Splash screen hidden');
-          } catch (hideError) {
-            log.warn('Error hiding splash screen:', hideError);
-          }
-        }, 2000); // Increased delay for better mobile experience
+        if (Capacitor.isNativePlatform()) {
+          // Add a longer delay to ensure splash screen is visible and app is ready
+          setTimeout(async () => {
+            try {
+              await SplashScreen.hide();
+              log.info('Splash screen hidden');
+            } catch (hideError) {
+              log.warn('Error hiding splash screen:', hideError);
+            }
+          }, 2000); // Increased delay for better mobile experience
+        }
       } catch (error) {
         log.warn('Splash screen configuration failed:', error);
       }
 
-      // Configure keyboard with error handling
+      // Configure keyboard with error handling (only on native platforms)
       try {
-        await Keyboard.setResizeMode({ mode: KeyboardResize.Body });
-        await Keyboard.setStyle({ style: KeyboardStyle.Dark });
-        log.info('Keyboard configured successfully');
+        if (Capacitor.isNativePlatform()) {
+          await Keyboard.setResizeMode({ mode: KeyboardResize.Body });
+          await Keyboard.setStyle({ style: KeyboardStyle.Dark });
+          log.info('Keyboard configured successfully');
+        }
       } catch (error) {
         log.warn('Keyboard configuration failed:', error);
       }

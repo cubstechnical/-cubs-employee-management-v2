@@ -74,7 +74,7 @@ export const isCapacitorApp = (): boolean => {
 
   try {
     // Simple check: if Capacitor exists and is native, it's a mobile app
-    return !!(window.Capacitor && window.Capacitor.isNative);
+    return !!(window.Capacitor && (window.Capacitor as any).isNativePlatform && (window.Capacitor as any).isNativePlatform());
   } catch (error) {
     return false;
   }
@@ -85,7 +85,7 @@ export const isNativePlatform = (): boolean => {
 
   try {
     // Simple check: if Capacitor exists and is native, it's a native platform
-    return !!(window.Capacitor && window.Capacitor.isNative);
+    return !!(window.Capacitor && (window.Capacitor as any).isNativePlatform && (window.Capacitor as any).isNativePlatform());
   } catch (error) {
     return false;
   }

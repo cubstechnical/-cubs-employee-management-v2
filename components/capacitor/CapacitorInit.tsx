@@ -5,17 +5,36 @@ import { CapacitorService } from '@/lib/capacitor';
 
 export default function CapacitorInit() {
   useEffect(() => {
-    // Simple Capacitor initialization - no complex auth logic
+    // Initialize Capacitor service
     CapacitorService.initialize();
 
-    // Simple mobile detection and basic setup
-    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
-      console.log('📱 Mobile app detected - basic initialization complete');
+    // Check if we're in a mobile app environment
+    if (typeof window !== 'undefined') {
+      // Check for Capacitor availability
+      const isCapacitorAvailable = !!(window.Capacitor);
+      const isNativePlatform = !!(window.Capacitor && (window.Capacitor as any).isNativePlatform && (window.Capacitor as any).isNativePlatform());
 
-      // Add a small delay to ensure everything is ready
-      setTimeout(() => {
-        console.log('✅ Mobile app ready');
-      }, 500);
+      console.log('🔍 Capacitor detection:', {
+        isCapacitorAvailable,
+        isNativePlatform,
+        platform: (window.Capacitor as any)?.getPlatform ? (window.Capacitor as any).getPlatform() : 'unknown'
+      });
+
+      if (isCapacitorAvailable) {
+        if (isNativePlatform) {
+          console.log('📱 Native mobile app detected - full initialization');
+
+          // Add a delay to ensure Capacitor is fully ready
+          setTimeout(() => {
+            console.log('✅ Native mobile app fully initialized');
+            // Trigger any mobile-specific initialization here
+          }, 1000);
+        } else {
+          console.log('🌐 Web/PWA environment detected - minimal initialization');
+        }
+      } else {
+        console.log('⚠️ Capacitor not available - running in web mode');
+      }
     }
   }, []);
 

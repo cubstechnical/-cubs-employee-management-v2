@@ -11,9 +11,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
   },
 });
 
@@ -24,7 +24,7 @@ export const isSupabaseAvailable = true;
 export const getAuthState = async () => {
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
-    if (error) {
+      if (error) {
       console.warn('Auth error:', error);
       return { user: null, session: null };
     }

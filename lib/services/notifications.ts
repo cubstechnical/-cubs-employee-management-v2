@@ -56,8 +56,8 @@ export class NotificationService {
       };
     } catch (error) {
       log.error('Notifications service error:', error);
-      return {
-        success: false,
+      return { 
+        success: false, 
         error: 'Internal server error',
         notifications: []
       };
@@ -112,8 +112,8 @@ export class NotificationService {
       };
     } catch (error) {
       log.error('Create notification error:', error);
-      return {
-        success: false,
+      return { 
+        success: false, 
         error: 'Internal server error'
       };
     }
