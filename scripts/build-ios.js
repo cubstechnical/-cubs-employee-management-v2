@@ -1,0 +1,146 @@
+#!/usr/bin/env node
+
+/**
+ * iOS-specific build script
+ * Ensures proper build for iOS Capacitor apps
+ */
+
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+console.log('🍎 Building for iOS...');
+
+try {
+  // 1. Clean previous builds
+  console.log('🧹 Cleaning previous builds...');
+  if (fs.existsSync('out')) {
+    execSync('rmdir /s /q out', { stdio: 'inherit', shell: true });
+  }
+  if (fs.existsSync('.next')) {
+    execSync('rmdir /s /q .next', { stdio: 'inherit', shell: true });
+  }
+
+  // 2. Build Next.js app
+  console.log('🏗️ Building Next.js app...');
+  execSync('npm run build', { stdio: 'inherit' });
+
+  // 3. Verify build output
+  console.log('✅ Verifying build output...');
+  if (!fs.existsSync('.next')) {
+    throw new Error('Build output not found');
+  }
+
+  // 4. Create out directory for Capacitor
+  console.log('📁 Creating out directory for Capacitor...');
+  if (!fs.existsSync('out')) {
+    fs.mkdirSync('out', { recursive: true });
+  }
+
+  // 5. Copy static files to out directory
+  console.log('📋 Copying static files...');
+  const staticFiles = [
+    'public',
+    '.next/static',
+    '.next/server'
+  ];
+
+  staticFiles.forEach(file => {
+    if (fs.existsSync(file)) {
+      // For .next/static and .next/server, preserve the _next directory structure
+      let destPath;
+      if (file.startsWith('.next/')) {
+        // Replace .next with _next in the destination path
+        const relativePath = file.replace('.next/', '');
+        destPath = path.join('out', '_next', relativePath);
+      } else {
+        destPath = path.join('out', path.basename(file));
+      }
+      
+      if (fs.statSync(file).isDirectory()) {
+        execSync(`xcopy "${file}" "${destPath}" /E /I /Y`, { stdio: 'inherit', shell: true });
+      } else {
+        fs.copyFileSync(file, destPath);
+      }
+    }
+  });
+
+  // 6. Create index.html for Capacitor
+  console.log('📄 Creating index.html for Capacitor...');
+  const indexHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="CUBS Admin" />
+  <meta name="application-name" content="CUBS Admin" />
+  <meta name="msapplication-TileColor" content="#d3194f" />
+  <meta name="msapplication-tap-highlight" content="no" />
+  <meta name="theme-color" content="#d3194f" />
+  <meta name="format-detection" content="telephone=no" />
+  <meta name="apple-touch-fullscreen" content="yes" />
+  <meta name="apple-mobile-web-app-orientations" content="portrait" />
+  <meta name="mobile-web-app-status-bar-style" content="default" />
+
+  <title>CUBS Employee Management</title>
+  <meta name="description" content="Comprehensive employee management system for CUBS Technical Group" />
+
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="icon" href="/assets/cubs.webp" sizes="32x32" type="image/webp" />
+  <link rel="icon" href="/assets/cubs.webp" sizes="192x192" type="image/webp" />
+  <link rel="icon" href="/assets/cubs.webp" sizes="512x512" type="image/webp" />
+  <link rel="apple-touch-icon" href="/assets/cubs.webp" />
+  <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
+
+  <script>
+    // Prevent zoom on input focus (iOS)
+    document.addEventListener('DOMContentLoaded', function() {
+      var viewport = document.querySelector('meta[name="viewport"]');
+      if (viewport) {
+        viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
+      }
+    });
+  </script>
+</head>
+<body>
+  <div id="__next"></div>
+  <script src="/_next/static/chunks/webpack.js"></script>
+  <script src="/_next/static/chunks/main.js"></script>
+  <script src="/_next/static/chunks/pages/_app.js"></script>
+</body>
+</html>`;
+
+  fs.writeFileSync(path.join('out', 'index.html'), indexHtml);
+
+  // 4. Copy iOS-specific files
+  console.log('📱 Copying iOS-specific files...');
+  const iosFiles = [
+    'lib/utils/iosErrorHandler.ts',
+    'components/ios/IOSLoadingScreen.tsx'
+  ];
+
+  iosFiles.forEach(file => {
+    if (fs.existsSync(file)) {
+      const destPath = path.join('out', file);
+      const destDir = path.dirname(destPath);
+      if (!fs.existsSync(destDir)) {
+        fs.mkdirSync(destDir, { recursive: true });
+      }
+      fs.copyFileSync(file, destPath);
+    }
+  });
+
+  // 5. Update Capacitor
+  console.log('🔄 Updating Capacitor...');
+  execSync('npx cap sync ios', { stdio: 'inherit' });
+
+  console.log('✅ iOS build completed successfully!');
+  console.log('📱 You can now build the iOS app in Xcode');
+
+} catch (error) {
+  console.error('❌ iOS build failed:', error);
+  process.exit(1);
+}

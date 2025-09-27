@@ -24,6 +24,8 @@ import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
 import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
+import IOSLoadingScreen from '@/components/ios/IOSLoadingScreen'
+import '@/lib/utils/iosErrorHandler'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -156,7 +158,7 @@ export default function RootLayout({
           <ThemeProvider>
             <SimpleAuthProvider>
               <QueryProvider>
-                <OptimizedLayout>
+                <IOSLoadingScreen><OptimizedLayout>
                 <ClientOnly fallback={
                   <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                     <div className="text-center">
@@ -177,7 +179,7 @@ export default function RootLayout({
                     {children}
                   </Suspense>
                 </ClientOnly>
-              </OptimizedLayout>
+              </OptimizedLayout></IOSLoadingScreen>
               </QueryProvider>
             </SimpleAuthProvider>
           </ThemeProvider>

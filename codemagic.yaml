@@ -24,7 +24,7 @@ workflows:
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          npm run build:mobile
+          npm run build:ios
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
@@ -456,7 +456,7 @@ workflows:
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          npm run build:mobile
+          npm run build:ios
       - name: Sync Capacitor iOS
         script: |
           echo "🔄 Syncing web assets with Capacitor iOS..."
@@ -546,7 +546,7 @@ workflows:
       - name: Build Next.js app for mobile
         script: |
           echo "🏗️ Building Next.js production app for mobile deployment..."
-          npm run build:mobile
+          npm run build:ios
       - name: Sync Capacitor Android
         script: |
           echo "🔄 Syncing web assets with Capacitor Android..."

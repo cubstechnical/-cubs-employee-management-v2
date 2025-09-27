@@ -31,7 +31,7 @@
     "build:mobile": "node scripts/build-mobile.js",
     "build:mobile:android": "npm run build:mobile && npx cap open android",
     "build:mobile:ios": "npm run build:mobile && cap open ios",
-    "build:ios": "npm run build && npx cap sync ios",
+    "build:ios": "node scripts/build-ios.js",
     "build:ios:clean": "rm -rf out && npm run build:ios",
     "start": "next start",
     "lint": "next lint",
@@ -78,7 +78,9 @@
     "start:optimized": "NODE_ENV=production next start",
     "lint:fix": "next lint --fix",
     "clean": "rm -rf .next out node_modules/.cache",
-    "precommit": "npm run lint:fix && npm run type-check"
+    "precommit": "npm run lint:fix && npm run type-check",
+    "debug:ios": "node scripts/debug-ios.js",
+    "fix:ios": "node scripts/fix-ios-white-page.js"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.450.0",

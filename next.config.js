@@ -83,7 +83,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 /** @type {import('next').NextConfig} */
 const baseConfig = {
   // Mobile-optimized build configuration for Capacitor
-  // output: 'export', // Temporarily disabled for dynamic routes
+  // output: 'export', // Temporarily disabled - API routes not compatible
   trailingSlash: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
