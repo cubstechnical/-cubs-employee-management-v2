@@ -5,8 +5,7 @@ import { log } from '@/lib/utils/logger';
 // Edge function URL for document access
 const EDGE_FUNCTION_URL = process.env.NEXT_PUBLIC_SUPABASE_URL + '/functions/v1/doc-manager';
 
-// Required for static export
-export const dynamic = 'force-dynamic';
+// Removed for static export compatibility
 
 export async function GET(
   request: NextRequest,

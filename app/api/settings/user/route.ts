@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase/server';
 import { log } from '@/lib/utils/logger';
 
 // Required for static export
-export const dynamic = 'force-dynamic';
+// Removed for static export compatibility
 
 export async function GET(request: NextRequest) {
   try {

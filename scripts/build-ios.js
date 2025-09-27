@@ -85,17 +85,11 @@ try {
     }
   });
 
-  // 6. Copy the actual Next.js build output instead of creating custom index.html
-  console.log('📄 Copying Next.js build output...');
+  // 6. Create a proper static index.html for PWA/mobile
+  console.log('📄 Creating static index.html for PWA/mobile...');
   
-  // Copy the main index.html from Next.js build
-  if (fs.existsSync('.next/server/app/index.html')) {
-    const nextIndexHtml = fs.readFileSync('.next/server/app/index.html', 'utf8');
-    fs.writeFileSync(path.join('out', 'index.html'), nextIndexHtml);
-    console.log('✅ Copied Next.js index.html');
-  } else {
-    // Fallback: Create a proper index.html that loads the Next.js app
-    const indexHtml = `<!DOCTYPE html>
+  // Create a proper static index.html that works with PWA and mobile
+  const staticIndexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -123,6 +117,18 @@ try {
   <link rel="apple-touch-icon" href="/assets/cubs.webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
 
+  <!-- Preload critical resources -->
+  <link rel="preload" href="/_next/static/css/a3555e678bd5d024.css" as="style" />
+  <link rel="preload" href="/_next/static/css/041aafb0eaf4613c.css" as="style" />
+  <link rel="preload" href="/_next/static/css/15d6c795b9c2fcaf.css" as="style" />
+  <link rel="preload" href="/_next/static/css/544f237784b80ff5.css" as="style" />
+  
+  <!-- Load CSS -->
+  <link rel="stylesheet" href="/_next/static/css/a3555e678bd5d024.css" />
+  <link rel="stylesheet" href="/_next/static/css/041aafb0eaf4613c.css" />
+  <link rel="stylesheet" href="/_next/static/css/15d6c795b9c2fcaf.css" />
+  <link rel="stylesheet" href="/_next/static/css/544f237784b80ff5.css" />
+
   <script>
     // Prevent zoom on input focus (iOS)
     document.addEventListener('DOMContentLoaded', function() {
@@ -131,14 +137,12 @@ try {
         viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
       }
     });
-  </script>
-</head>
-<body>
-  <div id="__next"></div>
-  <script>
-    // Load the Next.js app
+    
+    // Initialize Next.js app data
     window.__NEXT_DATA__ = {
-      props: {},
+      props: {
+        pageProps: {}
+      },
       page: "/",
       query: {},
       buildId: "static",
@@ -148,14 +152,42 @@ try {
       scriptLoader: []
     };
   </script>
-  <script src="/_next/static/chunks/webpack.js"></script>
-  <script src="/_next/static/chunks/main.js"></script>
-  <script src="/_next/static/chunks/pages/_app.js"></script>
+</head>
+<body>
+  <div id="__next">
+    <!-- Loading screen for PWA/mobile -->
+    <div class="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div class="text-center space-y-4">
+        <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3194f] mx-auto"></div>
+        <p class="text-white text-lg font-medium">Initializing...</p>
+        <p class="text-gray-400 text-sm">Please wait...</p>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Load Next.js scripts -->
+  <script src="/_next/static/chunks/webpack-ba9f98305ca13bce.js"></script>
+  <script src="/_next/static/chunks/main-app-a0e8ab46bb6360cc.js"></script>
+  <script src="/_next/static/chunks/polyfills-42372ed130431b0a.js"></script>
+  <script src="/_next/static/chunks/react-d031d8a3-b717d54361277a72.js"></script>
+  <script src="/_next/static/chunks/react-ec847047-6b7b1def18eeb552.js"></script>
+  <script src="/_next/static/chunks/app/layout-55cbeb360efd671c.js"></script>
+  <script src="/_next/static/chunks/app/page-f3956634-f5adae3b48a692e5.js"></script>
+  
+  <!-- Initialize the app -->
+  <script>
+    // Initialize Next.js app
+    if (typeof window !== 'undefined' && window.next) {
+      window.next.router.ready(() => {
+        console.log('Next.js app initialized');
+      });
+    }
+  </script>
 </body>
 </html>`;
-    fs.writeFileSync(path.join('out', 'index.html'), indexHtml);
-    console.log('✅ Created fallback index.html');
-  }
+
+  fs.writeFileSync(path.join('out', 'index.html'), staticIndexHtml);
+  console.log('✅ Created static index.html for PWA/mobile');
 
   // 4. Copy iOS-specific files
   console.log('📱 Copying iOS-specific files...');
