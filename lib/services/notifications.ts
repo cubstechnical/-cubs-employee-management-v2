@@ -5,14 +5,14 @@ import { log } from '@/lib/utils/productionLogger';
 
 export interface Notification {
   id: string;
-  user_id: string;
   title: string;
   message: string;
-  type: 'info' | 'warning' | 'success' | 'error';
-  category: string;
-  priority: 'low' | 'medium' | 'high';
-  read: boolean;
-  created_at: string;
+  type: 'success' | 'warning' | 'error' | 'info';
+  status: 'sent' | 'pending' | 'failed';
+  recipient: string;
+  createdAt: string;
+  scheduledFor?: string;
+  category: 'visa' | 'document' | 'system' | 'approval';
 }
 
 export class NotificationService {
@@ -38,9 +38,21 @@ export class NotificationService {
         };
       }
 
+      // Transform the data to match the expected interface
+      const transformedNotifications: Notification[] = (notifications || []).map(n => ({
+        id: n.id,
+        title: n.title,
+        message: n.message,
+        type: n.type,
+        status: 'sent', // Default status
+        recipient: n.user_id || 'system',
+        createdAt: n.created_at,
+        category: n.category || 'system'
+      }));
+
       return {
         success: true,
-        notifications: notifications || []
+        notifications: transformedNotifications
       };
     } catch (error) {
       log.error('Notifications service error:', error);

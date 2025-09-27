@@ -86,8 +86,8 @@ export default function NotificationsPage() {
             sent: result.notifications.filter((n: Notification) => n.type === 'success').length,
             pending: result.notifications.filter((n: Notification) => n.type === 'info').length,
             failed: result.notifications.filter((n: Notification) => n.type === 'error').length,
-            today: result.notifications.filter((n: Notification) => new Date(n.created_at).toDateString() === today).length,
-            thisWeek: result.notifications.filter((n: Notification) => new Date(n.created_at) >= weekAgo).length
+            today: result.notifications.filter((n: Notification) => new Date(n.createdAt).toDateString() === today).length,
+            thisWeek: result.notifications.filter((n: Notification) => new Date(n.createdAt) >= weekAgo).length
           };
 
           setStats(newStats);
@@ -172,15 +172,14 @@ export default function NotificationsPage() {
         const { NotificationService } = await import('@/lib/services/notifications');
         // For now, use empty stats since we don't have visa-specific logic
         setVisaStats({
-          total: 0,
-          pending: 0,
-          sent: 0,
-          failed: 0
+          totalEmployees: 0,
+          expiringSoon: 0,
+          expired: 0,
+          notificationsSent: 0
         });
-          return;
-        }
-      } catch (apiError) {
-        log.warn('API not available, using fallback visa stats:', apiError);
+        return;
+      } catch (serviceError) {
+        log.warn('Service not available, using fallback visa stats:', serviceError);
       }
 
       // Fallback: Generate mock visa stats
