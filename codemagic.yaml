@@ -36,7 +36,28 @@ workflows:
         script: |
           echo "📱 Installing CocoaPods dependencies..."
           cd ios/App
-          pod install
+
+          # Check if CocoaPods is installed
+          if ! command -v pod &> /dev/null; then
+            echo "❌ CocoaPods not found, installing..."
+            sudo gem install cocoapods
+          else
+            echo "✅ CocoaPods is already installed"
+          fi
+
+          # Install dependencies
+          echo "📦 Installing iOS dependencies..."
+          pod install --verbose
+
+          # Verify Pods were installed
+          if [ -d "Pods" ]; then
+            echo "✅ Pods directory created"
+            ls -la Pods/ | head -10
+          else
+            echo "❌ Pods directory not found after install!"
+            exit 1
+          fi
+
           cd ../..
       - name: Set build number
         script: |
@@ -75,6 +96,41 @@ workflows:
           fi
           
           cd ../..
+      - name: Verify iOS project setup
+        script: |
+          echo "🔍 Verifying iOS project setup..."
+          cd ios/App
+
+          # Check if workspace exists
+          if [ ! -f "App.xcworkspace" ]; then
+            echo "❌ App.xcworkspace not found!"
+            ls -la *.xcworkspace 2>/dev/null || echo "No workspace files found"
+            exit 1
+          fi
+
+          # Check if project file exists
+          if [ ! -f "App.xcodeproj/project.pbxproj" ]; then
+            echo "❌ App.xcodeproj not found!"
+            ls -la *.xcodeproj 2>/dev/null || echo "No project files found"
+            exit 1
+          fi
+
+          # Verify team ID in project
+          if grep -q "DEVELOPMENT_TEAM = GQCYASP5XS" App.xcodeproj/project.pbxproj; then
+            echo "✅ DEVELOPMENT_TEAM found in project"
+          else
+            echo "❌ DEVELOPMENT_TEAM not found in project!"
+            exit 1
+          fi
+
+          echo "✅ iOS project setup verified"
+          cd ../..
+      - name: Prepare build directories
+        script: |
+          echo "📁 Preparing build directories..."
+          mkdir -p build/ios/archive
+          mkdir -p build/ios/derivedData
+          echo "✅ Build directories created"
       - name: Use provisioning profiles
         script: |
           echo "🔐 Using provisioning profiles..."
@@ -83,8 +139,20 @@ workflows:
         script: |
           echo "🏗️ Building and archiving iOS app..."
           cd ios/App
-          
+
+          # Check if workspace exists
+          if [ ! -f "App.xcworkspace" ]; then
+            echo "❌ App.xcworkspace not found!"
+            ls -la
+            exit 1
+          fi
+
+          # Clean previous builds
+          echo "🧹 Cleaning previous iOS builds..."
+          xcodebuild clean -workspace App.xcworkspace -scheme App
+
           # Build and archive with explicit team and signing settings
+          echo "📦 Building iOS archive..."
           xcodebuild -workspace App.xcworkspace \
             -scheme App \
             -configuration Release \
@@ -97,23 +165,59 @@ workflows:
             PROVISIONING_PROFILE="" \
             PROVISIONING_PROFILE_SPECIFIER="" \
             -allowProvisioningUpdates \
-            -allowProvisioningDeviceRegistration
+            -allowProvisioningDeviceRegistration \
+            ONLY_ACTIVE_ARCH=NO \
+            -derivedDataPath ../../build/ios/derivedData
+
+          # Check if archive was created
+          if [ -d "../../build/ios/archive/App.xcarchive" ]; then
+            echo "✅ iOS archive created successfully"
+            ls -la ../../build/ios/archive/
+          else
+            echo "❌ iOS archive was not created!"
+            echo "Build directory contents:"
+            ls -la ../../build/ios/ || echo "Build directory not found"
+            exit 1
+          fi
+
           cd ../..
       - name: Verify archive has team
         script: |
           echo "🔍 Verifying archive has development team..."
+
+          # Check if build directory exists
+          if [ ! -d "build" ]; then
+            echo "❌ Build directory not found!"
+            ls -la
+            exit 1
+          fi
+
+          # Check if archive exists
           if [ -d "build/ios/archive/App.xcarchive" ]; then
             echo "✅ Archive created successfully"
             echo "Archive contents:"
             ls -la build/ios/archive/App.xcarchive/
-            
+
             # Check if the archive has team information
             if [ -f "build/ios/archive/App.xcarchive/Info.plist" ]; then
               echo "Archive Info.plist content:"
-              cat build/ios/archive/App.xcarchive/Info.plist | grep -i team || echo "No team information found in archive"
+              cat build/ios/archive/App.xcarchive/Info.plist
+
+              # Check for team information
+              if grep -q "DevelopmentTeam" build/ios/archive/App.xcarchive/Info.plist; then
+                echo "✅ Archive has development team information"
+              else
+                echo "⚠️ Archive may not have development team information"
+              fi
+            else
+              echo "⚠️ Archive Info.plist not found"
             fi
           else
             echo "❌ Archive not found!"
+            echo "Available directories:"
+            find build -type d -name "*" 2>/dev/null || echo "No build directories found"
+            echo "Current directory contents:"
+            ls -la
             exit 1
           fi
       - name: Debug Environment Variables
