@@ -22,8 +22,8 @@ export class IOSErrorHandler {
     });
 
     // Capacitor-specific error handling
-    if (window.Capacitor) {
-      window.Capacitor.addListener('appStateChange', ({ isActive }) => {
+    if (window.Capacitor && (window.Capacitor as any).addListener) {
+      (window.Capacitor as any).addListener('appStateChange', ({ isActive }: { isActive: boolean }) => {
         if (isActive) {
           console.log('📱 App became active');
           this.checkAppHealth();

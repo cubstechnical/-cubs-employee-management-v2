@@ -40,14 +40,14 @@ export class NotificationService {
 
       // Transform the data to match the expected interface
       const transformedNotifications: Notification[] = (notifications || []).map(n => ({
-        id: n.id,
-        title: n.title,
-        message: n.message,
-        type: n.type,
-        status: 'sent', // Default status
-        recipient: n.user_id || 'system',
-        createdAt: n.created_at,
-        category: n.category || 'system'
+        id: String(n.id),
+        title: String(n.title),
+        message: String(n.message),
+        type: (n.type as 'success' | 'warning' | 'error' | 'info') || 'info',
+        status: 'sent' as const, // Default status
+        recipient: String(n.user_id || 'system'),
+        createdAt: String(n.created_at),
+        category: (n.category as 'visa' | 'document' | 'system' | 'approval') || 'system'
       }));
 
       return {
@@ -108,7 +108,16 @@ export class NotificationService {
 
       return {
         success: true,
-        notification
+        notification: {
+          id: String(notification.id),
+          title: String(notification.title),
+          message: String(notification.message),
+          type: (notification.type as 'success' | 'warning' | 'error' | 'info') || 'info',
+          status: 'sent' as const,
+          recipient: String(notification.user_id || 'system'),
+          createdAt: String(notification.created_at),
+          category: (notification.category as 'visa' | 'document' | 'system' | 'approval') || 'system'
+        }
       };
     } catch (error) {
       log.error('Create notification error:', error);

@@ -55,7 +55,7 @@ export class UserSettingsService {
 
       return {
         success: true,
-        settings: settings || defaultSettings
+        settings: (settings as unknown as UserSettings) || defaultSettings
       };
     } catch (error) {
       log.error('User settings service error:', error);
@@ -102,7 +102,7 @@ export class UserSettingsService {
 
       return {
         success: true,
-        settings: updatedSettings
+        settings: updatedSettings as unknown as UserSettings
       };
     } catch (error) {
       log.error('Update user settings error:', error);
