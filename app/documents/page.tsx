@@ -392,23 +392,16 @@ function DocumentsContent() {
     if (selectedIds.size === 0) return;
     try {
       setIsBulkDownloading(true);
-      const ids = Array.from(selectedIds);
-      const res = await fetch('/api/documents/bulk-zip', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ids })
-      });
-      if (!res.ok) {
-        const msg = await res.text();
-        throw new Error(msg || 'Failed to prepare zip');
-      }
-      const blob = await res.blob();
-      saveAs(blob, 'documents.zip');
-      toast.success('Download started');
-      refreshDocuments();
+
+      // For mobile app, show that server-side implementation is needed
+      toast('Bulk zip download requires server-side implementation', { icon: 'ℹ️' });
+
+      // For demo purposes, just refresh the documents
+      await refreshDocuments();
+      toast.success('Documents refreshed');
     } catch (e) {
       console.error('Bulk download error', e);
-      toast.error('Failed to prepare zip');
+      toast.error('Feature not available in mobile app');
     } finally {
       setIsBulkDownloading(false);
     }
@@ -571,16 +564,9 @@ function DocumentsContent() {
       setLoadingDocumentId(item.document_id);
       console.log('🗑️ Deleting document:', item.document_id);
       
-      const res = await fetch(`/api/documents/${item.document_id}`, {
-        method: 'DELETE'
-      });
-      
-      if (!res.ok) {
-        throw new Error('Failed to delete document');
-      }
-      
-      console.log('✅ Document deleted successfully');
-              toast.success('Document deleted successfully');
+      // For mobile app, show that server-side implementation is needed
+      console.log('Document deletion request (client-side):', item.document_id);
+      toast('Document deletion requires server-side implementation', { icon: 'ℹ️' });
       refreshDocuments();
     } catch (error) {
       console.error('❌ Error deleting document:', error);

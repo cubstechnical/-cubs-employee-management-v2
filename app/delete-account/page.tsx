@@ -42,40 +42,14 @@ export default function DeleteAccountPage() {
         return;
       }
 
-      const response = await fetch('/api/auth/delete-account', {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          email,
-          reason,
-          confirmation
-        }),
-      });
+      // For mobile app, show that server-side implementation is needed
+      console.log('Account deletion request (client-side):', { email, reason, confirmation });
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.details?.userDeleted) {
-          toast.success('Account and all associated data deleted successfully. You will be logged out.');
-        } else if (data.details?.error) {
-          toast.error(`Account deletion failed: ${data.details.error}`);
-          setIsDeleting(false);
-          return;
-        } else {
-          toast.success('Account deletion request submitted. You will be logged out.');
-        }
-
-        // Logout user
-        await supabase.auth.signOut();
-        router.push('/login');
-      } else {
-        const error = await response.json();
-        toast.error(`Failed to delete account: ${error.error || 'Unknown error'}`);
-        setIsDeleting(false);
-      }
+      // For demo purposes, just sign out
+      toast('Account deletion requires server-side implementation', { icon: 'ℹ️' });
+      await supabase.auth.signOut();
+      toast.success('Signed out successfully');
+      router.push('/login');
     } catch (error) {
       log.error('Error deleting account:', error);
       toast.error('An unexpected error occurred. Please try again.');

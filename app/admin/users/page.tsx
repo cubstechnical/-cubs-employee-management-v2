@@ -25,10 +25,9 @@ export default function AdminUsers() {
     if (!email || !password) { toast.error('Email and password required'); return; }
     setLoading(true);
     try {
-      const res = await fetch('/api/admin/provision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'Failed');
-      toast.success('Admin provisioned');
+      // For mobile app, show that server-side implementation is needed
+      console.log('Admin provisioning request (client-side):', { email, password });
+      toast('Admin provisioning requires server-side implementation', { icon: 'ℹ️' });
       setEmail('');
       await load();
     } catch (e: any) {

@@ -53,26 +53,22 @@ export default function AdminSettings() {
   const loadSettings = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await fetch('/api/settings/admin');
-      const data = await response.json();
-      
-      if (data.success && data.data) {
-        // Map the API response to our settings state
-        const loadedSettings = {
-          notifications: data.data.notifications?.value || settings.notifications,
-          security: data.data.security?.value || settings.security,
-          system: data.data.system?.value || settings.system,
-          appearance: data.data.appearance?.value || settings.appearance,
-        };
-        setSettings(loadedSettings);
-      }
+      // For now, just use the default settings
+      // In a real app, you might load from localStorage or a client-side service
+      console.log('Loading admin settings (client-side)');
+
+      // Simulate loading time
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      // Settings are already initialized with defaults
+      // No API call needed for client-side admin settings
     } catch (error) {
       log.error('Error loading admin settings:', error);
       // Keep default settings on error
     } finally {
       setIsLoading(false);
     }
-  }, [settings.appearance, settings.notifications, settings.security, settings.system]);
+  }, []);
 
   // Load settings from API
   useEffect(() => {

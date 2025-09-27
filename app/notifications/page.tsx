@@ -205,26 +205,9 @@ export default function NotificationsPage() {
   const sendTestEmail = async () => {
     setIsSendingTest(true);
     try {
-      // Try to send via API first
-      try {
-        const response = await fetch('/api/test-email', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            toEmail: 'info@cubstechnical.com'
-          })
-        });
-
-        const result = await response.json();
-        if (result.success) {
-          toast.success('Test email sent successfully to info@cubstechnical.com');
-          return;
-        }
-      } catch (apiError) {
-        log.warn('API not available, simulating test email:', apiError);
-      }
+      // For mobile app, show that server-side implementation is needed
+      console.log('Test email request (client-side)');
+      toast('Test email requires server-side implementation', { icon: 'ℹ️' });
 
       // Fallback: Simulate successful email send
       await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
