@@ -15,10 +15,18 @@ try {
   // 1. Clean previous builds
   console.log('🧹 Cleaning previous builds...');
   if (fs.existsSync('out')) {
-    execSync('rmdir /s /q out', { stdio: 'inherit', shell: true });
+    if (process.platform === 'win32') {
+      execSync('rmdir /s /q out', { stdio: 'inherit', shell: true });
+    } else {
+      execSync('rm -rf out', { stdio: 'inherit' });
+    }
   }
   if (fs.existsSync('.next')) {
-    execSync('rmdir /s /q .next', { stdio: 'inherit', shell: true });
+    if (process.platform === 'win32') {
+      execSync('rmdir /s /q .next', { stdio: 'inherit', shell: true });
+    } else {
+      execSync('rm -rf .next', { stdio: 'inherit' });
+    }
   }
 
   // 2. Build Next.js app
@@ -58,7 +66,13 @@ try {
       }
       
       if (fs.statSync(file).isDirectory()) {
-        execSync(`xcopy "${file}" "${destPath}" /E /I /Y`, { stdio: 'inherit', shell: true });
+        // Use cross-platform copy command
+        if (process.platform === 'win32') {
+          execSync(`xcopy "${file}" "${destPath}" /E /I /Y`, { stdio: 'inherit', shell: true });
+        } else {
+          // Unix/Linux/macOS
+          execSync(`cp -r "${file}" "${destPath}"`, { stdio: 'inherit' });
+        }
       } else {
         fs.copyFileSync(file, destPath);
       }
