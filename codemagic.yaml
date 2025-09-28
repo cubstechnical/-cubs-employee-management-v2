@@ -16,7 +16,7 @@ workflows:
         APP_STORE_APP_ID: "6752909710"
         DEVELOPMENT_TEAM: "GQCYASP5XS"
     integrations:
-      app_store_connect: appstorekey
+      app_store_connect: integration
     scripts:
       - name: Install Node.js dependencies
         script: |

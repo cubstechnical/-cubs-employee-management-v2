@@ -96,12 +96,36 @@ try {
   try {
     if (fs.existsSync('.next/build-manifest.json')) {
       const buildManifest = JSON.parse(fs.readFileSync('.next/build-manifest.json', 'utf8'));
-      if (buildManifest.pages && buildManifest.pages['/_app']) {
-        appJsFile = buildManifest.pages['/_app'][0];
+
+      // Find main.js in rootMainFiles
+      if (buildManifest.rootMainFiles && buildManifest.rootMainFiles.length > 0) {
+        const mainFile = buildManifest.rootMainFiles.find(file => file.includes('main-'));
+        if (mainFile) {
+          mainJsFile = mainFile.replace('static/chunks/', '');
+        }
       }
+
+      // Find webpack.js in rootMainFiles
+      if (buildManifest.rootMainFiles && buildManifest.rootMainFiles.length > 0) {
+        const webpackFile = buildManifest.rootMainFiles.find(file => file.includes('webpack-'));
+        if (webpackFile) {
+          webpackJsFile = webpackFile.replace('static/chunks/', '');
+        }
+      }
+
+      // Find _app.js in pages
+      if (buildManifest.pages && buildManifest.pages['/_app'] && buildManifest.pages['/_app'].length > 0) {
+        appJsFile = buildManifest.pages['/_app'][buildManifest.pages['/_app'].length - 1];
+        appJsFile = appJsFile.replace('static/chunks/pages/', '');
+      }
+
+      console.log('📄 Build manifest parsed successfully:');
+      console.log('   - Main JS:', mainJsFile);
+      console.log('   - App JS:', appJsFile);
+      console.log('   - Webpack JS:', webpackJsFile);
     }
   } catch (error) {
-    console.warn('Could not read build manifest, using default file names');
+    console.warn('Could not read build manifest, using default file names:', error.message);
   }
 
   const indexHtml = `<!DOCTYPE html>
@@ -183,16 +207,36 @@ try {
     // Initialize the app
     window.onload = async function() {
       try {
-        // Load main build files
-        await loadScript('/_next/static/chunks/webpack.js');
-        await loadScript('/_next/static/chunks/main.js');
-        await loadScript('/_next/static/chunks/pages/_app.js');
+        // Load CSS files first
+        const cssFiles = [
+          '041aafb0eaf4613c.css',
+          '1c3a54188e785e75.css',
+          '544f237784b80ff5.css',
+          'df9af8de86ae8dde.css'
+        ];
+
+        for (const cssFile of cssFiles) {
+          await loadCSS('/_next/static/css/' + cssFile);
+        }
+
+        // Load main build files with correct dynamic names
+        await loadScript('/_next/static/chunks/${webpackJsFile}');
+        await loadScript('/_next/static/chunks/${mainJsFile}');
+        await loadScript('/_next/static/chunks/pages/${appJsFile}');
 
         console.log('✅ Mobile app loaded successfully');
         console.log('📱 Platform:', window.Capacitor?.platform || 'web');
         console.log('🔌 Is Native:', window.Capacitor?.isNative || false);
+        console.log('📄 Loaded files:');
+        console.log('   - Webpack:', '${webpackJsFile}');
+        console.log('   - Main:', '${mainJsFile}');
+        console.log('   - App:', '${appJsFile}');
       } catch (error) {
         console.error('❌ Failed to load mobile app:', error);
+        console.error('🔍 Debugging info:');
+        console.error('   - Webpack file:', '${webpackJsFile}');
+        console.error('   - Main file:', '${mainJsFile}');
+        console.error('   - App file:', '${appJsFile}');
       }
     };
   </script>
