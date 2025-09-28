@@ -127,7 +127,7 @@ body, #__next, main {
     url('/assets/bg1.webp');
 }
 
-/* Enhanced logo container for better visibility over image */
+/* Enhanced logo container for better visibility over image - Fixed glaring */
 .login-logo-container-image {
   position: relative;
   display: flex;
@@ -135,13 +135,13 @@ body, #__next, main {
   justify-content: center;
   align-items: center;
   margin-bottom: 0.5rem;
-  /* Add subtle backdrop for better logo visibility */
-  background: rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(10px);
+  /* Reduced backdrop for less glaring effect */
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
   border-radius: 10px;
   padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
   max-width: 300px;
   width: 100%;
 }
@@ -181,18 +181,17 @@ body, #__next, main {
   filter: drop-shadow(0 6px 16px rgba(211, 25, 79, 0.4));
 }
 
-/* Enhanced card styling for better visibility over image */
+/* Enhanced card styling for better visibility over image - Fixed glaring issue */
 .login-card-image {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.2),
-    0 2px 8px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+    0 8px 32px rgba(0, 0, 0, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.08);
   transition: all 0.3s ease;
   width: 100%;
-  max-width: 24rem; /* Reduced card size */
+  max-width: 24rem;
 }
 
 .dark .login-card-image {

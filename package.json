@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",
+    "build:pwa": "next build",
     "build:analyze": "ANALYZE=true npm run build",
     "analyze:bundle": "node scripts/analyze-bundle.js",
     "test:performance": "node scripts/performance-test.js",
