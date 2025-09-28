@@ -128,6 +128,70 @@ try {
     console.warn('Could not read build manifest, using default file names:', error.message);
   }
 
+  // Build the JavaScript code with proper variable interpolation using string concatenation
+  const scriptContent = `
+    // Load the main build files
+    const loadScript = (src) => {
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+      });
+    };
+
+    // Load CSS files
+    const loadCSS = (href) => {
+      const link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = href;
+      document.head.appendChild(link);
+    };
+
+    // Initialize the app
+    window.onload = async function() {
+      try {
+        // Load CSS files first
+        const cssFiles = [
+          '041aafb0eaf4613c.css',
+          '1c3a54188e785e75.css',
+          '544f237784b80ff5.css',
+          'df9af8de86ae8dde.css'
+        ];
+
+        for (const cssFile of cssFiles) {
+          await loadCSS('/_next/static/css/' + cssFile);
+        }
+
+        // Load main build files with correct dynamic names
+        await loadScript('/_next/static/chunks/' + '${webpackJsFile}');
+        await loadScript('/_next/static/chunks/' + '${mainJsFile}');
+        await loadScript('/_next/static/chunks/pages/' + '${appJsFile}');
+
+        console.log('✅ Mobile app loaded successfully');
+        console.log('📱 Platform:', window.Capacitor?.platform || 'web');
+        console.log('🔌 Is Native:', window.Capacitor?.isNative || false);
+        console.log('📄 Loaded files:');
+        console.log('   - Webpack: ' + '${webpackJsFile}');
+        console.log('   - Main: ' + '${mainJsFile}');
+        console.log('   - App: ' + '${appJsFile}');
+      } catch (error) {
+        console.error('❌ Failed to load mobile app:', error);
+        console.error('🔍 Debugging info:');
+        console.error('   - Webpack file: ' + '${webpackJsFile}');
+        console.error('   - Main file: ' + '${mainJsFile}');
+        console.error('   - App file: ' + '${appJsFile}');
+      }
+    };
+  `;
+
+  // Replace the template variables in the script content
+  const processedScript = scriptContent
+    .replace(/\$\{webpackJsFile\}/g, webpackJsFile)
+    .replace(/\$\{mainJsFile\}/g, mainJsFile)
+    .replace(/\$\{appJsFile\}/g, appJsFile);
+
   const indexHtml = `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -184,62 +248,7 @@ try {
   <div id="__next"></div>
 
   <!-- Load build assets dynamically -->
-  <script>
-    // Load the main build files
-    const loadScript = (src) => {
-      return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-      });
-    };
-
-    // Load CSS files
-    const loadCSS = (href) => {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = href;
-      document.head.appendChild(link);
-    };
-
-    // Initialize the app
-    window.onload = async function() {
-      try {
-        // Load CSS files first
-        const cssFiles = [
-          '041aafb0eaf4613c.css',
-          '1c3a54188e785e75.css',
-          '544f237784b80ff5.css',
-          'df9af8de86ae8dde.css'
-        ];
-
-        for (const cssFile of cssFiles) {
-          await loadCSS('/_next/static/css/' + cssFile);
-        }
-
-        // Load main build files with correct dynamic names
-        await loadScript('/_next/static/chunks/${webpackJsFile}');
-        await loadScript('/_next/static/chunks/${mainJsFile}');
-        await loadScript('/_next/static/chunks/pages/${appJsFile}');
-
-        console.log('✅ Mobile app loaded successfully');
-        console.log('📱 Platform:', window.Capacitor?.platform || 'web');
-        console.log('🔌 Is Native:', window.Capacitor?.isNative || false);
-        console.log('📄 Loaded files:');
-        console.log('   - Webpack:', '${webpackJsFile}');
-        console.log('   - Main:', '${mainJsFile}');
-        console.log('   - App:', '${appJsFile}');
-      } catch (error) {
-        console.error('❌ Failed to load mobile app:', error);
-        console.error('🔍 Debugging info:');
-        console.error('   - Webpack file:', '${webpackJsFile}');
-        console.error('   - Main file:', '${mainJsFile}');
-        console.error('   - App file:', '${appJsFile}');
-      }
-    };
-  </script>
+  <script>${processedScript}</script>
 </body>
 </html>`;
 
