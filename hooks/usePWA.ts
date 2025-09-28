@@ -61,7 +61,7 @@ export function usePWA() {
     const checkInstallability = () => {
       // Listen for the beforeinstallprompt event
       const handleBeforeInstallPrompt = (e: Event) => {
-        e.preventDefault();
+        // Don't prevent default - let the PWARegistration component handle it
         setInstallPrompt(e as any);
         setIsInstallable(true);
       };

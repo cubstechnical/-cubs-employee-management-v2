@@ -133,6 +133,10 @@ const baseConfig = {
               "object-src 'none'"
             ].join('; '),
           },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
         ],
       },
     ];
