@@ -133,6 +133,20 @@ try {
   <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
 
   <script>
+    // Capacitor detection for mobile app
+    if (typeof window !== 'undefined') {
+      window.Capacitor = {
+        isNative: typeof window.Capacitor !== 'undefined' && window.Capacitor.isNative,
+        platform: 'web'
+      };
+
+      // Detect if running in Capacitor
+      if (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:') {
+        window.Capacitor.platform = 'native';
+        window.Capacitor.isNative = true;
+      }
+    }
+
     // Prevent zoom on input focus (iOS)
     document.addEventListener('DOMContentLoaded', function() {
       var viewport = document.querySelector('meta[name="viewport"]');
@@ -175,6 +189,8 @@ try {
         await loadScript('/_next/static/chunks/pages/_app.js');
 
         console.log('✅ Mobile app loaded successfully');
+        console.log('📱 Platform:', window.Capacitor?.platform || 'web');
+        console.log('🔌 Is Native:', window.Capacitor?.isNative || false);
       } catch (error) {
         console.error('❌ Failed to load mobile app:', error);
       }

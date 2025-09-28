@@ -55,31 +55,33 @@ export class MobileErrorRecovery {
     setTimeout(() => {
       // Strategy 1: Reload the page
       if (this.retryCount === 1) {
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && (window as any).location) {
           (window as any).location.reload();
         }
       }
       // Strategy 2: Clear cache and reload
       else if (this.retryCount === 2) {
-        if (typeof window !== 'undefined' && 'caches' in window) {
-          caches.keys().then(names => {
-            names.forEach(name => caches.delete(name));
+        if (typeof window !== 'undefined' && (window as any).location) {
+          if ('caches' in window) {
+            caches.keys().then(names => {
+              names.forEach(name => caches.delete(name));
+              if ((window as any).location) (window as any).location.reload();
+            });
+          } else {
             (window as any).location.reload();
-          });
-        } else if (typeof window !== 'undefined') {
-          (window as any).location.reload();
+          }
         }
       }
       // Strategy 3: Clear localStorage and reload
       else {
         try {
-          if (typeof window !== 'undefined') {
-            localStorage.clear();
-            sessionStorage.clear();
-            (window as any).location.reload();
-          }
+          if (typeof localStorage !== 'undefined') localStorage.clear();
+          if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
         } catch (e) {
           // Ignore storage errors
+        }
+        if (typeof window !== 'undefined' && (window as any).location) {
+          (window as any).location.reload();
         }
       }
     }, 1000 * this.retryCount);
@@ -146,5 +148,7 @@ export class MobileErrorRecovery {
   }
 }
 
-// Don't auto-initialize - let components handle error recovery
-// This prevents conflicts with other error handling systems
+// Initialize on import
+if (typeof window !== 'undefined') {
+  MobileErrorRecovery.init();
+}

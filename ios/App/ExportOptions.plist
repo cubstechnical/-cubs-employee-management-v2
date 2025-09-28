@@ -20,10 +20,5 @@
     <string>export</string>
     <key>signingStyle</key>
     <string>automatic</string>
-    <key>provisioningProfiles</key>
-    <dict>
-        <key>com.cubstechnical.employee</key>
-        <string>match AppStore com.cubstechnical.employee</string>
-    </dict>
 </dict>
 </plist>

@@ -80,7 +80,10 @@
     "clean": "rm -rf .next out node_modules/.cache",
     "precommit": "npm run lint:fix && npm run type-check",
     "debug:ios": "node scripts/debug-ios.js",
-    "fix:ios": "node scripts/fix-ios-white-page.js"
+    "fix:ios": "node scripts/fix-ios-white-page.js",
+    "fix:mobile": "node scripts/fix-mobile-app.js",
+    "verify:mobile": "node scripts/verify-mobile-build.js",
+    "build:mobile:clean": "npm run fix:mobile && npm run build:mobile"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.450.0",

@@ -6,6 +6,7 @@ workflows:
       xcode: latest
       cocoapods: default
       node: 20.11.0
+      java: 11
       groups:
         - CUBS
       vars:
@@ -56,7 +57,7 @@ workflows:
         script: |
           echo "📱 Installing CocoaPods dependencies..."
           cd ios/App
-          pod install
+          pod install --repo-update
           cd ../..
       - name: Set build number
         script: |
@@ -528,6 +529,7 @@ workflows:
     name: Android Build
     max_build_duration: 60
     environment:
+      java: 11
       groups:
         - google_play
       vars:
@@ -538,7 +540,7 @@ workflows:
           echo "🔧 Setting up Android build environment..."
           export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64
           export ANDROID_HOME=$HOME/Android/Sdk
-          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools
+          export PATH=$PATH:$ANDROID_HOME/tools:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin
       - name: Install dependencies
         script: |
           echo "📦 Installing Node.js dependencies..."
@@ -585,6 +587,9 @@ workflows:
         script: |
           echo "📦 Building Android App Bundle..."
           cd android
+          # Clean previous builds
+          ./gradlew clean
+          # Build signed release AAB
           ./gradlew bundleRelease
           cd ..
       - name: List build artifacts

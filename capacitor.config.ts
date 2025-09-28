@@ -5,16 +5,6 @@ const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
   webDir: 'out',
-  server: {
-    androidScheme: 'https',
-    allowNavigation: [
-      'https://cubsgroups.com',
-      'https://*.cubsgroups.com',
-      'https://f005.backblazeb2.com',
-      'https://s3.us-east-005.backblazeb2.com'
-    ],
-    cleartext: false
-  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 2000,
