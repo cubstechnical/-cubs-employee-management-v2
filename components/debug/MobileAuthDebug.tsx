@@ -6,6 +6,13 @@ import { AuthService } from '@/lib/services/auth';
 import { isCapacitorApp } from '@/utils/mobileDetection';
 import { log } from '@/lib/utils/productionLogger';
 
+// Check if Capacitor Browser plugin is available
+const hasBrowserPlugin = () => {
+  return typeof window !== 'undefined' &&
+         window.Capacitor &&
+         (window.Capacitor as any).Browser;
+};
+
 interface AuthDebugInfo {
   isMobile: boolean;
   userEmail: string | null;
@@ -201,6 +208,35 @@ export default function MobileAuthDebug() {
             className="w-full bg-red-500 text-white py-2 px-4 rounded text-sm"
           >
             🗑️ Clear Storage
+          </button>
+
+          <button
+            onClick={async () => {
+              if (hasBrowserPlugin()) {
+                try {
+                  await (window.Capacitor as any).Browser.open({
+                    url: `${window.location.origin}/mobile-debug.html`,
+                    windowName: '_blank',
+                    toolbarColor: '#d3194f'
+                  });
+                  log.info('Debug: Opened mobile debug page in browser');
+                } catch (error) {
+                  log.error('Debug: Failed to open mobile debug page:', error);
+                  alert('Failed to open debug page. Error: ' + error);
+                }
+              } else {
+                // Fallback: try to navigate programmatically
+                try {
+                  window.open('/mobile-debug.html', '_blank');
+                } catch (error) {
+                  log.error('Debug: Failed to open debug page:', error);
+                  alert('Debug page not available. Error: ' + error);
+                }
+              }
+            }}
+            className="w-full bg-purple-500 text-white py-2 px-4 rounded text-sm"
+          >
+            🔧 Open Debug Tools
           </button>
         </div>
 

@@ -181,8 +181,8 @@ export default function RootLayout({
               </QueryProvider>
             </SimpleAuthProvider>
           </ThemeProvider>
-          {/* Mobile authentication debug - temporarily disabled for production builds */}
-          {false && <MobileAuthDebug />}
+          {/* Mobile authentication debug - enabled for troubleshooting */}
+          <MobileAuthDebug />
           {/* Mobile loading screen for Capacitor apps - only show during actual loading */}
           <MobileLoadingScreen isLoading={false} />
         </ErrorBoundary>
