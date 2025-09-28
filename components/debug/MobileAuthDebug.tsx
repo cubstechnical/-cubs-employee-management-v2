@@ -6,12 +6,6 @@ import { AuthService } from '@/lib/services/auth';
 import { isCapacitorApp } from '@/utils/mobileDetection';
 import { log } from '@/lib/utils/productionLogger';
 
-// Check if Capacitor Browser plugin is available
-const hasBrowserPlugin = () => {
-  return typeof window !== 'undefined' &&
-         window.Capacitor &&
-         (window.Capacitor as any).Browser;
-};
 
 interface AuthDebugInfo {
   isMobile: boolean;
@@ -38,8 +32,6 @@ export default function MobileAuthDebug() {
     lastLogin: null,
     sessionPersisted: null
   });
-
-  const [showDebug, setShowDebug] = useState(false);
 
   useEffect(() => {
     const updateDebugInfo = async () => {
@@ -87,25 +79,19 @@ export default function MobileAuthDebug() {
     return () => clearInterval(interval);
   }, [user, isLoading]);
 
-  if (!showDebug) {
-    return (
-      <button
-        onClick={() => setShowDebug(true)}
-        className="fixed bottom-4 right-4 bg-red-500 text-white px-3 py-2 rounded text-sm z-50"
-        style={{ zIndex: 9999 }}
-      >
-        🔍 Debug Auth
-      </button>
-    );
-  }
-
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ zIndex: 9999 }}>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ zIndex: 9999 }} data-debug-component>
       <div className="bg-white dark:bg-gray-800 p-6 rounded-lg max-w-md w-full mx-4">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-bold">🔍 Authentication Debug</h3>
           <button
-            onClick={() => setShowDebug(false)}
+            onClick={() => {
+              // Hide the debug component
+              const debugEl = document.querySelector('[data-debug-component]');
+              if (debugEl) {
+                debugEl.remove();
+              }
+            }}
             className="text-gray-500 hover:text-gray-700"
           >
             ✕
@@ -210,34 +196,6 @@ export default function MobileAuthDebug() {
             🗑️ Clear Storage
           </button>
 
-          <button
-            onClick={async () => {
-              if (hasBrowserPlugin()) {
-                try {
-                  await (window.Capacitor as any).Browser.open({
-                    url: `${window.location.origin}/mobile-debug.html`,
-                    windowName: '_blank',
-                    toolbarColor: '#d3194f'
-                  });
-                  log.info('Debug: Opened mobile debug page in browser');
-                } catch (error) {
-                  log.error('Debug: Failed to open mobile debug page:', error);
-                  alert('Failed to open debug page. Error: ' + error);
-                }
-              } else {
-                // Fallback: try to navigate programmatically
-                try {
-                  window.open('/mobile-debug.html', '_blank');
-                } catch (error) {
-                  log.error('Debug: Failed to open debug page:', error);
-                  alert('Debug page not available. Error: ' + error);
-                }
-              }
-            }}
-            className="w-full bg-purple-500 text-white py-2 px-4 rounded text-sm"
-          >
-            🔧 Open Debug Tools
-          </button>
         </div>
 
         <div className="mt-4 text-xs text-gray-500">

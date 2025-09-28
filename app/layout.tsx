@@ -18,7 +18,6 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
 import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
-import MobileAuthDebug from '@/components/debug/MobileAuthDebug'
 import MobileLoadingScreen from '@/components/ui/MobileLoadingScreen'
 import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
 import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
@@ -181,8 +180,6 @@ export default function RootLayout({
               </QueryProvider>
             </SimpleAuthProvider>
           </ThemeProvider>
-          {/* Mobile authentication debug - enabled for troubleshooting */}
-          <MobileAuthDebug />
           {/* Mobile loading screen for Capacitor apps - only show during actual loading */}
           <MobileLoadingScreen isLoading={false} />
         </ErrorBoundary>

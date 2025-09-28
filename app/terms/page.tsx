@@ -1,7 +1,5 @@
 'use client';
 
-// Force dynamic rendering for this page since it may use authentication
-export const dynamic = 'force-dynamic';
 
 // Layout is now handled by the root layout
 import Card from '@/components/ui/Card';

@@ -1,5 +1,6 @@
 'use client';
 
+
 import { useState, useEffect } from 'react';
 // Layout is now handled by the root layout
 import Card from '@/components/ui/Card';

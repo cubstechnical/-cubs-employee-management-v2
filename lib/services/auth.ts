@@ -227,7 +227,7 @@ export class AuthService {
     }
   }
 
-  // Get current user - properly check for authenticated session
+  // Get current user - robust authentication check for mobile
   static async getCurrentUser(): Promise<AuthUser | null> {
     if (!isSupabaseAvailable) {
       return await DevAuthService.getCurrentUser();
@@ -235,34 +235,33 @@ export class AuthService {
     try {
       // Quick timeout to prevent hanging on mobile
       const timeoutPromise = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('getUser timeout')), 3000)
+        setTimeout(() => reject(new Error('getUser timeout')), 2000)
       );
 
       const userPromise = supabase.auth.getUser();
       const { data: { user }, error } = await Promise.race([userPromise, timeoutPromise]) as any;
 
       if (error || !user) {
-        log.warn('AuthService: No authenticated user found');
-        return null;
+        return null; // No authenticated user - this is correct for login page
       }
 
-      // Check if the user is actually authenticated (has a valid session)
+      // Check if there's an active session
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      if (sessionError || !session || !session.access_token) {
-        log.warn('AuthService: No valid session found');
-        return null;
+      if (sessionError || !session) {
+        log.warn('AuthService: User found but no active session');
+        return null; // User exists but no active session
       }
 
-      // Only return user if there's a valid authenticated session
+      // Return basic user info for authenticated users
       const authUser: AuthUser = {
         id: user.id,
         email: user.email || '',
-        role: 'user', // Will be updated with actual role later
-        approved: true, // Will be updated with actual approval status later
+        role: 'user', // Will be updated with actual role when needed
+        approved: true, // Will be updated with actual status when needed
       };
 
-      log.info('AuthService: Found authenticated user:', authUser.email);
+      log.info('AuthService: Authenticated user found:', authUser.email);
       return authUser;
     } catch (error) {
       log.warn('AuthService: getCurrentUser failed:', error);

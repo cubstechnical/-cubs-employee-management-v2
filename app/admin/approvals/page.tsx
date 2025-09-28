@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react';
 
-// Force dynamic rendering for this page since it uses authentication
-export const dynamic = 'force-dynamic';
 // Layout is now handled by the root layout
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
