@@ -43,58 +43,25 @@ export default function LoginPage() {
 
   // Preload background image for better performance
   useEffect(() => {
-    const img = new window.Image();
-    img.onload = () => {
-      setBackgroundLoaded(true);
-    };
-    img.onerror = () => {
-      log.warn('Background image failed to load, using fallback');
-      setBackgroundLoaded(true); // Still show the page with fallback
-    };
-    img.src = '/assets/bg1.webp';
+    setBackgroundLoaded(true); // Immediately set to loaded to prevent blocking
   }, []);
 
   useEffect(() => {
-    // Enhanced auth check for iPhone 13 and mobile devices
+    // Simplified auth check to prevent issues with Safari/Face ID
     const checkAuth = async () => {
       try {
-        // Quick timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Auth check timeout')), 4000)
+        // Simple timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth check timeout')), 2000)
         );
 
-        const authPromise = (async () => {
-          // Enhanced mobile/iPhone detection
-          const isMobile = typeof window !== 'undefined' && window.Capacitor;
-          const isIPhone = typeof window !== 'undefined' && /iPhone/.test(navigator.userAgent || '');
-          const isIPhoneApp = isIPhone && !/Safari/.test(navigator.userAgent || '');
-          
-          // For mobile/iPhone devices, try multiple approaches
-          if (isMobile || isIPhone || isIPhoneApp) {
-            log.info('Login: Mobile/iPhone device detected', { isMobile, isIPhone, isIPhoneApp });
-            try {
-              // Try session first for mobile/iPhone
-              const { session } = await AuthService.getSession();
-              if (session) {
-                const user = await AuthService.getCurrentUser();
-                return user;
-              }
-            } catch (sessionError) {
-              log.info('Mobile/iPhone session check failed, trying direct user fetch:', sessionError);
-            }
-          }
-          
-          // Fallback to direct user fetch
-          return await AuthService.getCurrentUser();
-        })();
+        const authPromise = AuthService.getCurrentUser();
 
         const user = await Promise.race([authPromise, timeoutPromise]) as any;
 
         if (user) {
           log.info('✅ User found, redirecting to dashboard');
           router.push('/dashboard');
-        } else {
-          log.info('ℹ️ No user found, staying on login page');
         }
       } catch (error) {
         log.info('Auth check failed (non-critical):', error);
@@ -102,9 +69,8 @@ export default function LoginPage() {
       }
     };
 
-    // Longer delay for mobile devices to ensure proper initialization
-    const delay = typeof window !== 'undefined' && window.Capacitor ? 1000 : 500;
-    const timer = setTimeout(checkAuth, delay);
+    // Shorter delay to prevent issues
+    const timer = setTimeout(checkAuth, 300);
     return () => clearTimeout(timer);
   }, [router]);
 
@@ -112,12 +78,6 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      // Check network connectivity for mobile
-      if (typeof navigator !== 'undefined' && !navigator.onLine) {
-        toast.error('No internet connection. Please check your network and try again.');
-        return;
-      }
-
       // Use AuthContext signIn method which properly updates the context
       await signIn(data.email, data.password);
 
@@ -128,18 +88,14 @@ export default function LoginPage() {
 
     } catch (error) {
       log.error('Login error:', error);
-      // Better error handling for mobile with more specific messages
+      // Simplified error handling to prevent issues
       if (error instanceof Error) {
-        if (error.message.includes('timeout')) {
-          toast.error('Login timeout. Please check your connection and try again.');
-        } else if (error.message.includes('network')) {
-          toast.error('Network error. Please check your internet connection.');
-        } else if (error.message.includes('Invalid login credentials')) {
+        if (error.message.includes('Invalid login credentials')) {
           toast.error('Invalid email or password. Please check your credentials.');
         } else if (error.message.includes('Email not confirmed')) {
           toast.error('Please check your email and click the confirmation link before signing in.');
         } else {
-          toast.error(`Login failed: ${error.message}`);
+          toast.error('Login failed. Please try again.');
         }
       } else {
         toast.error('Login failed. Please try again.');
@@ -177,15 +133,10 @@ export default function LoginPage() {
 
   return (
     <div
-      className={`min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto ${
-        backgroundLoaded ? 'loaded' : 'loading'
-      }`}
+      className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto"
       style={{
         contain: 'layout style paint',
-        willChange: 'transform',
-        transform: 'translateZ(0)',
-        scrollBehavior: 'smooth',
-        WebkitOverflowScrolling: 'touch'
+        scrollBehavior: 'smooth'
       }}
     >
       <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">
@@ -230,14 +181,7 @@ export default function LoginPage() {
                 </p>
               </div>
 
-              <form onSubmit={(e) => {
-                try {
-                  handleSubmit(onSubmit)(e);
-                } catch (error) {
-                  log.error('Form submission error:', error);
-                  toast.error('Form submission failed. Please try again.');
-                }
-              }} className="space-y-6">
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div>
                   <Input
                     label="Email Address"

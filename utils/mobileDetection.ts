@@ -73,8 +73,8 @@ export const isCapacitorApp = (): boolean => {
   if (typeof window === 'undefined') return false;
 
   try {
-    // Simple Capacitor detection - check if window.Capacitor exists and has native capabilities
-    return !!(window as any).Capacitor?.isNative || !!(window as any).Capacitor?.platform;
+    const capacitor = (window as any).Capacitor;
+    return !!(capacitor?.isNative || capacitor?.platform);
   } catch (error) {
     return false;
   }
@@ -135,11 +135,10 @@ export const isNativePlatform = (): boolean => {
  * Detects iPhone 6, 7, 8, X, 11, 12, 13, 14, 15, 16, 17, etc.
  */
 export const isIPhoneDevice = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') return false;
 
   try {
-    const userAgent = navigator.userAgent || '';
-    return /iPhone/.test(userAgent);
+    return /iPhone/.test(navigator.userAgent || '');
   } catch (error) {
     return false;
   }
