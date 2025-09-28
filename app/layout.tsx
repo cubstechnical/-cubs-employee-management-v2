@@ -6,7 +6,6 @@ import '../styles/mobile-pwa.css'
 import '../styles/login-background-image.css'
 import OptimizedLayout from '@/components/layout/OptimizedLayout'
 import PWARegistration from '@/components/pwa/PWARegistration'
-import PWAInstallBanner from '@/components/pwa/PWAInstallBanner'
 import CapacitorInit from '@/components/capacitor/CapacitorInit'
 import dynamic from 'next/dynamic'
 
@@ -152,7 +151,6 @@ export default function RootLayout({
           </ErrorBoundary>
         )}
                 <PWARegistration />
-                <PWAInstallBanner />
                 <CapacitorInit />
                 <ErrorBoundary>
           <ThemeProvider>

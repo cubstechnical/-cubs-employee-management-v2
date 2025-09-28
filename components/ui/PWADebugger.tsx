@@ -4,7 +4,7 @@ import { usePWA } from '@/hooks/usePWA';
 import { useState, useEffect } from 'react';
 
 export function PWADebugger() {
-  const { isPWA, isInstallable, isStandalone, installPrompt } = usePWA();
+  const { isPWA, isStandalone } = usePWA();
   const [isVisible, setIsVisible] = useState(false);
   const [debugInfo, setDebugInfo] = useState<any>({});
 
@@ -16,9 +16,7 @@ export function PWADebugger() {
     // Collect debug information
     setDebugInfo({
       isPWA,
-      isInstallable,
       isStandalone,
-      installPrompt: !!installPrompt,
       userAgent: navigator.userAgent,
       windowWidth: window.innerWidth,
       windowHeight: window.innerHeight,
@@ -29,7 +27,7 @@ export function PWADebugger() {
       referrer: document.referrer,
       location: window.location.href
     });
-  }, [isPWA, isInstallable, isStandalone, installPrompt]);
+  }, [isPWA, isStandalone]);
 
   if (!isVisible) return null;
 
@@ -39,7 +37,6 @@ export function PWADebugger() {
       <div className="space-y-1">
         <div>PWA: {isPWA ? '✅' : '❌'}</div>
         <div>Standalone: {isStandalone ? '✅' : '❌'}</div>
-        <div>Installable: {isInstallable ? '✅' : '❌'}</div>
         <div>Touch: {debugInfo.touchSupport ? '✅' : '❌'}</div>
         <div>Size: {debugInfo.windowWidth}x{debugInfo.windowHeight}</div>
         <div>Display Mode: {debugInfo.displayMode ? 'Standalone' : 'Browser'}</div>

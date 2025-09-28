@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react';
 export default function MobileDebugger() {
   const { isPWA, isStandalone } = usePWA();
   const [debugInfo, setDebugInfo] = useState({
+    isPWA: false,
+    isStandalone: false,
     userAgent: '',
     screenWidth: 0,
     screenHeight: 0,
@@ -26,6 +28,8 @@ export default function MobileDebugger() {
       const isMobileBehavior = isPWA || isSmallScreen;
 
       setDebugInfo({
+        isPWA,
+        isStandalone,
         userAgent,
         screenWidth: screen.width,
         screenHeight: screen.height,
@@ -40,9 +44,11 @@ export default function MobileDebugger() {
 
     updateDebugInfo();
     window.addEventListener('resize', updateDebugInfo);
-    
-    return () => window.removeEventListener('resize', updateDebugInfo);
-  }, [isPWA]);
+
+    return () => {
+      window.removeEventListener('resize', updateDebugInfo);
+    };
+  }, [isPWA, isStandalone]);
 
   return (
     <div className="fixed bottom-4 right-4 bg-black bg-opacity-90 text-white p-4 rounded-lg text-xs max-w-xs z-[9999]">
