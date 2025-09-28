@@ -14,8 +14,8 @@ import Input from '@/components/ui/Input';
 import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 import { log } from '@/lib/utils/productionLogger';
-import '@/styles/login-simple.css';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -126,26 +126,43 @@ export default function LoginPage() {
 
   return (
     <div
-      className="login-simple-bg flex flex-col items-center justify-center py-4 px-4 relative safe-area-all overflow-y-auto"
+      className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto"
       style={{
         contain: 'layout style paint',
         scrollBehavior: 'smooth'
       }}
     >
-      <div className="login-container w-full max-w-sm flex flex-col items-center space-y-2">
-        {/* Logo - Simplified */}
-        <div className="text-center mb-6">
+      <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">
+        {/* Logo */}
+        <div className="login-logo-container-image text-center">
           <div className="flex justify-center mb-4">
-            <div className="w-24 h-24 bg-[#d3194f] rounded-full flex items-center justify-center shadow-lg">
-              <span className="text-white font-bold text-xl">CUBS</span>
+            <div className="relative">
+              <Image
+                src="/assets/cubs.webp"
+                alt="CUBS Logo"
+                width={120}
+                height={120}
+                className="login-logo-image drop-shadow-lg"
+                priority
+                style={{ width: '120px', height: '120px' }}
+                onError={(e) => {
+                  log.info('Logo failed to load, using fallback');
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                }}
+              />
+              {/* Fallback logo */}
+              <div className="hidden w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                CUBS
+              </div>
             </div>
           </div>
-          <p className="text-lg font-bold text-gray-800 dark:text-white px-4 py-2 rounded-lg border-2 border-[#d3194f] bg-white dark:bg-gray-800 shadow-md">
-            CUBS Employee Management
+          <p className="text-white dark:text-white mt-1 font-bold text-sm text-center drop-shadow-lg bg-black bg-opacity-50 px-3 py-1 rounded-lg backdrop-blur-sm whitespace-nowrap">
+            Employee Management Portal
           </p>
         </div>
 
-        <Card className="w-full p-6 shadow-xl bg-white/95 dark:bg-gray-800/95 backdrop-blur-sm">
+        <Card className="w-full p-6 login-card-image shadow-2xl">
           {!isForgotPassword ? (
             <>
               <div className="text-center mb-6">

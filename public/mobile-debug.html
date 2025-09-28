@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes, viewport-fit=cover" />
+  <title>Mobile Debug - CUBS</title>
+  <style>
+    body { 
+      font-family: system-ui; 
+      padding: 20px; 
+      background: #f8fafc; 
+      margin: 0;
+    }
+    .debug-section { 
+      background: white; 
+      padding: 15px; 
+      margin: 10px 0; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+    }
+    .debug-title { 
+      color: #d3194f; 
+      font-weight: bold; 
+      margin-bottom: 10px; 
+    }
+    .debug-item { 
+      margin: 5px 0; 
+      font-size: 14px; 
+    }
+    .success { color: #059669; }
+    .error { color: #dc2626; }
+    .warning { color: #d97706; }
+    button {
+      background: #d3194f;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      margin: 5px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="debug-section">
+    <div class="debug-title">🔧 CUBS Mobile Debug Tool</div>
+    <button onclick="runDiagnostics()">Run Diagnostics</button>
+    <button onclick="testAssets()">Test Assets</button>
+    <button onclick="clearCache()">Clear Cache</button>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    function log(message, type = 'info') {
+      const results = document.getElementById('results');
+      const div = document.createElement('div');
+      div.className = `debug-item ${type}`;
+      div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+      results.appendChild(div);
+      console.log(message);
+    }
+
+    function runDiagnostics() {
+      document.getElementById('results').innerHTML = '';
+      
+      log('🚀 Starting Mobile Diagnostics...', 'info');
+      
+      // Basic environment
+      log(`📱 User Agent: ${navigator.userAgent}`, 'info');
+      log(`🌐 Location: ${window.location.href}`, 'info');
+      log(`📏 Screen: ${screen.width}x${screen.height}`, 'info');
+      log(`🖥️ Viewport: ${window.innerWidth}x${window.innerHeight}`, 'info');
+      
+      // Capacitor detection
+      if (window.Capacitor) {
+        log('✅ Capacitor is available', 'success');
+        log(`📱 Platform: ${window.Capacitor.getPlatform?.() || 'unknown'}`, 'info');
+        log(`🔌 Is Native: ${window.Capacitor.isNativePlatform?.() || false}`, 'info');
+      } else {
+        log('❌ Capacitor not found', 'error');
+      }
+      
+      // Storage
+      try {
+        localStorage.setItem('test', 'test');
+        localStorage.removeItem('test');
+        log('✅ LocalStorage working', 'success');
+      } catch (e) {
+        log('❌ LocalStorage failed: ' + e.message, 'error');
+      }
+      
+      // Network
+      log(`📶 Online: ${navigator.onLine}`, navigator.onLine ? 'success' : 'error');
+      
+      // Performance
+      if (performance.memory) {
+        log(`💾 Memory: ${Math.round(performance.memory.usedJSHeapSize / 1024 / 1024)}MB used`, 'info');
+      }
+    }
+
+    async function testAssets() {
+      log('🧪 Testing Asset Loading...', 'info');
+      
+      const assets = [
+        '/assets/cubs.webp',
+        '/assets/bg1.webp',
+        '/_next/static/css/041aafb0eaf4613c.css',
+        '/_next/static/chunks/webpack-4d989ff116c06587.js',
+        '/_next/static/chunks/main-app-a9a621ff2bec0808.js',
+        '/_next/static/chunks/pages/_app-e5292fa09aba10cb.js'
+      ];
+      
+      for (const asset of assets) {
+        try {
+          const response = await fetch(asset);
+          if (response.ok) {
+            log(`✅ ${asset} - ${response.status} (${Math.round(response.headers.get('content-length') / 1024) || '?'}KB)`, 'success');
+          } else {
+            log(`❌ ${asset} - ${response.status}`, 'error');
+          }
+        } catch (error) {
+          log(`❌ ${asset} - ${error.message}`, 'error');
+        }
+      }
+    }
+
+    function clearCache() {
+      log('🧹 Clearing Cache...', 'info');
+      
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+        log('✅ Storage cleared', 'success');
+      } catch (e) {
+        log('❌ Storage clear failed: ' + e.message, 'error');
+      }
+      
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+          log('✅ Cache API cleared', 'success');
+        }).catch(e => {
+          log('❌ Cache API clear failed: ' + e.message, 'error');
+        });
+      }
+    }
+
+    // Auto-run diagnostics on load
+    window.onload = () => {
+      setTimeout(runDiagnostics, 500);
+    };
+  </script>
+</body>
+</html>

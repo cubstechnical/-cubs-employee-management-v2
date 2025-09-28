@@ -158,24 +158,69 @@ try {
       document.head.appendChild(link);
     };
 
-    // Initialize the app
+    // Initialize the app with enhanced debugging
     window.onload = async function() {
+      console.log('🚀 Mobile app initialization started...');
+      console.log('📱 User Agent:', navigator.userAgent);
+      console.log('🔌 Capacitor Available:', !!window.Capacitor);
+      console.log('🌐 Location:', window.location.href);
+      
       try {
+        // Show loading indicator
+        document.body.innerHTML = \`
+          <div id="mobile-loading" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #f8fafc; font-family: system-ui;">
+            <div style="text-align: center;">
+              <div style="width: 60px; height: 60px; border: 4px solid #d3194f; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+              <h2 style="color: #d3194f; margin: 0 0 10px;">Loading CUBS App...</h2>
+              <p id="loading-status" style="color: #666; margin: 0;">Initializing...</p>
+            </div>
+          </div>
+          <style>
+            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+          </style>
+        \`;
+        
+        const updateStatus = (status) => {
+          const statusEl = document.getElementById('loading-status');
+          if (statusEl) statusEl.textContent = status;
+          console.log('📱 Status:', status);
+        };
+
+        updateStatus('Loading CSS files...');
         // Load CSS files first (dynamically from build manifest)
         const cssFiles = ${JSON.stringify(cssFiles)};
 
         for (const cssFile of cssFiles) {
           try {
+            updateStatus(\`Loading CSS: \${cssFile}\`);
             await loadCSS('/_next/static/css/' + cssFile);
+            console.log('✅ CSS loaded:', cssFile);
           } catch (error) {
-            console.warn('Failed to load CSS file:', cssFile, error);
+            console.warn('⚠️ Failed to load CSS file:', cssFile, error);
           }
         }
 
+        updateStatus('Loading JavaScript files...');
         // Load main build files with correct dynamic names
+        updateStatus('Loading Webpack...');
         await loadScript('/_next/static/chunks/' + '${webpackJsFile}');
+        console.log('✅ Webpack loaded');
+        
+        updateStatus('Loading Main App...');
         await loadScript('/_next/static/chunks/' + '${mainJsFile}');
+        console.log('✅ Main loaded');
+        
+        updateStatus('Loading App Component...');
         await loadScript('/_next/static/chunks/pages/' + '${appJsFile}');
+        console.log('✅ App loaded');
+        
+        updateStatus('Starting React App...');
+        
+        // Wait a moment for React to initialize
+        setTimeout(() => {
+          const loadingEl = document.getElementById('mobile-loading');
+          if (loadingEl) loadingEl.remove();
+        }, 1000);
 
         console.log('✅ Mobile app loaded successfully');
         console.log('📱 Platform:', window.Capacitor?.platform || 'web');
@@ -266,8 +311,20 @@ try {
   </script>
 </head>
 <body>
-  <div id="__next"></div>
-
+  <div id="__next">
+    <!-- Fallback content while app loads -->
+    <div id="mobile-fallback" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #f8fafc; font-family: system-ui;">
+      <div style="text-align: center;">
+        <div style="width: 60px; height: 60px; border: 4px solid #d3194f; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
+        <h2 style="color: #d3194f; margin: 0 0 10px;">CUBS Employee Management</h2>
+        <p style="color: #666; margin: 0;">Loading application...</p>
+      </div>
+    </div>
+    <style>
+      @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+  </div>
+  
   <!-- Load build assets dynamically -->
   <script>${processedScript}</script>
 </body>
