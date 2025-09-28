@@ -73,54 +73,8 @@ export const isCapacitorApp = (): boolean => {
   if (typeof window === 'undefined') return false;
 
   try {
-    const userAgent = navigator.userAgent || '';
-    
-    // Check for Capacitor-specific indicators
-    const isCapacitor = !!window.Capacitor;
-    const hasCapacitorPlugins = !!window.Capacitor?.isNative;
-    const userAgentContainsCapacitor = /Capacitor/i.test(userAgent);
-    
-    // Enhanced iPhone detection for ALL iPhone models
-    const isIPhone = /iPhone/.test(userAgent);
-    const isIPad = /iPad/.test(userAgent);
-    const isIPod = /iPod/.test(userAgent);
-    const isIOSDevice = isIPhone || isIPad || isIPod;
-    
-    // Check if it's an iOS app (not Safari browser)
-    const isIOSApp = isIOSDevice && 
-                     !/Safari/.test(userAgent) &&
-                     !/Chrome/.test(userAgent) &&
-                     !/Firefox/.test(userAgent) &&
-                     !/Edge/.test(userAgent);
-    
-    // Check for Capacitor in window object
-    const hasCapacitorWindow = !!(window as any).Capacitor;
-    
-    // Check for iOS WKWebView (Capacitor uses this)
-    const isWKWebView = /AppleWebKit/.test(userAgent) && 
-                       !/Safari/.test(userAgent) &&
-                       isIOSDevice;
-    
-    // Check for iOS version patterns (iPhone 6, 7, 8, X, 11, 12, 13, 14, 15, 16, 17, etc.)
-    const isIPhoneModel = /iPhone OS|iPhone/.test(userAgent) && 
-                         !/Safari/.test(userAgent);
-    
-    // Check for iOS app indicators
-    const hasIOSAppIndicators = /Mobile\/[A-Z0-9]+/.test(userAgent) && isIOSDevice;
-    
-    // Check for Capacitor-specific window properties
-    const hasCapacitorProperties = !!(window as any).Capacitor?.isNative || 
-                                   !!(window as any).Capacitor?.platform;
-
-    return isCapacitor || 
-           hasCapacitorPlugins || 
-           userAgentContainsCapacitor || 
-           isIOSApp || 
-           hasCapacitorWindow || 
-           isWKWebView ||
-           isIPhoneModel ||
-           hasIOSAppIndicators ||
-           hasCapacitorProperties;
+    // Simple Capacitor detection - check if window.Capacitor exists and has native capabilities
+    return !!(window as any).Capacitor?.isNative || !!(window as any).Capacitor?.platform;
   } catch (error) {
     return false;
   }
@@ -185,26 +139,7 @@ export const isIPhoneDevice = (): boolean => {
 
   try {
     const userAgent = navigator.userAgent || '';
-    
-    // Basic iPhone detection
-    const isIPhone = /iPhone/.test(userAgent);
-    
-    // Check for iPhone OS patterns
-    const isIPhoneOS = /iPhone OS/.test(userAgent);
-    
-    // Check for iPhone model patterns (iPhone 6, 7, 8, X, 11, 12, 13, 14, 15, 16, 17, etc.)
-    const isIPhoneModel = /iPhone\s*[0-9]+/.test(userAgent);
-    
-    // Check for iPhone in app context (not Safari)
-    const isIPhoneApp = isIPhone && !/Safari/.test(userAgent);
-    
-    // Check for iPhone with iOS version
-    const isIPhoneWithIOS = /iPhone.*OS\s*[0-9]+/.test(userAgent);
-    
-    // Check for iPhone with Mobile pattern
-    const isIPhoneMobile = /iPhone.*Mobile/.test(userAgent);
-    
-    return isIPhone || isIPhoneOS || isIPhoneModel || isIPhoneApp || isIPhoneWithIOS || isIPhoneMobile;
+    return /iPhone/.test(userAgent);
   } catch (error) {
     return false;
   }

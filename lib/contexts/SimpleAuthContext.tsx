@@ -21,57 +21,24 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Ultra-simplified session loading to prevent white page issues
+    // Simplified session loading to prevent white page issues
     const loadSession = async () => {
       try {
-        // Quick timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Session load timeout')), 2000)
+        // Set a reasonable timeout to prevent hanging
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Session load timeout')), 3000)
         )
 
         const sessionPromise = (async () => {
-          const isMobile = isCapacitorApp()
-          const isIPhone = isIPhoneDevice()
-          const isIPhoneApp = isIPhoneCapacitorApp()
-          
-          // Enhanced detection for all iPhone models
-          if (isMobile || isIPhone || isIPhoneApp) {
-            log.info('SimpleAuthContext: Mobile/iPhone device detected', { 
-              isMobile, 
-              isIPhone, 
-              isIPhoneApp 
-            })
-            
-            // For mobile/iPhone, use enhanced mobile auth service
-            try {
-              const { session, error } = await MobileAuthService.restoreMobileSession()
-              if (session && !error) {
-                const userData = await AuthService.getCurrentUser()
-                if (userData) {
-                  setUser(userData)
-                  return
-                }
-              }
-            } catch (mobileError) {
-              log.warn('Mobile session restoration failed, trying direct user fetch:', mobileError)
-              // Fallback: try direct user fetch for all iPhone models
-              try {
-                const userData = await AuthService.getCurrentUser()
-                if (userData) {
-                  setUser(userData)
-                  return
-                }
-              } catch (fallbackError) {
-                log.warn('Mobile fallback also failed:', fallbackError)
-              }
-            }
-          } else {
-            // For web, standard flow
+          // Try to get current user with minimal complexity
+          try {
             const userData = await AuthService.getCurrentUser()
             if (userData) {
               setUser(userData)
               return
             }
+          } catch (authError) {
+            log.warn('AuthService.getCurrentUser failed:', authError)
           }
         })()
 
@@ -80,7 +47,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
         log.warn('SimpleAuthContext: Session loading failed (non-critical):', error)
         // Don't throw - just continue without user
       } finally {
-        // Always set loading to false immediately
+        // Always set loading to false
         setIsLoading(false)
       }
     }
