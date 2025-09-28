@@ -92,6 +92,7 @@ try {
   let mainJsFile = 'main.js';
   let appJsFile = '_app.js';
   let webpackJsFile = 'webpack.js';
+  let cssFiles = [];
 
   try {
     if (fs.existsSync('.next/build-manifest.json')) {
@@ -119,10 +120,18 @@ try {
         appJsFile = appJsFile.replace('static/chunks/pages/', '');
       }
 
+      // Find CSS files from the manifest
+      if (buildManifest.pages && buildManifest.pages['/_app']) {
+        cssFiles = buildManifest.pages['/_app']
+          .filter(file => file.endsWith('.css'))
+          .map(file => file.replace('static/css/', ''));
+      }
+
       console.log('📄 Build manifest parsed successfully:');
       console.log('   - Main JS:', mainJsFile);
       console.log('   - App JS:', appJsFile);
       console.log('   - Webpack JS:', webpackJsFile);
+      console.log('   - CSS Files:', cssFiles);
     }
   } catch (error) {
     console.warn('Could not read build manifest, using default file names:', error.message);
@@ -152,16 +161,15 @@ try {
     // Initialize the app
     window.onload = async function() {
       try {
-        // Load CSS files first
-        const cssFiles = [
-          '041aafb0eaf4613c.css',
-          '1c3a54188e785e75.css',
-          '544f237784b80ff5.css',
-          'df9af8de86ae8dde.css'
-        ];
+        // Load CSS files first (dynamically from build manifest)
+        const cssFiles = ${JSON.stringify(cssFiles)};
 
         for (const cssFile of cssFiles) {
-          await loadCSS('/_next/static/css/' + cssFile);
+          try {
+            await loadCSS('/_next/static/css/' + cssFile);
+          } catch (error) {
+            console.warn('Failed to load CSS file:', cssFile, error);
+          }
         }
 
         // Load main build files with correct dynamic names
@@ -182,6 +190,19 @@ try {
         console.error('   - Webpack file: ' + '${webpackJsFile}');
         console.error('   - Main file: ' + '${mainJsFile}');
         console.error('   - App file: ' + '${appJsFile}');
+        
+        // Show error message to user
+        document.body.innerHTML = \`
+          <div style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; padding: 2rem; text-align: center; background: #f8fafc;">
+            <div style="background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px;">
+              <h2 style="color: #d3194f; margin-bottom: 1rem;">Loading Error</h2>
+              <p style="color: #666; margin-bottom: 1rem;">The app failed to load. Please check your internet connection and try again.</p>
+              <button onclick="window.location.reload()" style="background: #d3194f; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;">
+                Retry
+              </button>
+            </div>
+          </div>
+        \`;
       }
     };
   `;
