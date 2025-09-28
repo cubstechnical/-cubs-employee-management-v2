@@ -227,7 +227,7 @@ export class AuthService {
     }
   }
 
-  // Get current user - simplified for mobile compatibility
+  // Get current user - properly check for authenticated session
   static async getCurrentUser(): Promise<AuthUser | null> {
     if (!isSupabaseAvailable) {
       return await DevAuthService.getCurrentUser();
@@ -242,21 +242,30 @@ export class AuthService {
       const { data: { user }, error } = await Promise.race([userPromise, timeoutPromise]) as any;
 
       if (error || !user) {
+        log.warn('AuthService: No authenticated user found');
         return null;
       }
 
-      // Simple user object without complex profile fetching
-      // Profile data can be fetched later if needed
+      // Check if the user is actually authenticated (has a valid session)
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+
+      if (sessionError || !session || !session.access_token) {
+        log.warn('AuthService: No valid session found');
+        return null;
+      }
+
+      // Only return user if there's a valid authenticated session
       const authUser: AuthUser = {
         id: user.id,
         email: user.email || '',
-        role: 'user', // Default role, can be updated later
-        approved: true, // Default to approved to prevent blocking
+        role: 'user', // Will be updated with actual role later
+        approved: true, // Will be updated with actual approval status later
       };
 
+      log.info('AuthService: Found authenticated user:', authUser.email);
       return authUser;
     } catch (error) {
-      log.warn('AuthService: getCurrentUser failed (non-critical):', error);
+      log.warn('AuthService: getCurrentUser failed:', error);
       return null;
     }
   }
