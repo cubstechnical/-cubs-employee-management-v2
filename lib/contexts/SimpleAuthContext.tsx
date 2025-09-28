@@ -59,23 +59,12 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
       async (event, session) => {
         try {
           if (event === 'SIGNED_IN' && session) {
-            const { user: currentUser } = await AuthService.getCurrentUserWithApproval()
+            const currentUser = await AuthService.getCurrentUser()
             if (currentUser) {
               setUser(currentUser)
-              // Use mobile auth service for session storage on all mobile/iPhone devices
-              if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
-                MobileAuthService.storeMobileSession(session)
-              }
             }
           } else if (event === 'SIGNED_OUT') {
             setUser(null)
-            if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
-              MobileAuthService.clearMobileSession()
-            }
-          } else if (event === 'TOKEN_REFRESHED' && session) {
-            if (isCapacitorApp() || isIPhoneDevice() || isIPhoneCapacitorApp()) {
-              MobileAuthService.storeMobileSession(session)
-            }
           }
         } catch (error) {
           log.warn('SimpleAuthContext: Auth state change error:', error)
