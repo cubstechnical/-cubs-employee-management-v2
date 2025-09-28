@@ -16,7 +16,7 @@ workflows:
         APP_STORE_APP_ID: "6752909710"
         DEVELOPMENT_TEAM: "GQCYASP5XS"
     integrations:
-      app_store_connect: integration
+      app_store_connect: appstorekey
     scripts:
       - name: Install Node.js dependencies
         script: |
@@ -426,7 +426,7 @@ workflows:
       - build/ios/archive/*.xcarchive
     publishing:
       app_store_connect:
-        auth: integration
+        auth: appstorekey
         submit_to_testflight: true
         submit_to_app_store: false
         beta_groups:
