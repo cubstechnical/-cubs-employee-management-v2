@@ -33,9 +33,9 @@ try {
     deleteDir('out');
   }
 
-  // Step 2: Build Next.js app
-  console.log('📦 Building Next.js application...');
-  execSync('npm run build', { stdio: 'inherit' });
+  // Step 2: Build Next.js app for mobile (disable PWA for mobile builds)
+  console.log('📦 Building Next.js application for mobile (PWA disabled)...');
+  execSync('npm run build', { stdio: 'inherit', env: { ...process.env, DISABLE_PWA: 'true' } });
 
   // Step 3: Copy build to out directory for Capacitor
   console.log('📁 Preparing build for Capacitor...');
