@@ -52,6 +52,30 @@ export default function MobileStatusIndicator({ className = '' }: MobileStatusPr
     MobileDiagnosticsService.exportDiagnostics();
   };
 
+  const triggerTestEvents = () => {
+    log.info('Manually triggering test events...');
+
+    // Dispatch test events
+    window.dispatchEvent(new CustomEvent('capacitor-ready'));
+    window.dispatchEvent(new CustomEvent('app-initialized'));
+    window.dispatchEvent(new CustomEvent('mobile-app-ready'));
+
+    // Force refresh debug info
+    setTimeout(() => {
+      window.location.reload();
+    }, 1000);
+  };
+
+  const clearStorage = () => {
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+      log.info('Storage cleared');
+    } catch (error) {
+      log.error('Error clearing storage:', error);
+    }
+  };
+
   if (!isCapacitorApp() || !isVisible) {
     return null;
   }
