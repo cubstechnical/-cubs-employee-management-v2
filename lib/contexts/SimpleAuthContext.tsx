@@ -35,7 +35,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
           try {
             log.info('SimpleAuthContext: Starting session loading...', {
               isCapacitorApp: isCapacitorApp(),
-              isSupabaseAvailable: typeof window !== 'undefined' && window.supabase
+              isSupabaseAvailable: typeof window !== 'undefined' && (window as any).supabase
             });
 
             // First try mobile-specific session restoration
