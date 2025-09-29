@@ -20,6 +20,7 @@ import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
 import MobileLoadingScreen from '@/components/ui/MobileLoadingScreen'
 import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
+import MobileStatusIndicator from '@/components/ui/MobileStatusIndicator'
 import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
@@ -183,6 +184,9 @@ export default function RootLayout({
           {/* Mobile loading screen for Capacitor apps - only show during actual loading */}
           <MobileLoadingScreen isLoading={false} />
           <MobileErrorBoundary>
+            {/* Mobile status indicator - shows diagnostics in native app */}
+            <MobileStatusIndicator />
+          </MobileErrorBoundary>
         </ErrorBoundary>
         </MobileErrorBoundary>
       </body>
