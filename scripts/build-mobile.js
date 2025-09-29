@@ -147,13 +147,17 @@ try {
       });
     };
 
-    // Load CSS files
-    const loadCSS = (href) => {
+  // Load CSS files
+  const loadCSS = (href) => {
+    return new Promise((resolve, reject) => {
       const link = document.createElement('link');
       link.rel = 'stylesheet';
       link.href = href;
+      link.onload = resolve;
+      link.onerror = reject;
       document.head.appendChild(link);
-    };
+    });
+  };
 
     // Initialize the app with enhanced debugging
     window.onload = async function() {
@@ -194,38 +198,104 @@ try {
             console.log('✅ CSS loaded:', cssFile);
           } catch (error) {
             console.warn('⚠️ Failed to load CSS file:', cssFile, error);
+            // Try fallback path
+            try {
+              await loadCSS('/' + cssFile);
+              console.log('✅ CSS loaded via fallback:', cssFile);
+            } catch (fallbackError) {
+              console.error('❌ Failed to load CSS file via fallback:', cssFile, fallbackError);
+            }
           }
         }
 
         updateStatus('Loading JavaScript files...');
         // Load main build files with correct dynamic names
         updateStatus('Loading Webpack...');
-        await loadScript('/_next/static/chunks/' + '${webpackJsFile}');
-        console.log('✅ Webpack loaded');
-        
+        try {
+          await loadScript('/_next/static/chunks/' + '${webpackJsFile}');
+          console.log('✅ Webpack loaded');
+        } catch (error) {
+          console.error('❌ Failed to load webpack:', error);
+          throw error;
+        }
+
         updateStatus('Loading Main App...');
-        await loadScript('/_next/static/chunks/' + '${mainJsFile}');
-        console.log('✅ Main loaded');
-        
+        try {
+          await loadScript('/_next/static/chunks/' + '${mainJsFile}');
+          console.log('✅ Main loaded');
+        } catch (error) {
+          console.error('❌ Failed to load main JS:', error);
+          throw error;
+        }
+
         updateStatus('Loading App Component...');
-        await loadScript('/_next/static/chunks/pages/' + '${appJsFile}');
-        console.log('✅ App loaded');
+        try {
+          await loadScript('/_next/static/chunks/pages/' + '${appJsFile}');
+          console.log('✅ App loaded');
+        } catch (error) {
+          console.error('❌ Failed to load app JS:', error);
+          throw error;
+        }
         
         updateStatus('Starting React App...');
-        
-        // Wait a moment for React to initialize
+
+        // Wait for React to initialize with timeout
+        const startTime = Date.now();
+        const maxWaitTime = 10000; // 10 seconds
+
+        const waitForApp = () => {
+          const nextElement = document.getElementById('__next');
+          const loadingEl = document.getElementById('mobile-loading');
+
+          if (nextElement && nextElement.children.length > 0) {
+            // App has loaded successfully
+            if (loadingEl) {
+              loadingEl.style.display = 'none';
+            }
+            console.log('✅ React app initialized successfully');
+            return true;
+          }
+
+          if (Date.now() - startTime > maxWaitTime) {
+            console.error('❌ React app failed to initialize within timeout');
+            if (loadingEl) {
+              loadingEl.innerHTML = \`
+                <div style="text-align: center;">
+                  <h2 style="color: #d3194f; margin-bottom: 1rem;">App Load Timeout</h2>
+                  <p style="color: #666; margin-bottom: 1rem;">The app took too long to load. Please try again.</p>
+                  <button onclick="window.location.reload()" style="background: #d3194f; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 4px; cursor: pointer;">
+                    Retry
+                  </button>
+                </div>
+              \`;
+            }
+            return true;
+          }
+
+          // Continue waiting
+          setTimeout(waitForApp, 100);
+          return false;
+        };
+
+        // Start the app initialization check
+        waitForApp();
+
+        // Fallback: remove loading after 1 second if app loads quickly
         setTimeout(() => {
           const loadingEl = document.getElementById('mobile-loading');
-          if (loadingEl) loadingEl.remove();
+          if (loadingEl && loadingEl.style.display !== 'none') {
+            loadingEl.remove();
+          }
         }, 1000);
 
         console.log('✅ Mobile app loaded successfully');
         console.log('📱 Platform:', window.Capacitor?.platform || 'web');
         console.log('🔌 Is Native:', window.Capacitor?.isNative || false);
         console.log('📄 Loaded files:');
-        console.log('   - Webpack: ' + '${webpackJsFile}');
-        console.log('   - Main: ' + '${mainJsFile}');
-        console.log('   - App: ' + '${appJsFile}');
+        console.log('   - CSS Files:', cssFiles);
+        console.log('   - Webpack:', '${webpackJsFile}');
+        console.log('   - Main:', '${mainJsFile}');
+        console.log('   - App:', '${appJsFile}');
       } catch (error) {
         console.error('❌ Failed to load mobile app:', error);
         console.error('🔍 Debugging info:');
@@ -282,6 +352,10 @@ try {
   <link rel="icon" href="/assets/cubs.webp" sizes="512x512" type="image/webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" />
   <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
+
+  <!-- Preload critical CSS for faster rendering -->
+  <link rel="preload" href="/${cssFiles[0]}" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <noscript><link rel="stylesheet" href="/${cssFiles[0]}"></noscript>
 
   <script>
     // Capacitor detection for mobile app
