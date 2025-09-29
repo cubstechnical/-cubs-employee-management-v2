@@ -122,6 +122,7 @@
     "next": "^15.5.3",
     "next-pwa": "5.6.0",
     "next-themes": "^0.4.6",
+    "nodemailer": "^7.0.6",
     "postcss": "^8.4.31",
     "react": "18.2.0",
     "react-apexcharts": "^1.7.0",
