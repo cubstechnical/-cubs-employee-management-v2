@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,72 +45,71 @@ export default function LoginPage() {
     mode: 'onChange',
   });
 
-  useEffect(() => {
-    // Check if user is already authenticated and redirect appropriately
-    const checkAuth = async () => {
-      try {
-        // Check if we're in mobile app environment using proper Capacitor detection
-        const isMobileApp = typeof window !== 'undefined' &&
-          window.Capacitor &&
-          (window as any).Capacitor.isNativePlatform?.();
+  const checkAuth = useCallback(async () => {
+    try {
+      // Check if we're in mobile app environment using proper Capacitor detection
+      const isMobileApp = typeof window !== 'undefined' &&
+        window.Capacitor &&
+        (window as any).Capacitor.isNativePlatform?.();
 
-        if (isMobileApp) {
-          // In mobile app, be more careful about redirects
-          log.info('Mobile app detected, checking authentication...');
+      if (isMobileApp) {
+        // In mobile app, be more careful about redirects
+        log.info('Mobile app detected, checking authentication...');
 
-          // Use shorter timeout and more robust error handling for mobile
-          setTimeout(async () => {
-            try {
-              const { MobileAuthService } = await import('@/lib/services/mobileAuth');
-              const mobileSession = await MobileAuthService.restoreMobileSession();
+        // Use shorter timeout and more robust error handling for mobile
+        setTimeout(async () => {
+          try {
+            const { MobileAuthService } = await import('@/lib/services/mobileAuth');
+            const mobileSession = await MobileAuthService.restoreMobileSession();
 
-              if (mobileSession?.session) {
-                log.info('✅ Mobile session found, redirecting to dashboard');
-                // Add a small delay before redirect to prevent loops
-                setTimeout(() => {
-                  router.push('/dashboard');
-                }, 500);
-              } else {
-                log.info('ℹ️ No mobile session found, showing login form');
-                setIsCheckingAuth(false);
-              }
-            } catch (mobileError) {
-              log.warn('Mobile session check failed:', mobileError);
-              // Don't block the app - just show login form
+            if (mobileSession?.session) {
+              log.info('✅ Mobile session found, redirecting to dashboard');
+              // Add a small delay before redirect to prevent loops
+              setTimeout(() => {
+                router.push('/dashboard');
+              }, 500);
+            } else {
+              log.info('ℹ️ No mobile session found, showing login form');
               setIsCheckingAuth(false);
             }
-          }, 100); // Very short delay to prevent blocking
-
-          // Immediately show login form for mobile apps to prevent hanging
-          setIsCheckingAuth(false);
-        } else {
-          // Standard web/PWA auth check
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Auth check timeout')), 2000)
-          );
-
-          const authPromise = AuthService.getCurrentUser();
-          const user = await Promise.race([authPromise, timeoutPromise]) as any;
-
-          if (user) {
-            log.info('✅ User already authenticated, redirecting to dashboard');
-            router.push('/dashboard');
-          } else {
-            log.info('ℹ️ No authenticated user found, showing login form');
+          } catch (mobileError) {
+            log.warn('Mobile session check failed:', mobileError);
+            // Don't block the app - just show login form
             setIsCheckingAuth(false);
           }
-        }
-      } catch (error) {
-        log.info('Auth check failed (non-critical):', error);
-        // Don't redirect on error - just stay on login page
-        setIsCheckingAuth(false);
-      }
-    };
+        }, 100); // Very short delay to prevent blocking
 
+        // Immediately show login form for mobile apps to prevent hanging
+        setIsCheckingAuth(false);
+      } else {
+        // Standard web/PWA auth check
+        const timeoutPromise = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Auth check timeout')), 2000)
+        );
+
+        const authPromise = AuthService.getCurrentUser();
+        const user = await Promise.race([authPromise, timeoutPromise]) as any;
+
+        if (user) {
+          log.info('✅ User already authenticated, redirecting to dashboard');
+          router.push('/dashboard');
+        } else {
+          log.info('ℹ️ No authenticated user found, showing login form');
+          setIsCheckingAuth(false);
+        }
+      }
+    } catch (error) {
+      log.info('Auth check failed (non-critical):', error);
+      // Don't redirect on error - just stay on login page
+      setIsCheckingAuth(false);
+    }
+  }, [router]);
+
+  useEffect(() => {
     // Delay auth check to allow login page to render first
     const timer = setTimeout(checkAuth, 500);
     return () => clearTimeout(timer);
-  }, [router, checkAuth]);
+  }, [checkAuth]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
