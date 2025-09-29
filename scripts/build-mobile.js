@@ -194,16 +194,17 @@ try {
         for (const cssFile of cssFiles) {
           try {
             updateStatus(\`Loading CSS: \${cssFile}\`);
-            await loadCSS('/_next/static/css/' + cssFile);
+            // Try root level first (where CSS files are copied during build)
+            await loadCSS('/' + cssFile);
             console.log('✅ CSS loaded:', cssFile);
           } catch (error) {
-            console.warn('⚠️ Failed to load CSS file:', cssFile, error);
-            // Try fallback path
+            console.warn('⚠️ Failed to load CSS file from root:', cssFile, error);
+            // Try _next path as fallback
             try {
-              await loadCSS('/' + cssFile);
-              console.log('✅ CSS loaded via fallback:', cssFile);
+              await loadCSS('/_next/static/css/' + cssFile);
+              console.log('✅ CSS loaded via _next fallback:', cssFile);
             } catch (fallbackError) {
-              console.error('❌ Failed to load CSS file via fallback:', cssFile, fallbackError);
+              console.error('❌ Failed to load CSS file:', cssFile, fallbackError);
             }
           }
         }

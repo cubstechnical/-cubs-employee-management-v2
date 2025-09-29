@@ -31,6 +31,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Initialize mobile crash detection
   useMobileCrashDetection();
@@ -44,30 +45,54 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    // Simplified auth check to prevent issues with Safari/Face ID
+    // Check if user is already authenticated and redirect appropriately
     const checkAuth = async () => {
       try {
-        // Simple timeout to prevent hanging
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Auth check timeout')), 2000)
-        );
+        // Check if we're in mobile app environment
+        const isMobileApp = typeof window !== 'undefined' && window.Capacitor;
 
-        const authPromise = AuthService.getCurrentUser();
+        if (isMobileApp) {
+          // In mobile app, be more careful about redirects
+          log.info('Mobile app detected, checking authentication...');
 
-        const user = await Promise.race([authPromise, timeoutPromise]) as any;
+          // Use mobile-specific session restoration
+          const { MobileAuthService } = await import('@/lib/services/mobileAuth');
+          const mobileSession = await MobileAuthService.restoreMobileSession();
 
-        if (user) {
-          log.info('✅ User found, redirecting to dashboard');
-          router.push('/dashboard');
+          if (mobileSession.session) {
+            log.info('✅ Mobile session found, redirecting to dashboard');
+            router.push('/dashboard');
+            return;
+          } else {
+            log.info('ℹ️ No mobile session found, showing login form');
+            setIsCheckingAuth(false);
+          }
+        } else {
+          // Standard web/PWA auth check
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Auth check timeout')), 2000)
+          );
+
+          const authPromise = AuthService.getCurrentUser();
+          const user = await Promise.race([authPromise, timeoutPromise]) as any;
+
+          if (user) {
+            log.info('✅ User already authenticated, redirecting to dashboard');
+            router.push('/dashboard');
+          } else {
+            log.info('ℹ️ No authenticated user found, showing login form');
+            setIsCheckingAuth(false);
+          }
         }
       } catch (error) {
         log.info('Auth check failed (non-critical):', error);
         // Don't redirect on error - just stay on login page
+        setIsCheckingAuth(false);
       }
     };
 
-    // Shorter delay to prevent issues
-    const timer = setTimeout(checkAuth, 300);
+    // Delay auth check to allow login page to render first
+    const timer = setTimeout(checkAuth, 500);
     return () => clearTimeout(timer);
   }, [router]);
 
@@ -143,6 +168,18 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  // Show loading state while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+          <p className="text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div

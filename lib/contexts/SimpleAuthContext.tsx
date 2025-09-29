@@ -33,24 +33,36 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
         const sessionPromise = (async () => {
           // Try to get current user with mobile-optimized approach
           try {
+            log.info('SimpleAuthContext: Starting session loading...', {
+              isCapacitorApp: isCapacitorApp(),
+              isSupabaseAvailable: typeof window !== 'undefined' && window.supabase
+            });
+
             // First try mobile-specific session restoration
             if (isCapacitorApp()) {
+              log.info('SimpleAuthContext: Using mobile session restoration');
               const mobileSession = await MobileAuthService.restoreMobileSession();
               if (mobileSession.session) {
-                log.info('Mobile session restored successfully');
+                log.info('SimpleAuthContext: Mobile session restored successfully');
                 setUser(mobileSession.session);
                 return;
+              } else {
+                log.info('SimpleAuthContext: No mobile session found');
               }
             }
 
             // Fallback to standard auth check
+            log.info('SimpleAuthContext: Using standard auth check');
             const userData = await AuthService.getCurrentUser()
             if (userData) {
+              log.info('SimpleAuthContext: Standard auth check found user');
               setUser(userData)
               return
+            } else {
+              log.info('SimpleAuthContext: Standard auth check found no user');
             }
           } catch (authError) {
-            log.warn('AuthService.getCurrentUser failed:', authError)
+            log.warn('SimpleAuthContext: AuthService.getCurrentUser failed:', authError)
             // Don't throw - continue without user
           }
         })()
