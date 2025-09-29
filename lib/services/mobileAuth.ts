@@ -3,7 +3,7 @@
  * Handles iPhone 13 and other mobile device authentication issues
  */
 
-import { supabase } from '@/lib/supabase/client';
+import { supabase, isSupabaseAvailable } from '@/lib/supabase/client';
 import { log } from '@/lib/utils/logger';
 import { isCapacitorApp } from '@/utils/mobileDetection';
 import { safeLocalStorage, safeClearAuthData } from '@/lib/utils/safeStorage';
@@ -35,6 +35,13 @@ export class MobileAuthService {
             log.warn('MobileAuthService: Stored session expired, attempting refresh...');
 
             try {
+              // Only attempt refresh if Supabase is available
+              if (!isSupabaseAvailable) {
+                log.warn('MobileAuthService: Supabase not available, cannot refresh session');
+                safeLocalStorage.removeItem('cubs-auth-token');
+                return { session: null, error: new Error('Supabase not available') };
+              }
+
               const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
                 refresh_token: sessionData.refresh_token
               });
@@ -65,6 +72,11 @@ export class MobileAuthService {
           }
 
           // Session is still valid, set it
+          if (!isSupabaseAvailable) {
+            log.warn('MobileAuthService: Supabase not available, cannot set session');
+            return { session: null, error: new Error('Supabase not available') };
+          }
+
           const { data, error } = await supabase.auth.setSession({
             access_token: sessionData.access_token,
             refresh_token: sessionData.refresh_token,
@@ -84,6 +96,11 @@ export class MobileAuthService {
       }
 
       // No stored session, try to get current session
+      if (!isSupabaseAvailable) {
+        log.warn('MobileAuthService: Supabase not available, cannot get session');
+        return { session: null, error: new Error('Supabase not available') };
+      }
+
       const { data: { session }, error } = await supabase.auth.getSession();
       return { session, error };
     } catch (error) {
