@@ -4,7 +4,7 @@ import { log } from '@/lib/utils/logger';
 
 // Create transporter for Gmail SMTP
 const createTransporter = () => {
-  return nodemailer.createTransporter({
+  return nodemailer.createTransport({
     service: 'gmail',
     auth: {
       user: process.env.GMAIL_USER,
