@@ -188,7 +188,6 @@ export default function RootLayout({
             <MobileStatusIndicator />
           </MobileErrorBoundary>
         </ErrorBoundary>
-        </MobileErrorBoundary>
       </body>
     </html>
   )
