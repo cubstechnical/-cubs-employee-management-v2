@@ -52,7 +52,7 @@ export class CapacitorService {
             }
 
             // Add immediate visual feedback for debugging
-            if (typeof window !== 'undefined' && window.alert) {
+            if (typeof window !== 'undefined') {
               // Use a very brief timeout to avoid blocking
               setTimeout(() => {
                 try {
