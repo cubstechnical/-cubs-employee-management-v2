@@ -55,9 +55,9 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
             const userData = await Promise.race([
               AuthService.getCurrentUser(),
               new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
-            ]);
+            ]) as any;
             
-            if (userData) {
+            if (userData && userData.id) {
               log.info('SimpleAuthContext: Web session found');
               setUser(userData);
             } else {
