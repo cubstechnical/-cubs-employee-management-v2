@@ -4,7 +4,7 @@ import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
-  webDir: 'out',
+  webDir: 'out', // Always use out directory for Capacitor builds
   server: {
     // Enhanced server configuration for better mobile performance
     hostname: 'localhost',
@@ -14,7 +14,9 @@ const config: CapacitorConfig = {
       'cubsgroups.com',
       'localhost',
       '127.0.0.1',
-      '0.0.0.0'
+      '0.0.0.0',
+      '192.168.1.0/24', // Allow local network access
+      '10.0.0.0/8',     // Allow local network access
     ],
     cleartext: true, // Allow HTTP for development
   },
