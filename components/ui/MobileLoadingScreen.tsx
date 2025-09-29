@@ -26,7 +26,8 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
   }, [isLoading]);
 
   // Always show loading screen on mobile apps to prevent white screen
-  if (!isCapacitorApp()) {
+  // Also show on any mobile device to prevent white screens
+  if (!isCapacitorApp() && !isLoading) {
     return null;
   }
 

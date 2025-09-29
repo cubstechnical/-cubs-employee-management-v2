@@ -242,12 +242,13 @@ try {
 
         // Wait for React to initialize with timeout
         const startTime = Date.now();
-        const maxWaitTime = 10000; // 10 seconds
+        const maxWaitTime = 15000; // 15 seconds for mobile
 
         const waitForApp = () => {
           const nextElement = document.getElementById('__next');
-          const loadingEl = document.getElementById('mobile-loading');
+          const loadingEl = document.getElementById('mobile-fallback');
 
+          // Check if React app has loaded
           if (nextElement && nextElement.children.length > 0) {
             // App has loaded successfully
             if (loadingEl) {
@@ -257,8 +258,36 @@ try {
             return true;
           }
 
+          // Check for any React components
+          const reactElements = document.querySelectorAll('[data-reactroot], [data-react-helmet]');
+          if (reactElements.length > 0) {
+            console.log('✅ React elements detected');
+            if (loadingEl) {
+              loadingEl.style.display = 'none';
+            }
+            return true;
+          }
+
+          // Check for any content in the app
+          const appContent = document.querySelector('main, [role="main"], .app-content');
+          if (appContent && appContent.children.length > 0) {
+            console.log('✅ App content detected');
+            if (loadingEl) {
+              loadingEl.style.display = 'none';
+            }
+            return true;
+          }
+
           if (Date.now() - startTime > maxWaitTime) {
             console.error('❌ React app failed to initialize within timeout');
+            console.error('🔍 Debug info:');
+            console.error('   - Next element:', nextElement);
+            console.error('   - Next children:', nextElement?.children.length);
+            console.error('   - Document ready state:', document.readyState);
+            console.error('   - Window loaded:', typeof window !== 'undefined');
+            console.error('   - Body classes:', document.body.className);
+            console.error('   - Capacitor detected:', window.Capacitor?.isNative);
+            
             if (loadingEl) {
               loadingEl.innerHTML = \`
                 <div style="text-align: center;">
@@ -274,20 +303,20 @@ try {
           }
 
           // Continue waiting
-          setTimeout(waitForApp, 100);
+          setTimeout(waitForApp, 200);
           return false;
         };
 
-        // Start the app initialization check
-        waitForApp();
+        // Start the app initialization check after a short delay
+        setTimeout(waitForApp, 500);
 
-        // Fallback: remove loading after 1 second if app loads quickly
+        // Fallback: remove loading after 2 seconds if app loads quickly
         setTimeout(() => {
-          const loadingEl = document.getElementById('mobile-loading');
+          const loadingEl = document.getElementById('mobile-fallback');
           if (loadingEl && loadingEl.style.display !== 'none') {
             loadingEl.remove();
           }
-        }, 1000);
+        }, 2000);
 
         console.log('✅ Mobile app loaded successfully');
         console.log('📱 Platform:', window.Capacitor?.platform || 'web');
@@ -359,18 +388,35 @@ try {
   <noscript><link rel="stylesheet" href="/${cssFiles[0]}"></noscript>
 
   <script>
-    // Capacitor detection for mobile app
+    // Enhanced Capacitor detection for mobile app
     if (typeof window !== 'undefined') {
-      window.Capacitor = {
-        isNative: typeof window.Capacitor !== 'undefined' && window.Capacitor.isNative,
+      // Initialize Capacitor object
+      window.Capacitor = window.Capacitor || {
+        isNative: false,
         platform: 'web'
       };
 
       // Detect if running in Capacitor
-      if (window.location.protocol === 'capacitor:' || window.location.protocol === 'file:') {
+      if (window.location.protocol === 'capacitor:' || 
+          window.location.protocol === 'file:' ||
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1') {
         window.Capacitor.platform = 'native';
         window.Capacitor.isNative = true;
       }
+
+      // Add mobile app detection
+      window.isMobileApp = function() {
+        return window.Capacitor && window.Capacitor.isNative;
+      };
+
+      // Add debug logging for mobile
+      console.log('🔍 Mobile App Detection:', {
+        protocol: window.location.protocol,
+        hostname: window.location.hostname,
+        isNative: window.Capacitor.isNative,
+        platform: window.Capacitor.platform
+      });
     }
 
     // Prevent zoom on input focus (iOS)
@@ -379,6 +425,32 @@ try {
       if (viewport) {
         viewport.setAttribute('content', 'width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover');
       }
+      
+      // Mobile app initialization
+      console.log('🚀 Mobile App DOM Ready');
+      
+      // Add mobile app class to body
+      document.body.classList.add('mobile-app');
+      
+      // Ensure proper mobile app detection
+      if (window.isMobileApp && window.isMobileApp()) {
+        document.body.classList.add('capacitor-app');
+        console.log('📱 Capacitor app detected');
+      }
+    });
+
+    // Mobile app error handling
+    window.addEventListener('error', function(e) {
+      console.error('❌ Mobile App Error:', e.error);
+      console.error('   - Message:', e.message);
+      console.error('   - Filename:', e.filename);
+      console.error('   - Line:', e.lineno);
+      console.error('   - Column:', e.colno);
+    });
+
+    // Mobile app unhandled promise rejection handling
+    window.addEventListener('unhandledrejection', function(e) {
+      console.error('❌ Mobile App Unhandled Promise Rejection:', e.reason);
     });
   </script>
 </head>
