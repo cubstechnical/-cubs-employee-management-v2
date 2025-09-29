@@ -182,7 +182,9 @@ export default function RootLayout({
           </ThemeProvider>
           {/* Mobile loading screen for Capacitor apps - only show during actual loading */}
           <MobileLoadingScreen isLoading={false} />
+          <MobileErrorBoundary>
         </ErrorBoundary>
+        </MobileErrorBoundary>
       </body>
     </html>
   )
