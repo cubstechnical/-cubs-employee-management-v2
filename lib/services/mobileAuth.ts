@@ -4,7 +4,7 @@
  */
 
 import { supabase, isSupabaseAvailable } from '@/lib/supabase/client';
-import { log } from '@/lib/utils/logger';
+import { log } from '@/lib/utils/productionLogger';
 import { isCapacitorApp } from '@/utils/mobileDetection';
 import { safeLocalStorage, safeClearAuthData } from '@/lib/utils/safeStorage';
 

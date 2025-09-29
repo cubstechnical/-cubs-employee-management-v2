@@ -163,6 +163,46 @@ export default function DiagnosticsPage() {
       };
     });
 
+    // Test 11: Mobile App Detection
+    await runTest('Mobile App Detection', async () => {
+      const { isCapacitorApp } = await import('@/utils/mobileDetection');
+      const { CapacitorService } = await import('@/lib/capacitor');
+
+      return {
+        isCapacitorApp: isCapacitorApp(),
+        isNativePlatform: typeof window !== 'undefined' && window.Capacitor?.isNative,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+        platform: typeof navigator !== 'undefined' ? navigator.platform : 'N/A'
+      };
+    });
+
+    // Test 12: Mobile Storage Capabilities
+    await runTest('Mobile Storage Capabilities', async () => {
+      const { detectStorageCapabilities } = await import('@/hooks/useMobileCrashDetection');
+
+      if (typeof window === 'undefined') {
+        throw new Error('Not in browser environment');
+      }
+
+      return detectStorageCapabilities();
+    });
+
+    // Test 13: Capacitor Initialization
+    await runTest('Capacitor Initialization', async () => {
+      const { CapacitorService } = await import('@/lib/capacitor');
+
+      if (typeof window === 'undefined') {
+        throw new Error('Not in browser environment');
+      }
+
+      try {
+        await CapacitorService.initialize();
+        return { initialized: true, isNative: window.Capacitor?.isNative };
+      } catch (error) {
+        return { initialized: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    });
+
     setIsRunning(false);
   }, [runTest]);
 

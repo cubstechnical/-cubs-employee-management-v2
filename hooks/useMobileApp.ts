@@ -12,11 +12,9 @@ export function useMobileApp() {
 
     const initializeMobileApp = async () => {
       try {
-        // Check if running on web platform
-        const isWeb = typeof window !== 'undefined' && 
-          (!(window as any).Capacitor || 
-           window.location.protocol === 'http:' || 
-           window.location.protocol === 'https:');
+        // Check if running on web platform (not mobile app)
+        const isWeb = typeof window !== 'undefined' &&
+          (!((window as any).Capacitor && (window as any).Capacitor.isNativePlatform));
 
         // Skip mobile-specific initialization on web platform
         if (isWeb) {
