@@ -32,6 +32,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [logoFailed, setLogoFailed] = useState(false);
 
   // Initialize mobile crash detection
   useMobileCrashDetection();
@@ -48,12 +49,10 @@ export default function LoginPage() {
     // Check if user is already authenticated and redirect appropriately
     const checkAuth = async () => {
       try {
-        // Check if we're in mobile app environment with better detection
-        const isMobileApp = typeof window !== 'undefined' && (
-          window.Capacitor ||
-          window.location.protocol === 'capacitor:' ||
-          window.location.href.includes('capacitor')
-        );
+        // Check if we're in mobile app environment using proper Capacitor detection
+        const isMobileApp = typeof window !== 'undefined' &&
+          window.Capacitor &&
+          (window as any).Capacitor.isNativePlatform?.();
 
         if (isMobileApp) {
           // In mobile app, be more careful about redirects
@@ -67,7 +66,10 @@ export default function LoginPage() {
 
               if (mobileSession?.session) {
                 log.info('✅ Mobile session found, redirecting to dashboard');
-                router.push('/dashboard');
+                // Add a small delay before redirect to prevent loops
+                setTimeout(() => {
+                  router.push('/dashboard');
+                }, 500);
               } else {
                 log.info('ℹ️ No mobile session found, showing login form');
                 setIsCheckingAuth(false);
@@ -108,7 +110,7 @@ export default function LoginPage() {
     // Delay auth check to allow login page to render first
     const timer = setTimeout(checkAuth, 500);
     return () => clearTimeout(timer);
-  }, [router]);
+  }, [router, checkAuth]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -177,17 +179,25 @@ export default function LoginPage() {
     }
   };
 
-  const handleForgotPassword = async (email: string) => {
+  const handleForgotPassword = async (formEmail?: string) => {
+    let email = formEmail;
+
+    // Safely access DOM only on client side
+    if (!email && typeof document !== 'undefined') {
+      const emailInput = document.getElementById('reset-email') as HTMLInputElement;
+      email = emailInput?.value;
+    }
+
     if (!email) {
       toast.error('Please enter your email address');
       return;
     }
 
     setIsLoading(true);
-    
+
     try {
       const { error } = await AuthService.resetPassword(email);
-      
+
       if (error) {
         toast.error(error.message);
         return;
@@ -230,26 +240,25 @@ export default function LoginPage() {
         <div className="login-logo-container-image text-center">
           <div className="flex justify-center mb-4">
             <div className="relative">
-              <Image
-                src="/assets/cubs.webp"
-                alt="CUBS Logo"
-                width={120}
-                height={120}
-                className="login-logo-image"
-                priority
-                style={{ width: '120px', height: '120px' }}
-                onError={(e) => {
-                  log.info('Logo failed to load, using fallback');
-                  if (typeof window !== 'undefined') {
-                    e.currentTarget.style.display = 'none';
-                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
-                  }
-                }}
-              />
-              {/* Fallback logo */}
-              <div className="hidden w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                CUBS
-              </div>
+              {!logoFailed ? (
+                <Image
+                  src="/assets/cubs.webp"
+                  alt="CUBS Logo"
+                  width={120}
+                  height={120}
+                  className="login-logo-image"
+                  priority
+                  style={{ width: '120px', height: '120px' }}
+                  onError={() => {
+                    log.info('Logo failed to load, using fallback');
+                    setLogoFailed(true);
+                  }}
+                />
+              ) : (
+                <div className="w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                  CUBS
+                </div>
+              )}
             </div>
           </div>
           <p className="text-gray-700 dark:text-gray-300 mt-1 font-semibold text-sm text-center px-3 py-1 rounded-lg whitespace-nowrap">
