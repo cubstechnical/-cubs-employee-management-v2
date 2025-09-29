@@ -50,14 +50,29 @@ export class CapacitorService {
                 log.warn('Error hiding splash screen:', hideError);
               });
             }
+
+            // Add immediate visual feedback for debugging
+            if (typeof window !== 'undefined' && window.alert) {
+              // Use a very brief timeout to avoid blocking
+              setTimeout(() => {
+                try {
+                  // This will show briefly if the app is responsive
+                  console.log('✅ Capacitor events dispatched successfully');
+                } catch (e) {
+                  // Ignore console errors
+                }
+              }, 100);
+            }
           }
-        }, 800); // Even faster initialization
+        }, 500); // Even faster initialization
       } catch (error) {
         log.warn('Splash screen configuration failed:', error);
         // Even if splash screen fails, dispatch the ready event
         if (typeof window !== 'undefined') {
           setTimeout(() => {
             window.dispatchEvent(new CustomEvent('capacitor-ready'));
+            window.dispatchEvent(new CustomEvent('app-initialized'));
+            window.dispatchEvent(new CustomEvent('mobile-app-ready'));
           }, 1000);
         }
       }

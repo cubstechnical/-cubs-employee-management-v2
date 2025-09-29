@@ -24,6 +24,7 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
       const events = ['capacitor-ready', 'app-initialized', 'mobile-app-ready'];
       events.forEach(event => {
         window.addEventListener(event, handleAppReady);
+        log.info(`MobileLoadingScreen: Listening for ${event}`);
       });
 
       // Also listen for when the DOM is fully loaded
@@ -38,6 +39,26 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
       } else {
         // DOM is already loaded, set ready after a short delay
         setTimeout(() => setIsAppReady(true), 300);
+      }
+
+      // Add immediate debugging for mobile app
+      if (isCapacitorApp()) {
+        log.info('MobileLoadingScreen: Mobile app detected, starting aggressive debugging');
+
+        // Show immediate alert for debugging
+        setTimeout(() => {
+          if (!isAppReady) {
+            alert('🔍 Mobile App Debug: Loading screen active. Check if events are firing.');
+          }
+        }, 1000);
+
+        // Force set ready after 3 seconds as emergency fallback
+        setTimeout(() => {
+          if (!isAppReady) {
+            log.warn('MobileLoadingScreen: Emergency fallback - forcing app ready');
+            setIsAppReady(true);
+          }
+        }, 3000);
       }
 
       return () => {
@@ -143,6 +164,24 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
             />
           ))}
         </div>
+
+        {/* Debug Button for Mobile Testing */}
+        {isCapacitorApp() && (
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                alert('🔍 Mobile Debug: Test button clicked. Events should fire now.');
+                log.info('Manual test button clicked in mobile app');
+                window.dispatchEvent(new CustomEvent('capacitor-ready'));
+                window.dispatchEvent(new CustomEvent('app-initialized'));
+                window.dispatchEvent(new CustomEvent('mobile-app-ready'));
+              }}
+              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              🚀 Test Events
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
