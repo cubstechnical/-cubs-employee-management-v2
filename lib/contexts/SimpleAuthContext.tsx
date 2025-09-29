@@ -24,14 +24,26 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
     // Simplified session loading to prevent white page issues
     const loadSession = async () => {
       try {
-        // Set a reasonable timeout to prevent hanging
+        // Set a longer timeout for mobile devices to prevent hanging
+        const timeoutMs = isCapacitorApp() ? 8000 : 5000; // 8s for mobile, 5s for web
         const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Session load timeout')), 3000)
+          setTimeout(() => reject(new Error('Session load timeout')), timeoutMs)
         )
 
         const sessionPromise = (async () => {
-          // Try to get current user with minimal complexity
+          // Try to get current user with mobile-optimized approach
           try {
+            // First try mobile-specific session restoration
+            if (isCapacitorApp()) {
+              const mobileSession = await MobileAuthService.restoreMobileSession();
+              if (mobileSession.session) {
+                log.info('Mobile session restored successfully');
+                setUser(mobileSession.session);
+                return;
+              }
+            }
+
+            // Fallback to standard auth check
             const userData = await AuthService.getCurrentUser()
             if (userData) {
               setUser(userData)
@@ -39,6 +51,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
             }
           } catch (authError) {
             log.warn('AuthService.getCurrentUser failed:', authError)
+            // Don't throw - continue without user
           }
         })()
 
@@ -80,13 +93,33 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const signIn = async (email: string, password: string) => {
     setIsLoading(true)
     try {
+      log.info('SimpleAuthContext: Starting sign in process...', { email })
+
       const result = await AuthService.signIn({ email, password })
-      if (result.user) {
-        setUser(result.user)
-      }
+
       if (result.error) {
+        log.error('SimpleAuthContext: Sign in failed:', result.error.message)
         throw new Error(result.error.message)
       }
+
+      if (!result.user) {
+        log.error('SimpleAuthContext: No user returned from sign in')
+        throw new Error('Authentication failed - no user data returned')
+      }
+
+      log.info('SimpleAuthContext: Sign in successful, setting user:', result.user.id)
+      setUser(result.user)
+
+      // Ensure mobile session is properly stored
+      if (isCapacitorApp()) {
+        try {
+          await MobileAuthService.storeMobileSession(result.user);
+          log.info('SimpleAuthContext: Mobile session stored successfully');
+        } catch (mobileError) {
+          log.warn('SimpleAuthContext: Failed to store mobile session:', mobileError);
+        }
+      }
+
     } catch (error) {
       log.error('SimpleAuthContext: Sign in error:', error)
       throw error

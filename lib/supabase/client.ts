@@ -16,8 +16,15 @@ let isSupabaseAvailable = true;
 if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey === '') {
   isSupabaseAvailable = false;
   log.warn('Supabase credentials not configured. Using mock client for development.');
-  // Create a minimal mock client
-  supabase = createClient('https://mock.supabase.co', 'mock-key');
+
+  // Create a more robust mock client for mobile/PWA compatibility
+  supabase = createClient('https://mock.supabase.co', 'mock-key', {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+      detectSessionInUrl: false
+    }
+  });
 } else {
   try {
     // Enhanced auth configuration for mobile apps

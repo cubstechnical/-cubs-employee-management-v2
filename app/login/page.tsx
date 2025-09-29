@@ -75,22 +75,38 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
+      log.info('Login page: Starting login process...', { email: data.email });
+
       // Use AuthContext signIn method which properly updates the context
       await signIn(data.email, data.password);
 
-      toast.success('Login successful! Redirecting...');
+      log.info('Login page: Login successful, waiting for auth state update...');
 
-      // Simple redirect without complex session handling
-      router.push('/dashboard');
+      // Wait for auth state to update and verify authentication
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Verify user is actually authenticated before redirecting
+      if (user) {
+        log.info('Login page: User authenticated, redirecting to dashboard');
+        toast.success('Login successful! Redirecting...');
+        router.push('/dashboard');
+      } else {
+        log.warn('Login page: User not found in context after login');
+        toast.error('Authentication verification failed. Please try logging in again.');
+      }
 
     } catch (error) {
-      log.error('Login error:', error);
-      // Simplified error handling to prevent issues
+      log.error('Login page: Login error:', error);
+      // Enhanced error handling with mobile-specific messages
       if (error instanceof Error) {
         if (error.message.includes('Invalid login credentials')) {
           toast.error('Invalid email or password. Please check your credentials.');
         } else if (error.message.includes('Email not confirmed')) {
           toast.error('Please check your email and click the confirmation link before signing in.');
+        } else if (error.message.includes('Too many login attempts')) {
+          toast.error('Too many login attempts. Please wait a few minutes before trying again.');
+        } else if (error.message.includes('Authentication service unavailable')) {
+          toast.error('Authentication service is temporarily unavailable. Please try again later.');
         } else {
           toast.error('Login failed. Please try again.');
         }

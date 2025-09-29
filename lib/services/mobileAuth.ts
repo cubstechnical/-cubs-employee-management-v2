@@ -99,12 +99,24 @@ export class MobileAuthService {
     if (!isCapacitorApp() || !session) return;
 
     try {
-      // Use safe storage wrapper
-      const success = safeLocalStorage.setItem('cubs-auth-token', JSON.stringify({
-        access_token: session.access_token,
-        refresh_token: session.refresh_token,
-        expires_at: session.expires_at
-      }));
+      log.info('MobileAuthService: Storing mobile session...');
+
+      // Validate session data before storing
+      if (!session.access_token && !session.session?.access_token) {
+        log.warn('MobileAuthService: Invalid session data provided');
+        return;
+      }
+
+      // Use safe storage wrapper with comprehensive session data
+      const sessionData = {
+        access_token: session.access_token || session.session?.access_token,
+        refresh_token: session.refresh_token || session.session?.refresh_token,
+        expires_at: session.expires_at || session.session?.expires_at,
+        user: session,
+        timestamp: Date.now()
+      };
+
+      const success = safeLocalStorage.setItem('cubs-auth-token', JSON.stringify(sessionData));
 
       safeLocalStorage.setItem('cubs_session_persisted', 'true');
       safeLocalStorage.setItem('cubs_last_login', new Date().toISOString());
