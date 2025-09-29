@@ -48,23 +48,37 @@ export default function LoginPage() {
     // Check if user is already authenticated and redirect appropriately
     const checkAuth = async () => {
       try {
-        // Check if we're in mobile app environment
-        const isMobileApp = typeof window !== 'undefined' && window.Capacitor;
+        // Check if we're in mobile app environment with better detection
+        const isMobileApp = typeof window !== 'undefined' && (
+          window.Capacitor ||
+          window.location.protocol === 'capacitor:' ||
+          window.location.href.includes('capacitor')
+        );
 
         if (isMobileApp) {
           // In mobile app, be more careful about redirects
           log.info('Mobile app detected, checking authentication...');
 
-          // Use mobile-specific session restoration
-          const { MobileAuthService } = await import('@/lib/services/mobileAuth');
-          const mobileSession = await MobileAuthService.restoreMobileSession();
+          try {
+            // Use mobile-specific session restoration with timeout
+            const { MobileAuthService } = await import('@/lib/services/mobileAuth');
+            const mobileSessionPromise = MobileAuthService.restoreMobileSession();
+            const timeoutPromise = new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Mobile session timeout')), 3000)
+            );
 
-          if (mobileSession.session) {
-            log.info('✅ Mobile session found, redirecting to dashboard');
-            router.push('/dashboard');
-            return;
-          } else {
-            log.info('ℹ️ No mobile session found, showing login form');
+            const mobileSession = await Promise.race([mobileSessionPromise, timeoutPromise]) as any;
+
+            if (mobileSession?.session) {
+              log.info('✅ Mobile session found, redirecting to dashboard');
+              router.push('/dashboard');
+              return;
+            } else {
+              log.info('ℹ️ No mobile session found, showing login form');
+              setIsCheckingAuth(false);
+            }
+          } catch (mobileError) {
+            log.warn('Mobile session check failed:', mobileError);
             setIsCheckingAuth(false);
           }
         } else {

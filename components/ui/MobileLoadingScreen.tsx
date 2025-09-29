@@ -20,8 +20,32 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
     };
 
     if (typeof window !== 'undefined') {
-      window.addEventListener('capacitor-ready', handleAppReady);
-      return () => window.removeEventListener('capacitor-ready', handleAppReady);
+      // Listen for multiple ready events
+      const events = ['capacitor-ready', 'app-initialized', 'mobile-app-ready'];
+      events.forEach(event => {
+        window.addEventListener(event, handleAppReady);
+      });
+
+      // Also listen for when the DOM is fully loaded
+      const handleDOMContentLoaded = () => {
+        log.info('MobileLoadingScreen: DOM loaded, app should be ready');
+        // Give it a moment for React to finish rendering
+        setTimeout(() => setIsAppReady(true), 300);
+      };
+
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', handleDOMContentLoaded);
+      } else {
+        // DOM is already loaded, set ready after a short delay
+        setTimeout(() => setIsAppReady(true), 300);
+      }
+
+      return () => {
+        events.forEach(event => {
+          window.removeEventListener(event, handleAppReady);
+        });
+        document.removeEventListener('DOMContentLoaded', handleDOMContentLoaded);
+      };
     }
   }, []);
 
@@ -39,15 +63,25 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
     }
   }, [isLoading, isAppReady]);
 
-  // Fallback: Hide loading screen after 8 seconds to prevent infinite loading
+  // Multiple fallback mechanisms to prevent infinite loading
   useEffect(() => {
     if (isLoading && !isAppReady) {
+      // Primary fallback: Hide loading screen after 5 seconds
       const fallbackTimer = setTimeout(() => {
-        log.warn('MobileLoadingScreen: Fallback timeout reached, hiding loading screen');
+        log.warn('MobileLoadingScreen: Primary fallback timeout reached, hiding loading screen');
         setIsAppReady(true);
-      }, 8000);
+      }, 5000);
 
-      return () => clearTimeout(fallbackTimer);
+      // Secondary fallback: Force hide after 10 seconds (emergency)
+      const emergencyTimer = setTimeout(() => {
+        log.error('MobileLoadingScreen: EMERGENCY fallback - forcing hide after 10 seconds');
+        setIsAppReady(true);
+      }, 10000);
+
+      return () => {
+        clearTimeout(fallbackTimer);
+        clearTimeout(emergencyTimer);
+      };
     }
   }, [isLoading, isAppReady]);
 

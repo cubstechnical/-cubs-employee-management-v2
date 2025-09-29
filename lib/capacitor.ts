@@ -33,23 +33,33 @@ export class CapacitorService {
 
       // Configure splash screen with proper timing
       try {
-        if (Capacitor.isNativePlatform()) {
-          // Wait for app to be ready, then hide splash screen
-          setTimeout(async () => {
-            try {
-              await SplashScreen.hide();
-              log.info('Splash screen hidden');
-              // Dispatch event to notify loading screen to hide
-              if (typeof window !== 'undefined') {
-                window.dispatchEvent(new CustomEvent('capacitor-ready'));
-              }
-            } catch (hideError) {
-              log.warn('Error hiding splash screen:', hideError);
+        // Always dispatch capacitor-ready event after initialization, regardless of platform
+        // This ensures the loading screen knows when initialization is complete
+        setTimeout(() => {
+          if (typeof window !== 'undefined') {
+            log.info('Capacitor initialization complete, dispatching capacitor-ready event');
+
+            // Dispatch multiple events to ensure the loading screen gets notified
+            window.dispatchEvent(new CustomEvent('capacitor-ready'));
+            window.dispatchEvent(new CustomEvent('app-initialized'));
+            window.dispatchEvent(new CustomEvent('mobile-app-ready'));
+
+            // Also try to hide splash screen if on native platform
+            if (Capacitor.isNativePlatform()) {
+              SplashScreen.hide().catch(hideError => {
+                log.warn('Error hiding splash screen:', hideError);
+              });
             }
-          }, 1500); // Reduced delay for faster app loading
-        }
+          }
+        }, 800); // Even faster initialization
       } catch (error) {
         log.warn('Splash screen configuration failed:', error);
+        // Even if splash screen fails, dispatch the ready event
+        if (typeof window !== 'undefined') {
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('capacitor-ready'));
+          }, 1000);
+        }
       }
 
       // Configure keyboard with error handling (only on native platforms)
