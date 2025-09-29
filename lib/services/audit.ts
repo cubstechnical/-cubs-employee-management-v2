@@ -19,7 +19,7 @@ export class AuditService {
    */
   static async logAudit(auditData: Omit<AuditLog, 'id' | 'created_at'>): Promise<void> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('audit_logs')
         .insert({
           table_name: auditData.table_name,

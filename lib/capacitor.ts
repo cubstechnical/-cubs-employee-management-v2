@@ -6,7 +6,16 @@ import { App } from '@capacitor/app';
 import { log } from '@/lib/utils/productionLogger';
 
 export class CapacitorService {
+  private static isInitialized = false;
+
   static async initialize() {
+    // Prevent multiple initializations
+    if (this.isInitialized) {
+      return;
+    }
+
+    this.isInitialized = true;
+
     // Always run Capacitor initialization - check for native platform inside try block
     try {
       log.info('Initializing Capacitor for mobile app...');
@@ -22,18 +31,22 @@ export class CapacitorService {
         log.warn('Status bar configuration failed:', error);
       }
 
-      // Configure splash screen with delay for better UX
+      // Configure splash screen with proper timing
       try {
         if (Capacitor.isNativePlatform()) {
-          // Add a longer delay to ensure splash screen is visible and app is ready
+          // Wait for app to be ready, then hide splash screen
           setTimeout(async () => {
             try {
               await SplashScreen.hide();
               log.info('Splash screen hidden');
+              // Dispatch event to notify loading screen to hide
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('capacitor-ready'));
+              }
             } catch (hideError) {
               log.warn('Error hiding splash screen:', hideError);
             }
-          }, 2000); // Increased delay for better mobile experience
+          }, 1500); // Reduced delay for faster app loading
         }
       } catch (error) {
         log.warn('Splash screen configuration failed:', error);

@@ -178,7 +178,7 @@ export default function EmployeesPage() {
             throw new Error(`Failed to fetch selected employee: ${error.message}`);
           }
           
-          log.info('✅ Selected employee fetched:', data?.name);
+           log.info('✅ Selected employee fetched:', (data as any)?.name);
           setTotalPages(1);
           setTotalEmployees(1);
           return [(data as unknown) as Employee];

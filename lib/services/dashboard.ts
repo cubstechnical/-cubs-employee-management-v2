@@ -171,8 +171,8 @@ export class DashboardService {
       let visaValid = 0;
 
       visaData?.forEach(emp => {
-        if (emp.visa_expiry_date && typeof emp.visa_expiry_date === 'string') {
-          const expiryDate = new Date(emp.visa_expiry_date);
+        if ((emp as any).visa_expiry_date && typeof (emp as any).visa_expiry_date === 'string') {
+          const expiryDate = new Date((emp as any).visa_expiry_date);
           if (expiryDate < now) {
             visaExpired++;
           } else if (expiryDate <= thirtyDaysFromNow) {
@@ -191,7 +191,7 @@ export class DashboardService {
 
       if (companyError) throw companyError;
 
-      const uniqueCompanies = new Set(companies?.map(c => c.company_name) || []).size;
+      const uniqueCompanies = new Set(companies?.map((c: any) => c.company_name) || []).size;
 
       // Calculate growth (mock for now - would need historical data)
       const employeeGrowth = 12.5; // This would be calculated from historical data
@@ -322,9 +322,9 @@ export class DashboardService {
             id: `emp_${index}`,
             type: 'employee_added',
             title: 'New Employee Added',
-            description: `${emp.name} joined ${emp.company_name}`,
-            timestamp: emp.created_at as string,
-            user: { name: emp.name as string },
+            description: `${(emp as any).name} joined ${(emp as any).company_name}`,
+            timestamp: (emp as any).created_at as string,
+            user: { name: (emp as any).name as string },
             status: 'success',
           });
         });
@@ -335,8 +335,8 @@ export class DashboardService {
             id: `doc_${index}`,
             type: 'document_uploaded',
             title: 'Document Uploaded',
-            description: `${doc.file_name} uploaded for Employee`,
-            timestamp: doc.uploaded_at as string,
+            description: `${(doc as any).file_name} uploaded for Employee`,
+            timestamp: (doc as any).uploaded_at as string,
             user: { name: 'Employee' },
             status: 'info',
           });
@@ -345,16 +345,16 @@ export class DashboardService {
         // Add visa expiring activity
         if (expiringVisas && expiringVisas.length > 0) {
           const visa = expiringVisas[0];
-          const expiryDate = new Date(visa.visa_expiry_date as string);
+          const expiryDate = new Date((visa as any).visa_expiry_date as string);
           const daysUntilExpiry = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
           
           activities.push({
             id: 'visa_expiring',
             type: 'visa_expiring',
             title: 'Visa Expiring Soon',
-            description: `${visa.name}'s visa expires in ${daysUntilExpiry} days`,
+            description: `${(visa as any).name}'s visa expires in ${daysUntilExpiry} days`,
             timestamp: new Date().toISOString(),
-            user: { name: visa.name as string },
+            user: { name: (visa as any).name as string },
             status: daysUntilExpiry <= 7 ? 'error' : 'warning',
           });
         }
@@ -409,15 +409,15 @@ export class DashboardService {
 
         companyData?.forEach(emp => {
           // Count employees
-          const count = companyCounts.get(emp.company_name as string) || 0;
-          companyCounts.set(emp.company_name as string, count + 1);
+          const count = companyCounts.get((emp as any).company_name as string) || 0;
+          companyCounts.set((emp as any).company_name as string, count + 1);
           
           // Count visa expiring
-          if (emp.visa_expiry_date && typeof emp.visa_expiry_date === 'string') {
-            const expiryDate = new Date(emp.visa_expiry_date);
+          if ((emp as any).visa_expiry_date && typeof (emp as any).visa_expiry_date === 'string') {
+            const expiryDate = new Date((emp as any).visa_expiry_date);
             if (expiryDate <= thirtyDaysFromNow) {
-              const visaCount = visaExpiringCounts.get(emp.company_name as string) || 0;
-              visaExpiringCounts.set(emp.company_name as string, visaCount + 1);
+              const visaCount = visaExpiringCounts.get((emp as any).company_name as string) || 0;
+              visaExpiringCounts.set((emp as any).company_name as string, visaCount + 1);
             }
           }
         });
@@ -492,8 +492,8 @@ export class DashboardService {
         let expired = 0;
 
         visaData.forEach(emp => {
-          if (emp.visa_expiry_date && typeof emp.visa_expiry_date === 'string') {
-            const expiryDate = new Date(emp.visa_expiry_date);
+          if ((emp as any).visa_expiry_date && typeof (emp as any).visa_expiry_date === 'string') {
+            const expiryDate = new Date((emp as any).visa_expiry_date);
             if (expiryDate < now) {
               expired++;
             } else if (expiryDate <= thirtyDaysFromNow) {

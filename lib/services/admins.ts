@@ -68,7 +68,7 @@ export class AdminService {
       }
 
       // Create admin invite
-      const { data: invite, error } = await supabase
+      const { data: invite, error } = await (supabase as any)
         .from('admin_invites')
         .insert([{
           email: adminData.email,
@@ -77,7 +77,7 @@ export class AdminService {
           invited_by: adminData.invited_by,
           status: 'pending',
           expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(), // 7 days
-        }])
+        } as any])
         .select()
         .single();
 
@@ -94,7 +94,7 @@ export class AdminService {
   // Approve admin (for first-time login)
   static async approveAdmin(adminId: string, approvedBy: string): Promise<{ success: boolean; error: string | null }> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('profiles')
         .update({
           approved_by: approvedBy,
@@ -116,7 +116,7 @@ export class AdminService {
   // Update admin
   static async updateAdmin(adminId: string, adminData: UpdateAdminData): Promise<{ admin: User | null; error: string | null }> {
     try {
-      const { data: admin, error } = await supabase
+      const { data: admin, error } = await (supabase as any)
         .from('profiles')
         .update(adminData as any)
         .eq('id', adminId)
@@ -144,7 +144,7 @@ export class AdminService {
         .eq('id', adminId)
         .single();
 
-      if (admin?.role === 'master_admin') {
+      if ((admin as any)?.role === 'master_admin') {
         return { success: false, error: 'Cannot delete master admin' };
       }
 
@@ -198,13 +198,13 @@ export class AdminService {
       }
 
       // Check if invite is expired
-      if (new Date(invite.expires_at as string) < new Date()) {
+      if (new Date((invite as any).expires_at as string) < new Date()) {
         return { success: false, error: 'Invite has expired' };
       }
 
       // Create user account
       const { data: user, error: userError } = await supabase.auth.signUp({
-        email: invite.email as string,
+        email: (invite as any).email as string,
         password: userData.password,
         options: {
           data: {
@@ -220,7 +220,7 @@ export class AdminService {
       }
 
       // Update invite status
-      await supabase
+      await (supabase as any)
         .from('admin_invites')
         .update({ status: 'accepted' })
         .eq('id', inviteId);

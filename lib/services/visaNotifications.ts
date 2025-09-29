@@ -105,10 +105,10 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
 
       // Map without notification tracking (all false)
       const mappedData: VisaExpiryRecord[] = (data || []).map(record => ({
-        id: String(record.id || ''),
-        employee_name: String(record.name || ''),
-        visa_expiry_date: String(record.visa_expiry_date || ''),
-        email: String(record.email_id || 'no-email@cubstechnical.com'),
+        id: String((record as any).id || ''),
+        employee_name: String((record as any).name || ''),
+        visa_expiry_date: String((record as any).visa_expiry_date || ''),
+        email: String((record as any).email_id || 'no-email@cubstechnical.com'),
         notification_sent_60: false,
         notification_sent_30: false,
         notification_sent_15: false,
@@ -144,15 +144,15 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
 
     // Map the database columns to our interface
     const mappedData: VisaExpiryRecord[] = (data || []).map(record => ({
-      id: String(record.id || ''),
-      employee_name: String(record.name || ''),
-      visa_expiry_date: String(record.visa_expiry_date || ''),
-      email: String(record.email_id || 'no-email@cubstechnical.com'),
-      notification_sent_60: Boolean(record.notification_sent_60),
-      notification_sent_30: Boolean(record.notification_sent_30),
-      notification_sent_15: Boolean(record.notification_sent_15),
-      notification_sent_7: Boolean(record.notification_sent_7),
-      notification_sent_1: Boolean(record.notification_sent_1),
+      id: String((record as any).id || ''),
+      employee_name: String((record as any).name || ''),
+      visa_expiry_date: String((record as any).visa_expiry_date || ''),
+      email: String((record as any).email_id || 'no-email@cubstechnical.com'),
+      notification_sent_60: Boolean((record as any).notification_sent_60),
+      notification_sent_30: Boolean((record as any).notification_sent_30),
+      notification_sent_15: Boolean((record as any).notification_sent_15),
+      notification_sent_7: Boolean((record as any).notification_sent_7),
+      notification_sent_1: Boolean((record as any).notification_sent_1),
     }));
 
     return mappedData;
@@ -395,7 +395,7 @@ async function updateNotificationFlagsForBatch(employees: VisaExpiryRecord[], da
         break;
     }
 
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from('employee_table')
       .update(updateData)
       .in('id', employeeIds);
@@ -468,8 +468,8 @@ export async function getVisaExpiryStats(): Promise<{
     let notificationsSent = 0;
 
     employees?.forEach(employee => {
-      if (employee.visa_expiry_date && typeof employee.visa_expiry_date === 'string') {
-        const daysUntilExpiry = calculateDaysUntilExpiry(employee.visa_expiry_date);
+      if ((employee as any).visa_expiry_date && typeof (employee as any).visa_expiry_date === 'string') {
+        const daysUntilExpiry = calculateDaysUntilExpiry((employee as any).visa_expiry_date);
         
         if (daysUntilExpiry < 0) {
           expired++;
@@ -479,7 +479,7 @@ export async function getVisaExpiryStats(): Promise<{
 
         // Count notifications sent (only if columns exist)
         if ('notification_sent_60' in employee) {
-          if (employee.notification_sent_60) notificationsSent++;
+          if ((employee as any).notification_sent_60) notificationsSent++;
           if ((employee as any).notification_sent_30) notificationsSent++;
           if ((employee as any).notification_sent_15) notificationsSent++;
           if ((employee as any).notification_sent_7) notificationsSent++;

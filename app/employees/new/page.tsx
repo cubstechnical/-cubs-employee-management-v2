@@ -134,7 +134,7 @@ export default function NewEmployee() {
 
       const { data: employee, error } = await supabase
         .from('employee_table')
-        .insert(employeeData)
+        .insert(employeeData as any)
         .select()
         .single();
 
@@ -149,10 +149,10 @@ export default function NewEmployee() {
         const userInfo = await AuditService.getCurrentUserInfo();
         await AuditService.logAudit({
           table_name: 'employee_table',
-          record_id: employee.id as string,
+          record_id: (employee as any).id as string,
           action: 'CREATE',
           old_values: undefined,
-          new_values: employee,
+          new_values: employee as any,
           user_id: userInfo.id,
           user_email: userInfo.email,
         });

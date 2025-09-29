@@ -35,7 +35,7 @@ export class CompanyStatsService {
       const companyCounts: { [key: string]: number } = {};
       
       data.forEach((employee) => {
-        const companyName = employee.company_name;
+        const companyName = (employee as any).company_name;
         if (companyName && typeof companyName === 'string' && companyName.trim()) {
           companyCounts[companyName] = (companyCounts[companyName] || 0) + 1;
         }
@@ -102,7 +102,7 @@ export class CompanyStatsService {
       }
 
       // Get unique company names
-      const uniqueCompanies = [...new Set(data?.map(emp => emp.company_name).filter(Boolean))] as string[];
+      const uniqueCompanies = [...new Set(data?.map((emp: any) => emp.company_name).filter(Boolean))] as string[];
 
       return uniqueCompanies.sort();
     } catch (error) {

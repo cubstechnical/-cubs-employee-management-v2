@@ -10,10 +10,24 @@ interface MobileLoadingScreenProps {
 
 export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenProps) {
   const [showExtendedLoading, setShowExtendedLoading] = useState(false);
+  const [isAppReady, setIsAppReady] = useState(false);
+
+  useEffect(() => {
+    // Listen for app ready event
+    const handleAppReady = () => {
+      log.info('MobileLoadingScreen: App ready event received');
+      setIsAppReady(true);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('capacitor-ready', handleAppReady);
+      return () => window.removeEventListener('capacitor-ready', handleAppReady);
+    }
+  }, []);
 
   useEffect(() => {
     // If loading takes longer than 3 seconds, show extended loading message
-    if (isLoading) {
+    if (isLoading && !isAppReady) {
       const timer = setTimeout(() => {
         setShowExtendedLoading(true);
         log.warn('MobileLoadingScreen: Extended loading detected');
@@ -23,11 +37,24 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
     } else {
       setShowExtendedLoading(false);
     }
-  }, [isLoading]);
+  }, [isLoading, isAppReady]);
+
+  // Fallback: Hide loading screen after 8 seconds to prevent infinite loading
+  useEffect(() => {
+    if (isLoading && !isAppReady) {
+      const fallbackTimer = setTimeout(() => {
+        log.warn('MobileLoadingScreen: Fallback timeout reached, hiding loading screen');
+        setIsAppReady(true);
+      }, 8000);
+
+      return () => clearTimeout(fallbackTimer);
+    }
+  }, [isLoading, isAppReady]);
 
   // Always show loading screen on mobile apps to prevent white screen
   // Also show on any mobile device to prevent white screens
-  if (!isCapacitorApp() && !isLoading) {
+  // Hide when app is ready or not loading
+  if ((!isCapacitorApp() && !isLoading) || isAppReady) {
     return null;
   }
 
@@ -35,8 +62,18 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
     <div className="fixed inset-0 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center z-50 safe-area-all">
       <div className="text-center max-w-sm mx-auto px-6">
         {/* Logo/Brand */}
-        <div className="w-20 h-20 bg-gradient-to-br from-[#d3194f] to-[#a91542] rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg">
-          <span className="text-white font-bold text-2xl">C</span>
+        <div className="w-20 h-20 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg border border-gray-200 dark:border-gray-700">
+          <img
+            src="/assets/cubs.webp"
+            alt="CUBS Technical Logo"
+            className="w-12 h-12 object-contain"
+            onError={(e) => {
+              // Fallback to "C" if image fails to load
+              const target = e.target as HTMLImageElement;
+              target.style.display = 'none';
+              target.parentElement!.innerHTML = '<span class="text-[#d3194f] font-bold text-2xl">C</span>';
+            }}
+          />
         </div>
 
         {/* Loading Spinner */}

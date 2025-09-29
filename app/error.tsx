@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { log } from '@/lib/utils/productionLogger';
 
 export default function Error({
@@ -10,6 +11,8 @@ export default function Error({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const router = useRouter();
+
   useEffect(() => {
     // Log the error to an error reporting service
     log.error('Application Error:', error)
@@ -37,7 +40,7 @@ export default function Error({
             Try again
           </button>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => router.refresh()}
             className="w-full bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
           >
             Refresh page

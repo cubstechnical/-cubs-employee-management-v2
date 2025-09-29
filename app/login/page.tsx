@@ -204,10 +204,11 @@ export default function LoginPage() {
   return (
     <div className="main-login">
       <div
-        className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto"
+        className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all"
         style={{
           contain: 'layout style paint',
-          scrollBehavior: 'smooth'
+          scrollBehavior: 'smooth',
+          backgroundColor: '#111827' // Ensure no white background
         }}
       >
       <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">

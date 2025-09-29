@@ -112,8 +112,10 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 safe-area-inset-top safe-area-inset-bottom">
         {/* Page content */}
         <main className={cn(
-          "flex-1 p-4 lg:p-6 overflow-auto",
+          "flex-1 p-4 lg:p-6",
           isMobile ? "p-2 sm:p-3" : "p-4 lg:p-6",
+          // Only add overflow-auto for non-public pages to prevent double scrollbars
+          !shouldHideSidebar && "overflow-auto",
           className
         )}>
           <div className="min-h-full w-full">

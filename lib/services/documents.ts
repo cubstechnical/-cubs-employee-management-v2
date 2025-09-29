@@ -475,7 +475,7 @@ export class DocumentService {
         return { data: null, error: 'Document not found' };
       }
 
-      log.info(`✅ Document found: ${data.file_name}`);
+      log.info(`✅ Document found: ${(data as any).file_name}`);
       return { data: data as unknown as Document, error: null };
     } catch (error) {
       log.error('❌ Exception in getDocumentById:', error);
@@ -561,7 +561,7 @@ export class DocumentService {
           .ilike('name', `%${searchTerm}%`)
           .limit(100);
 
-        const employeeIds = employees?.map(emp => emp.employee_id) || [];
+        const employeeIds = employees?.map((emp: any) => emp.employee_id) || [];
 
         // Search by file name, employee ID, or employee names (via employee IDs)
         if (employeeIds.length > 0) {
@@ -720,8 +720,8 @@ export class DocumentService {
 
         // Extract prefixes from general query
         generalData?.forEach(doc => {
-          if (doc.file_path && typeof doc.file_path === 'string') {
-            const parts = doc.file_path.split('/');
+          if ((doc as any).file_path && typeof (doc as any).file_path === 'string') {
+            const parts = (doc as any).file_path.split('/');
             if (parts.length > 0 && parts[0]) {
               companyPrefixes.add(parts[0]);
             }
@@ -930,8 +930,8 @@ export class DocumentService {
       // Extract unique company prefixes from actual file paths
       const companyPrefixes = new Set<string>();
       allDocuments?.forEach((doc: any) => {
-        if (doc.file_path && typeof doc.file_path === 'string') {
-          const parts = doc.file_path.split('/');
+        if ((doc as any).file_path && typeof (doc as any).file_path === 'string') {
+          const parts = (doc as any).file_path.split('/');
           if (parts.length > 0 && parts[0]) {
             companyPrefixes.add(parts[0]);
           }
@@ -977,7 +977,7 @@ export class DocumentService {
         if (prefix === 'FINAL_TEST') continue; // skip test folders
         const displayName = displayNameMapping[prefix] || prefix.replace(/_/g, ' ');
         const companyDocs = allDocuments?.filter((doc: any) => 
-          doc.file_path && typeof doc.file_path === 'string' && doc.file_path.startsWith(prefix + '/')
+          (doc as any).file_path && typeof (doc as any).file_path === 'string' && (doc as any).file_path.startsWith(prefix + '/')
         ) || [];
         // Safely compute lastModified with fallbacks
         const times: number[] = [];
@@ -1140,7 +1140,7 @@ export class DocumentService {
 
       // Try RPC function first, fallback to manual query if RPC fails
       try {
-        const { data, error } = await supabase.rpc('search_employee_folders', {
+        const { data, error } = await (supabase as any).rpc('search_employee_folders', {
           search_term: searchTerm.trim(),
           limit_count: limit
         });
@@ -1200,7 +1200,7 @@ export class DocumentService {
         log.info(`✅ Found ${employees.length} employees matching search via fallback`);
 
         // Get document counts for these employees
-        const employeeIds = employees.map(emp => emp.employee_id);
+        const employeeIds = employees.map((emp: any) => emp.employee_id);
         const { data: docCounts, error: docError } = await supabase
           .from('employee_documents')
           .select('employee_id, created_at')
@@ -1214,38 +1214,38 @@ export class DocumentService {
         // Create document count map
         const docCountMap = new Map<string, { count: number; lastModified: string }>();
         (docCounts || []).forEach(doc => {
-          const employeeId = doc.employee_id as string;
+          const employeeId = (doc as any).employee_id as string;
           const existing = docCountMap.get(employeeId);
           if (existing) {
             existing.count++;
-            const docDate = new Date(doc.created_at as string).getTime();
+            const docDate = new Date((doc as any).created_at as string).getTime();
             const existingDate = new Date(existing.lastModified).getTime();
             if (docDate > existingDate) {
-              existing.lastModified = doc.created_at as string;
+              existing.lastModified = (doc as any).created_at as string;
             }
           } else {
             docCountMap.set(employeeId, {
               count: 1,
-              lastModified: doc.created_at as string
+              lastModified: (doc as any).created_at as string
             });
           }
         });
 
         // Create folder objects
         const folders: DocumentFolder[] = employees.map(employee => {
-          const docInfo = docCountMap.get(employee.employee_id as string) || { count: 0, lastModified: new Date().toISOString() };
-          const displayName = this.resolveEmployeeDisplayName(employee.employee_id as string, employee.name as string);
+          const docInfo = docCountMap.get((employee as any).employee_id as string) || { count: 0, lastModified: new Date().toISOString() };
+          const displayName = this.resolveEmployeeDisplayName((employee as any).employee_id as string, (employee as any).name as string);
 
           return {
-            id: `emp-${employee.employee_id}`,
+            id: `emp-${(employee as any).employee_id}`,
             name: displayName,
             type: 'employee' as const,
-            companyName: employee.company_name as string,
-            employeeId: employee.employee_id as string,
+            companyName: (employee as any).company_name as string,
+            employeeId: (employee as any).employee_id as string,
             employeeName: displayName,
             documentCount: docInfo.count,
             lastModified: docInfo.lastModified,
-            path: `${employee.company_name}/${employee.employee_id}`
+            path: `${(employee as any).company_name}/${(employee as any).employee_id}`
           };
         });
 
@@ -1316,16 +1316,16 @@ export class DocumentService {
       (employees || []).forEach(emp => {
         suggestions.push({
           type: 'employee',
-          id: emp.employee_id,
-          name: emp.name,
-          company: emp.company_name,
-          displayText: `${emp.name} (${emp.company_name})`,
-          searchText: `${emp.name} ${emp.company_name} ${emp.employee_id}`
+          id: (emp as any).employee_id,
+          name: (emp as any).name,
+          company: (emp as any).company_name,
+          displayText: `${(emp as any).name} (${(emp as any).company_name})`,
+          searchText: `${(emp as any).name} ${(emp as any).company_name} ${(emp as any).employee_id}`
         });
       });
 
       // Add unique company suggestions
-      const uniqueCompanies = [...new Set((companies || []).map(c => c.company_name))];
+      const uniqueCompanies = [...new Set((companies || []).map((c: any) => c.company_name))];
       uniqueCompanies.forEach(company => {
         suggestions.push({
           type: 'company',
@@ -1341,11 +1341,11 @@ export class DocumentService {
       (documents || []).forEach(doc => {
         suggestions.push({
           type: 'document',
-          id: doc.file_name,
-          name: doc.file_name,
+          id: (doc as any).file_name,
+          name: (doc as any).file_name,
           company: '',
-          displayText: doc.file_name,
-          searchText: doc.file_name
+          displayText: (doc as any).file_name,
+          searchText: (doc as any).file_name
         });
       });
 
@@ -1374,7 +1374,7 @@ export class DocumentService {
 
       // Try RPC function first, fallback to manual query if RPC fails
       try {
-        const { data, error } = await supabase.rpc('search_documents_and_employees', {
+        const { data, error } = await (supabase as any).rpc('search_documents_and_employees', {
           search_term: searchTerm.trim()
         });
 
@@ -1417,8 +1417,8 @@ export class DocumentService {
         // Transform the data to match RPC format
         const transformedDocuments = documents.map((doc: any) => ({
           ...doc,
-          employee_name: doc.employee_table?.name,
-          company_name: doc.employee_table?.company_name
+          employee_name: (doc as any).employee_table?.name,
+          company_name: (doc as any).employee_table?.company_name
         }));
 
         log.info(`✅ Found ${transformedDocuments.length} documents matching search via fallback`);
@@ -1535,7 +1535,7 @@ export class DocumentService {
           const employeeMap = new Map<string, { count: number; lastModified: string; filePath: string }>();
           
           employeeData.forEach(doc => {
-            const employeeId = doc.employee_id as string;
+            const employeeId = (doc as any).employee_id as string;
             if (!employeeId) return;
             
             const existing = employeeMap.get(employeeId);
@@ -1579,7 +1579,7 @@ export class DocumentService {
           // Create name lookup map
           const nameMap = new Map<string, string>();
           (employeeNames || []).forEach(emp => {
-            nameMap.set(emp.employee_id as string, emp.name as string);
+            nameMap.set((emp as any).employee_id as string, (emp as any).name as string);
           });
 
           // Create folders
@@ -1815,7 +1815,7 @@ export class DocumentService {
       }
 
       // Save document metadata to Supabase using the actual fileKey returned by Backblaze
-      const { data: document, error: dbError } = await supabase
+      const { data: document, error: dbError } = await (supabase as any)
         .from('employee_documents')
         .insert({
           employee_id: uploadData.employee_id,
@@ -1881,9 +1881,9 @@ export class DocumentService {
       const { BackblazeService } = await import('./backblaze');
 
       // Extract file key from file_path for Backblaze deletion
-      if (document && document.file_path && typeof document.file_path === 'string') {
+      if (document && (document as any).file_path && typeof (document as any).file_path === 'string') {
         try {
-          await BackblazeService.deleteFile(document.file_path);
+          await BackblazeService.deleteFile((document as any).file_path);
         } catch (backblazeError) {
           log.error('Failed to delete from Backblaze:', backblazeError);
           // If B2 delete fails, abort to avoid orphaning metadata inconsistency
@@ -1905,7 +1905,7 @@ export class DocumentService {
       if (document) {
         const pathParts = (document as any).file_path?.split?.('/') || [];
         const companyName = pathParts[0];
-        const employeeId = document.employee_id;
+        const employeeId = (document as any).employee_id;
         
         // Clear relevant caches
         this.invalidateCache('folders');
@@ -1929,7 +1929,7 @@ export class DocumentService {
     status: 'pending' | 'approved' | 'rejected'
   ): Promise<{ document: Document | null; error: string | null }> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('employee_documents')
         .update({ status })
         .eq('id', documentId)
@@ -1968,8 +1968,8 @@ export class DocumentService {
       const { data: edgeResult, error: edgeError } = await supabase.functions.invoke('doc-manager', {
         body: {
           action: 'getSignedUrl',
-          directFilePath: document.file_path as string,
-          fileName: document.file_name as string
+          directFilePath: (document as any).file_path as string,
+          fileName: (document as any).file_name as string
         }
       });
 
@@ -2018,7 +2018,7 @@ export class DocumentService {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          filePath: document.file_path
+          filePath: (document as any).file_path
         })
       });
 
@@ -2098,7 +2098,7 @@ export class DocumentService {
       // Group by company for analysis
       const companyGroups = new Map<string, Document[]>();
       documents.forEach(doc => {
-        const pathParts = doc.file_path?.split('/') || [];
+        const pathParts = (doc as any).file_path?.split('/') || [];
         const companyName = pathParts[0] || 'Unknown';
         if (!companyGroups.has(companyName)) {
           companyGroups.set(companyName, []);
@@ -2111,7 +2111,7 @@ export class DocumentService {
         log.info(`  ${company}: ${docs.length} documents`);
         // Show first few documents for each company
         docs.slice(0, 3).forEach(doc => {
-          log.info(`    - ${doc.file_name} (${doc.employee_id})`);
+          log.info(`    - ${(doc as any).file_name} (${(doc as any).employee_id})`);
         });
       });
 
@@ -2164,7 +2164,7 @@ export class DocumentService {
 
       log.info(`📄 DEBUG: Found ${allDocs?.length || 0} documents containing "${companyName}" in path:`);
       allDocs?.forEach((doc, index) => {
-        log.info(`  ${index + 1}. ${doc.file_path} - ${doc.file_name} (Employee: ${doc.employee_id})`);
+        log.info(`  ${index + 1}. ${(doc as any).file_path} - ${(doc as any).file_name} (Employee: ${(doc as any).employee_id})`);
       });
 
       // Now get company-specific documents
@@ -2172,7 +2172,7 @@ export class DocumentService {
       
       log.info(`📄 DEBUG: Company documents for "${companyName}": ${documents.length}`);
       documents.forEach((doc, index) => {
-        log.info(`  ${index + 1}. ${doc.file_path} - ${doc.file_name}`);
+        log.info(`  ${index + 1}. ${(doc as any).file_path} - ${(doc as any).file_name}`);
       });
 
       return { documents, error };
@@ -2234,8 +2234,8 @@ export class DocumentService {
         }
 
         // 3a) If we have a path-level cache from batch prefetch, use it
-        if (document.file_path) {
-          const byPath = this.presignedByPathCache.get(document.file_path as string);
+        if ((document as any).file_path) {
+          const byPath = this.presignedByPathCache.get((document as any).file_path as string);
           if (byPath && Date.now() < byPath.expiresAt) {
             this.presignedUrlCache.set(documentId, { url: byPath.url, expiresAt: byPath.expiresAt });
             return { data: byPath.url, error: null };
@@ -2243,8 +2243,8 @@ export class DocumentService {
         }
 
         // 3b) Fast path: only trust stored file_url if it is already signed
-        if (document.file_url && String(document.file_url).includes('Authorization=')) {
-          const url = document.file_url as string;
+        if ((document as any).file_url && String((document as any).file_url).includes('Authorization=')) {
+          const url = (document as any).file_url as string;
           this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 minutes
           return { data: url, error: null };
         }
@@ -2258,8 +2258,8 @@ export class DocumentService {
           const edgePromise = supabase.functions.invoke('doc-manager', {
             body: {
               action: 'getSignedUrl',
-              directFilePath: document.file_path as string,
-              fileName: document.file_name as string
+              directFilePath: (document as any).file_path as string,
+              fileName: (document as any).file_name as string
             }
           });
 
@@ -2280,7 +2280,7 @@ export class DocumentService {
           const resp = await fetch('/api/documents/preview', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ filePath: document.file_path })
+            body: JSON.stringify({ filePath: (document as any).file_path })
           });
           if (resp.ok) {
             const json = await resp.json();
@@ -2298,8 +2298,8 @@ export class DocumentService {
 
         // 6) Final fallback: try to use the BackblazeService directly
         try {
-          if (document.file_path) {
-            const url = await BackblazeService.getPresignedUrl(document.file_path as string);
+          if ((document as any).file_path) {
+            const url = await BackblazeService.getPresignedUrl((document as any).file_path as string);
             if (url) {
               this.presignedUrlCache.set(documentId, { url, expiresAt: Date.now() + 10 * 60 * 1000 }); // 10 minutes
               return { data: url, error: null };
@@ -2344,7 +2344,7 @@ export class DocumentService {
       }
 
       // Get unique employee IDs from documents
-      const employeeIds = [...new Set(documents?.map(doc => doc.employee_id) || [])];
+      const employeeIds = [...new Set(documents?.map(doc => (doc as any).employee_id) || [])];
       
       // Fetch employees separately to avoid relation issues
       const { data: employees, error: empError } = await supabase

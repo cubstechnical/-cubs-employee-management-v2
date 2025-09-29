@@ -178,11 +178,11 @@ export default function EnhancedEmployeesPage() {
           .order('company_name');
 
         const { data: companiesData } = await companiesQuery;
-        const companies = [...new Set(companiesData?.map(item => item.company_name) || [])];
+        const companies = [...new Set(companiesData?.map((item: any) => item.company_name) || [])];
 
         // Calculate counts
         const total = count || 0;
-        const activeCount = data?.filter(emp => emp.is_active).length || 0;
+        const activeCount = data?.filter((emp: any) => emp.is_active).length || 0;
         const inactiveCount = total - activeCount;
 
         const result = {
@@ -327,7 +327,7 @@ export default function EnhancedEmployeesPage() {
   }, []);
 
   const handleSelectAll = useCallback(() => {
-    const allIds = combinedData?.employees.map(emp => emp.id) || [];
+     const allIds = combinedData?.employees.map((emp: any) => emp.id) || [];
     setBulkState(prev => ({
       ...prev,
       selectedEmployees: new Set(allIds as string[]),
@@ -586,11 +586,11 @@ export default function EnhancedEmployeesPage() {
           ) : (
             combinedData?.employees.map((employee, index) => (
               <EmployeeCard
-                key={employee.id as string}
+                 key={(employee as any).id as string}
                 employee={employee as unknown as Employee}
                 onDelete={handleDeleteEmployee}
                 onSelect={handleEmployeeSelect}
-                isSelected={bulkState.selectedEmployees.has(employee.id as string)}
+                isSelected={bulkState.selectedEmployees.has((employee as any).id as string)}
                 index={index}
               />
             ))

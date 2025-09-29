@@ -420,22 +420,22 @@ export class AuthService {
       }
 
       // Get user profile from profiles table
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile, error: profileError } = await (supabase as any)
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
         .single();
 
       if (profile && !profileError) {
-        const userRole = getUserRole(data.user.email!, profile.role as string);
+        const userRole = getUserRole(data.user.email!, (profile as any).role as string);
 
         const authUser: AuthUser = {
           id: data.user.id,
           email: data.user.email!,
           role: userRole,
-          name: profile.full_name || data.user.user_metadata?.name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
+          name: (profile as any).full_name || data.user.user_metadata?.name || data.user.user_metadata?.full_name || data.user.email?.split('@')[0] || 'User',
           avatar_url: data.user.user_metadata?.avatar_url,
-          approved: profile.approved_by !== null
+          approved: (profile as any).approved_by !== null
         };
         
         // Clear rate limit on successful login
@@ -490,7 +490,7 @@ export class AuthService {
 
       // Create user profile in profiles table with approval status
       try {
-        const { error: profileError } = await supabase
+        const { error: profileError } = await (supabase as any)
           .from('profiles')
           .insert({
             id: data.user.id,
@@ -626,7 +626,7 @@ export class AuthService {
     try {
       // Get users where approved_by is null (consistent with middleware check)
       // Exclude rejected users (approved_by = 'REJECTED')
-      const { data: users, error } = await supabase
+      const { data: users, error } = await (supabase as any)
         .from('profiles')
         .select('*')
         .is('approved_by', null)
@@ -671,7 +671,7 @@ export class AuthService {
   static async approveUser(userId: string, adminId: string): Promise<{ error: { message: string } | null }> {
     try {
       // First, check current state
-      const { data: currentUser, error: checkError } = await supabase
+      const { data: currentUser, error: checkError } = await (supabase as any)
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -681,13 +681,13 @@ export class AuthService {
         log.error('Error checking user before approval:', checkError);
         return { error: { message: `User not found: ${checkError.message}` } };
       }
-      
-      if (currentUser.approved_by !== null) {
+
+      if ((currentUser as any)?.approved_by !== null) {
         return { error: { message: 'User already approved' } };
       }
 
       // Update user approval status - only set approved_by (consistent with middleware)
-      const { error, data } = await supabase
+      const { error, data } = await (supabase as any)
         .from('profiles')
         .update({
           approved_by: adminId,
@@ -717,7 +717,7 @@ export class AuthService {
   static async rejectUser(userId: string): Promise<{ error: { message: string } | null }> {
     try {
       // First, check current state
-      const { data: currentUser, error: checkError } = await supabase
+      const { data: currentUser, error: checkError } = await (supabase as any)
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -728,12 +728,12 @@ export class AuthService {
         return { error: { message: `User not found: ${checkError.message}` } };
       }
       
-      if (currentUser.approved_by !== null) {
+      if ((currentUser as any)?.approved_by !== null) {
         return { error: { message: 'Cannot reject already approved user' } };
       }
 
       // Mark user as rejected instead of deleting (allows reapplication)
-      const { error, data } = await supabase
+      const { error, data } = await (supabase as any)
         .from('profiles')
         .update({
           approved_by: 'REJECTED', // Special marker for rejected users
@@ -789,7 +789,7 @@ export class AuthService {
   static async reapplyUser(userId: string): Promise<{ error: { message: string } | null }> {
     try {
       // Check if user exists and is rejected
-      const { data: currentUser, error: checkError } = await supabase
+      const { data: currentUser, error: checkError } = await (supabase as any)
         .from('profiles')
         .select('*')
         .eq('id', userId)
@@ -800,12 +800,12 @@ export class AuthService {
         return { error: { message: `User not found: ${checkError.message}` } };
       }
       
-      if (currentUser.approved_by !== 'REJECTED') {
+      if ((currentUser as any)?.approved_by !== 'REJECTED') {
         return { error: { message: 'User is not rejected or already approved' } };
       }
 
       // Reset user to pending status
-      const { error, data } = await supabase
+      const { error, data } = await (supabase as any)
         .from('profiles')
         .update({
           approved_by: null, // Reset to pending
@@ -851,7 +851,7 @@ export class AuthService {
         return false;
       }
 
-      return profile?.approved_by === 'REJECTED' || profile?.status === 'rejected';
+      return (profile as any)?.approved_by === 'REJECTED' || (profile as any)?.status === 'rejected';
     } catch (error) {
       log.error('Error checking rejection status:', error);
       return false;

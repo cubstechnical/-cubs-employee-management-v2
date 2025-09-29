@@ -40,14 +40,14 @@ export class NotificationService {
 
       // Transform the data to match the expected interface
       const transformedNotifications: Notification[] = (notifications || []).map(n => ({
-        id: String(n.id),
-        title: String(n.title),
-        message: String(n.message),
-        type: (n.type as 'success' | 'warning' | 'error' | 'info') || 'info',
+        id: String((n as any).id),
+        title: String((n as any).title),
+        message: String((n as any).message),
+        type: ((n as any).type as 'success' | 'warning' | 'error' | 'info') || 'info',
         status: 'sent' as const, // Default status
-        recipient: String(n.user_id || 'system'),
-        createdAt: String(n.created_at),
-        category: (n.category as 'visa' | 'document' | 'system' | 'approval') || 'system'
+        recipient: String((n as any).user_id || 'system'),
+        createdAt: String((n as any).created_at),
+        category: ((n as any).category as 'visa' | 'document' | 'system' | 'approval') || 'system'
       }));
 
       return {
@@ -85,7 +85,7 @@ export class NotificationService {
 
       log.info('Creating notification:', { title, message, type });
 
-      const { data: notification, error } = await supabase
+      const { data: notification, error } = await (supabase as any)
         .from('notifications')
         .insert({
           title,
@@ -133,7 +133,7 @@ export class NotificationService {
    */
   static async markAsRead(notificationIds: string[]): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('notifications')
         .update({ read: true })
         .in('id', notificationIds);

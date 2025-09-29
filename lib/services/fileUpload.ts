@@ -61,7 +61,7 @@ export class FileUploadService {
       const fileUrl = `https://${process.env.BACKBLAZE_BUCKET_NAME}.s3.us-west-002.backblazeb2.com/${fileKey}`;
 
       // Store metadata in Supabase
-      const { data: document, error } = await supabase
+      const { data: document, error } = await (supabase as any)
         .from('documents')
         .insert({
           employee_id,
@@ -119,7 +119,7 @@ export class FileUploadService {
       }
 
       // Extract file key from URL
-      const fileKey = (document.file_url as string).split('.com/')[1];
+      const fileKey = ((document as any).file_url as string).split('.com/')[1];
       
       // Delete from Backblaze B2
       const deleted = await this.deleteFile(fileKey);
@@ -210,7 +210,7 @@ export class FileUploadService {
     updates: Partial<Pick<UploadedFile, 'name' | 'type'>>
   ): Promise<UploadedFile | null> {
     try {
-      const { data: document, error } = await supabase
+      const { data: document, error } = await (supabase as any)
         .from('documents')
         .update({
           ...updates,
@@ -274,8 +274,8 @@ export class FileUploadService {
       };
 
       documents?.forEach(doc => {
-        stats.totalSize += (doc.file_size as number) || 0;
-        stats.byType[doc.type as string] = (stats.byType[doc.type as string] || 0) + 1;
+        stats.totalSize += ((doc as any).file_size as number) || 0;
+        stats.byType[(doc as any).type as string] = (stats.byType[(doc as any).type as string] || 0) + 1;
       });
 
       return stats;

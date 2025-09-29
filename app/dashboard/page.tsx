@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 // Layout is now handled by the root layout
 import { EmployeeMetrics } from '@/components/dashboard/EmployeeMetrics';
 import CUBSDashboardHeader from '@/components/dashboard/CUBSDashboardHeader';
@@ -18,6 +19,7 @@ import { log } from '@/lib/utils/productionLogger';
 // import { CoreWebVitals } from '@/components/performance/CoreWebVitals';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
@@ -130,7 +132,7 @@ export default function Dashboard() {
               </div>
               <div className="ml-auto pl-3">
               <button
-                  onClick={() => window.location.reload()}
+                  onClick={() => router.refresh()}
                   className="text-sm text-red-800 hover:text-red-600 dark:text-red-200 dark:hover:text-red-400 font-medium"
               >
                 Refresh

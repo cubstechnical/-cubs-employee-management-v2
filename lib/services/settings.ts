@@ -75,7 +75,7 @@ export class SettingsService {
         return { success: false, error: error.message };
       }
 
-      return { success: true, data: data?.settings_data || {} };
+      return { success: true, data: (data as any)?.settings_data || {} };
     } catch (error) {
       log.error('❌ Unexpected error fetching user settings:', error);
       return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
@@ -97,7 +97,7 @@ export class SettingsService {
 
       const settings: UserSettings = {};
       data?.forEach(item => {
-        settings[item.settings_type as keyof UserSettings] = item.settings_data as any;
+        settings[(item as any).settings_type as keyof UserSettings] = (item as any).settings_data as any;
       });
 
       return { success: true, data: settings };
@@ -110,7 +110,7 @@ export class SettingsService {
   // Update user settings
   static async updateUserSettings(userId: string, settingsType: string, settingsData: any): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('user_settings')
         .upsert({
           user_id: userId,
@@ -151,16 +151,16 @@ export class SettingsService {
       }
 
       if (settingKey) {
-        return { success: true, data: data?.[0]?.setting_value || {} };
+        return { success: true, data: (data as any)?.[0]?.setting_value || {} };
       }
 
       const settings: any = {};
       data?.forEach(item => {
-        settings[item.setting_key as string] = {
-          value: item.setting_value,
-          type: item.setting_type,
-          description: item.description,
-          is_public: item.is_public
+        settings[(item as any).setting_key as string] = {
+          value: (item as any).setting_value,
+          type: (item as any).setting_type,
+          description: (item as any).description,
+          is_public: (item as any).is_public
         };
       });
 
@@ -174,7 +174,7 @@ export class SettingsService {
   // Update admin settings
   static async updateAdminSettings(settingKey: string, settingValue: any, settingType: string, description?: string, isPublic: boolean = false): Promise<{ success: boolean; error?: string }> {
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('admin_settings')
         .upsert({
           setting_key: settingKey,

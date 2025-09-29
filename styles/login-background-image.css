@@ -14,7 +14,7 @@ html, body {
   height: 100%;
   overflow-x: hidden;
   overflow-y: auto;
-  min-width: 100vw;
+  min-width: 100%;
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height for mobile */
 }
@@ -27,8 +27,15 @@ body, #__next, main {
   height: 100%;
 }
 
-/* Main login container with mobile-safe viewport */
+/* Additional white border prevention */
+* {
+  box-sizing: border-box;
+}
+
+/* Ensure background covers all areas including safe areas */
 .main-login {
+  background: inherit;
+  background-color: #111827; /* Fallback dark background */
   min-height: 100dvh; /* Dynamic viewport height for mobile */
   min-height: 100vh; /* Fallback for older browsers */
   padding-top: env(safe-area-inset-top, 0);
@@ -48,18 +55,17 @@ body, #__next, main {
   margin: 0;
   padding: 0;
   
-  background: 
+  background:
+    /* Fallback color first */
+    #111827,
     /* Optimized 78KB background image */
     url('/assets/bg1.webp');
-  
+
   /* Performance optimizations for mobile */
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
   background-attachment: scroll; /* Better for mobile performance */
-  
-  /* Dark mode support */
-  @apply dark:from-gray-900 dark:to-gray-800;
 }
 
 /* Load the actual image after page load */
@@ -94,7 +100,9 @@ body, #__next, main {
   /* Fix login card on mobile */
   .login-card-image {
     margin: 1rem;
-    max-width: calc(100vw - 2rem);
+    max-width: calc(100% - 2rem);
+    width: 100%;
+    box-sizing: border-box;
   }
 }
 
@@ -267,13 +275,13 @@ body, #__next, main {
   /* Disable parallax on mobile for better performance */
   .login-background-image {
     background-attachment: scroll;
-    /* Ensure full coverage on mobile with dynamic viewport */
-    width: 100vw;
-    height: 100dvh; /* Dynamic viewport height for mobile */
-    height: 100vh; /* Fallback for older browsers */
-    min-width: 100vw;
-    min-height: 100dvh; /* Dynamic viewport height for mobile */
-    min-height: 100vh; /* Fallback for older browsers */
+  /* Ensure full coverage on mobile with dynamic viewport */
+  width: 100%;
+  height: 100dvh; /* Dynamic viewport height for mobile */
+  height: 100vh; /* Fallback for older browsers */
+  min-width: 100%;
+  min-height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100vh; /* Fallback for older browsers */
   }
 }
 

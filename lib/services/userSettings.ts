@@ -82,7 +82,7 @@ export class UserSettingsService {
       }
 
       // Update or create user settings
-      const { data: updatedSettings, error } = await supabase
+      const { data: updatedSettings, error } = await (supabase as any)
         .from('user_settings')
         .upsert({
           user_id: user.id,

@@ -282,7 +282,7 @@ export class EmployeeService {
         const statsByPrefix = new Map<string, PrefixStats>();
 
         for (const row of existingEmployees) {
-          const id = (row.employee_id as string) || '';
+          const id = ((row as any).employee_id as string) || '';
           // Match any non-digit prefix (including spaces/underscores) followed by digits
           const m = id.match(/^([^0-9]*?)(\d+)$/);
           if (!m) continue;
@@ -362,7 +362,7 @@ export class EmployeeService {
       let maxNumber = 0;
       if (existingEmployees && existingEmployees.length > 0) {
         existingEmployees.forEach(emp => {
-          const employeeId = emp.employee_id as string;
+          const employeeId = (emp as any).employee_id as string;
           if (employeeId && employeeId.startsWith('AL ASHBAL ')) {
             // Extract the number part after "AL ASHBAL "
             const numberPart = employeeId.substring('AL ASHBAL '.length);
@@ -464,7 +464,7 @@ export class EmployeeService {
       }
 
       // Insert employee data
-      const { data: employee, error } = await supabase
+      const { data: employee, error } = await (supabase as any)
         .from('employee_table')
         .insert({
           employee_id: employeeData.employee_id,
@@ -808,7 +808,7 @@ export class EmployeeService {
       }
 
       const employee = {
-        ...employeeData,
+        ...(employeeData as any),
         document_count: documentCount || 0
       } as unknown as EmployeeWithDocuments;
 
@@ -825,7 +825,7 @@ export class EmployeeService {
 
   static async updateEmployee(employeeData: UpdateEmployeeData): Promise<Employee | null> {
     try {
-      const { data: employee, error } = await supabase
+      const { data: employee, error } = await (supabase as any)
         .from('employee_table')
         .update(employeeData as any)
         .eq('employee_id', employeeData.employee_id)
@@ -873,18 +873,18 @@ export class EmployeeService {
         
         for (const doc of documents) {
           try {
-            if (doc.file_path && typeof doc.file_path === 'string' && doc.file_path.trim() !== '') {
-              const deleteResult = await BackblazeService.deleteFile(doc.file_path);
+            if ((doc as any).file_path && typeof (doc as any).file_path === 'string' && (doc as any).file_path.trim() !== '') {
+              const deleteResult = await BackblazeService.deleteFile((doc as any).file_path);
               if (deleteResult.success) {
-                log.info(`✅ Deleted from Backblaze: ${doc.file_name}`);
+                log.info(`✅ Deleted from Backblaze: ${(doc as any).file_name}`);
               } else {
-                log.info(`⚠️ Failed to delete from Backblaze: ${doc.file_name} - ${deleteResult.error || 'Unknown error'}`);
+                log.info(`⚠️ Failed to delete from Backblaze: ${(doc as any).file_name} - ${deleteResult.error || 'Unknown error'}`);
               }
             } else {
-              log.info(`⚠️ Skipping document with invalid file_path: ${doc.file_name}`);
+              log.info(`⚠️ Skipping document with invalid file_path: ${(doc as any).file_name}`);
             }
           } catch (error) {
-            log.info(`⚠️ Error deleting from Backblaze: ${doc.file_name} - ${error instanceof Error ? error.message : 'Unknown error'}`);
+            log.info(`⚠️ Error deleting from Backblaze: ${(doc as any).file_name} - ${error instanceof Error ? error.message : 'Unknown error'}`);
           }
         }
 
@@ -1148,7 +1148,7 @@ export class EmployeeService {
         .select('trade')
         .gte('created_at', dateFilter);
 
-      const uniqueDepartments = new Set(departments?.map(d => d.trade) || []).size;
+      const uniqueDepartments = new Set(departments?.map((d: any) => d.trade) || []).size;
 
       if (employeesError || activeError || docsError || approvalsError || visaError || deptError) {
         log.error('Error fetching dashboard stats:', { employeesError, activeError, docsError, approvalsError, visaError, deptError });
@@ -1188,8 +1188,8 @@ export class EmployeeService {
       const departmentMap = new Map<string, { count: number; recentCount: number }>();
       
       data?.forEach(employee => {
-        const trade = (employee.trade as string) || 'Unknown';
-        const isRecent = new Date(employee.created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const trade = ((employee as any).trade as string) || 'Unknown';
+        const isRecent = new Date((employee as any).created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         
         if (!departmentMap.has(trade)) {
           departmentMap.set(trade, { count: 0, recentCount: 0 });
@@ -1230,8 +1230,8 @@ export class EmployeeService {
 
       const companyMap = new Map<string, { count: number; recentCount: number }>();
       data?.forEach(emp => {
-        const company = (emp.company_name as string) || 'Unknown';
-        const isRecent = new Date(emp.created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+        const company = ((emp as any).company_name as string) || 'Unknown';
+        const isRecent = new Date((emp as any).created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
         if (!companyMap.has(company)) companyMap.set(company, { count: 0, recentCount: 0 });
         const v = companyMap.get(company)!;
         v.count++;
@@ -1310,7 +1310,7 @@ export class EmployeeService {
       }
 
       return data?.map(employee => {
-        const daysLeft = Math.ceil((new Date(employee.visa_expiry_date as string).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+        const daysLeft = Math.ceil((new Date((employee as any).visa_expiry_date as string).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
         
         let urgency: 'critical' | 'high' | 'medium' | 'low' = 'low';
         if (daysLeft <= 7) urgency = 'critical';
@@ -1318,10 +1318,10 @@ export class EmployeeService {
         else if (daysLeft <= 60) urgency = 'medium';
 
         return {
-          employee_id: employee.employee_id as string,
-          name: (employee.name as string) || 'Unknown',
-          visa_type: (employee.visa_status as string) || 'Unknown',
-          visa_expiry_date: employee.visa_expiry_date as string,
+          employee_id: (employee as any).employee_id as string,
+          name: ((employee as any).name as string) || 'Unknown',
+          visa_type: ((employee as any).visa_status as string) || 'Unknown',
+          visa_expiry_date: (employee as any).visa_expiry_date as string,
           daysLeft,
           urgency
         };
