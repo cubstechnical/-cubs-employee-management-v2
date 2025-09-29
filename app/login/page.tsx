@@ -59,28 +59,28 @@ export default function LoginPage() {
           // In mobile app, be more careful about redirects
           log.info('Mobile app detected, checking authentication...');
 
-          try {
-            // Use mobile-specific session restoration with timeout
-            const { MobileAuthService } = await import('@/lib/services/mobileAuth');
-            const mobileSessionPromise = MobileAuthService.restoreMobileSession();
-            const timeoutPromise = new Promise((_, reject) =>
-              setTimeout(() => reject(new Error('Mobile session timeout')), 3000)
-            );
+          // Use shorter timeout and more robust error handling for mobile
+          setTimeout(async () => {
+            try {
+              const { MobileAuthService } = await import('@/lib/services/mobileAuth');
+              const mobileSession = await MobileAuthService.restoreMobileSession();
 
-            const mobileSession = await Promise.race([mobileSessionPromise, timeoutPromise]) as any;
-
-            if (mobileSession?.session) {
-              log.info('✅ Mobile session found, redirecting to dashboard');
-              router.push('/dashboard');
-              return;
-            } else {
-              log.info('ℹ️ No mobile session found, showing login form');
+              if (mobileSession?.session) {
+                log.info('✅ Mobile session found, redirecting to dashboard');
+                router.push('/dashboard');
+              } else {
+                log.info('ℹ️ No mobile session found, showing login form');
+                setIsCheckingAuth(false);
+              }
+            } catch (mobileError) {
+              log.warn('Mobile session check failed:', mobileError);
+              // Don't block the app - just show login form
               setIsCheckingAuth(false);
             }
-          } catch (mobileError) {
-            log.warn('Mobile session check failed:', mobileError);
-            setIsCheckingAuth(false);
-          }
+          }, 100); // Very short delay to prevent blocking
+
+          // Immediately show login form for mobile apps to prevent hanging
+          setIsCheckingAuth(false);
         } else {
           // Standard web/PWA auth check
           const timeoutPromise = new Promise((_, reject) =>

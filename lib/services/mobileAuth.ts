@@ -42,11 +42,21 @@ export class MobileAuthService {
                 return { session: null, error: new Error('Supabase not available') };
               }
 
-              const { data: refreshData, error: refreshError } = await supabase.auth.refreshSession({
+              // Use timeout for refresh session to prevent hanging
+              const refreshPromise = supabase.auth.refreshSession({
                 refresh_token: sessionData.refresh_token
               });
 
-              if (refreshError || !refreshData.session) {
+              const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Refresh timeout')), 5000)
+              );
+
+              const { data: refreshData, error: refreshError } = await Promise.race([
+                refreshPromise,
+                timeoutPromise
+              ]) as any;
+
+              if (refreshError || !refreshData?.session) {
                 log.warn('MobileAuthService: Session refresh failed:', refreshError);
                 safeLocalStorage.removeItem('cubs-auth-token');
                 return { session: null, error: refreshError };
@@ -77,10 +87,20 @@ export class MobileAuthService {
             return { session: null, error: new Error('Supabase not available') };
           }
 
-          const { data, error } = await supabase.auth.setSession({
+          // Use timeout for setSession to prevent hanging
+          const setSessionPromise = supabase.auth.setSession({
             access_token: sessionData.access_token,
             refresh_token: sessionData.refresh_token,
           });
+
+          const setSessionTimeout = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Set session timeout')), 5000)
+          );
+
+          const { data, error } = await Promise.race([
+            setSessionPromise,
+            setSessionTimeout
+          ]) as any;
 
           if (error) {
             log.warn('MobileAuthService: Failed to set session:', error);
@@ -95,14 +115,29 @@ export class MobileAuthService {
         }
       }
 
-      // No stored session, try to get current session
+      // No stored session, try to get current session with timeout
       if (!isSupabaseAvailable) {
         log.warn('MobileAuthService: Supabase not available, cannot get session');
         return { session: null, error: new Error('Supabase not available') };
       }
 
-      const { data: { session }, error } = await supabase.auth.getSession();
-      return { session, error };
+      try {
+        // Use timeout for getSession to prevent hanging
+        const getSessionPromise = supabase.auth.getSession();
+        const getSessionTimeout = new Promise((_, reject) =>
+          setTimeout(() => reject(new Error('Get session timeout')), 5000)
+        );
+
+        const { data: { session }, error } = await Promise.race([
+          getSessionPromise,
+          getSessionTimeout
+        ]) as any;
+
+        return { session, error };
+      } catch (getSessionError) {
+        log.warn('MobileAuthService: Get session failed:', getSessionError);
+        return { session: null, error: getSessionError };
+      }
     } catch (error) {
       log.error('MobileAuthService: Session restoration error:', error);
       return { session: null, error };
