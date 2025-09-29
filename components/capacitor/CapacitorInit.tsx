@@ -19,8 +19,8 @@ export default function CapacitorInit() {
         if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
           log.info('CapacitorInit: Mobile app detected, configuring Supabase...');
 
-          // Check if we have stored session data
-          const storedSession = localStorage.getItem('cubs-auth-token');
+          // Check if we have stored session data using safe storage
+          const storedSession = typeof window !== 'undefined' ? localStorage.getItem('cubs-auth-token') : null;
           if (storedSession) {
             log.info('CapacitorInit: Found stored session data, attempting restoration...');
           } else {

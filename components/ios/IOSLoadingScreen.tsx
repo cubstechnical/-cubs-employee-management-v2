@@ -67,8 +67,12 @@ export default function IOSLoadingScreen({ children }: IOSLoadingScreenProps) {
         // Additional iOS-specific setup
         try {
           // Ensure safe area is handled
-          if (typeof window !== 'undefined') {
-            document.body.classList.add('ios-safe-area');
+          if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+            try {
+              document.body.classList.add('ios-safe-area');
+            } catch (error) {
+              // Ignore DOM manipulation errors during SSR
+            }
           }
         } catch (error) {
           log.warn('Could not add iOS safe area class:', error);

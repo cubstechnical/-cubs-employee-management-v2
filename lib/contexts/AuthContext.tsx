@@ -76,17 +76,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser(currentUser);
 
                 // Store session data for mobile app restoration
-                if (isCapacitorApp()) {
-                  localStorage.setItem('cubs-auth-token', JSON.stringify({
-                    access_token: session.access_token,
-                    refresh_token: session.refresh_token,
-                    expires_at: session.expires_at
-                  }));
-                  localStorage.setItem('cubs_session_persisted', 'true');
-                  localStorage.setItem('cubs_last_login', new Date().toISOString());
-                  localStorage.setItem('cubs_user_email', currentUser.email || '');
-                  localStorage.setItem('cubs_user_id', currentUser.id || '');
-                  log.info('AuthContext: Mobile session data stored after sign in');
+                if (isCapacitorApp() && typeof window !== 'undefined' && window.localStorage) {
+                  try {
+                    localStorage.setItem('cubs-auth-token', JSON.stringify({
+                      access_token: session.access_token,
+                      refresh_token: session.refresh_token,
+                      expires_at: session.expires_at
+                    }));
+                    localStorage.setItem('cubs_session_persisted', 'true');
+                    localStorage.setItem('cubs_last_login', new Date().toISOString());
+                    localStorage.setItem('cubs_user_email', currentUser.email || '');
+                    localStorage.setItem('cubs_user_id', currentUser.id || '');
+                    log.info('AuthContext: Mobile session data stored after sign in');
+                  } catch (storageError) {
+                    log.warn('AuthContext: Failed to store session data:', storageError);
+                  }
                 }
               } else {
                 // If no user data but session exists, keep current user or clear
@@ -113,13 +117,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               setUser(null);
             } else {
               // Store updated session data for mobile app
-              if (isCapacitorApp()) {
-                localStorage.setItem('cubs-auth-token', JSON.stringify({
-                  access_token: session.access_token,
-                  refresh_token: session.refresh_token,
-                  expires_at: session.expires_at
-                }));
-                log.info('AuthContext: Mobile session data updated after token refresh');
+              if (isCapacitorApp() && typeof window !== 'undefined' && window.localStorage) {
+                try {
+                  localStorage.setItem('cubs-auth-token', JSON.stringify({
+                    access_token: session.access_token,
+                    refresh_token: session.refresh_token,
+                    expires_at: session.expires_at
+                  }));
+                  log.info('AuthContext: Mobile session data updated after token refresh');
+                } catch (storageError) {
+                  log.warn('AuthContext: Failed to update session data:', storageError);
+                }
               }
 
               // Token refreshed successfully, try to get fresh user data
@@ -141,14 +149,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (isCapacitorApp()) {
             log.info('AuthContext: Mobile app auth state change detected');
 
-            if (session) {
-              // Ensure session data is always up to date
-              localStorage.setItem('cubs-auth-token', JSON.stringify({
-                access_token: session.access_token,
-                refresh_token: session.refresh_token,
-                expires_at: session.expires_at
-              }));
-              log.info('AuthContext: Mobile session data synchronized');
+            if (session && typeof window !== 'undefined' && window.localStorage) {
+              try {
+                // Ensure session data is always up to date
+                localStorage.setItem('cubs-auth-token', JSON.stringify({
+                  access_token: session.access_token,
+                  refresh_token: session.refresh_token,
+                  expires_at: session.expires_at
+                }));
+                log.info('AuthContext: Mobile session data synchronized');
+              } catch (storageError) {
+                log.warn('AuthContext: Failed to synchronize session data:', storageError);
+              }
             } else {
               // Session lost, attempt recovery
               log.warn('AuthContext: Mobile session lost, attempting recovery...');

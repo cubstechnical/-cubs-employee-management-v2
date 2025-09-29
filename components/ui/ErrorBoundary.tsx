@@ -59,10 +59,14 @@ class ErrorBoundaryClass extends Component<Props, State> {
   };
 
   handleGoHome = () => {
-    window.location.href = '/dashboard';
+    if (typeof window !== 'undefined' && window.location) {
+      window.location.href = '/dashboard';
+    }
   };
 
   handleReportBug = () => {
+    if (typeof window === 'undefined' || typeof navigator === 'undefined') return;
+
     const errorDetails = {
       message: this.state.error?.message,
       stack: this.state.error?.stack,
@@ -81,7 +85,7 @@ ${JSON.stringify(errorDetails, null, 2)}
 Please describe what you were doing when this error occurred:
 [Your description here]
     `);
-    
+
     window.open(`mailto:info@cubstechnical.com?subject=${subject}&body=${body}`);
   };
 

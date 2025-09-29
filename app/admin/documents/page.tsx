@@ -100,9 +100,11 @@ function AdminDocumentsContent() {
 
   // Load recent searches from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('document-recent-searches');
-    if (saved) {
-      setRecentSearches(JSON.parse(saved));
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const saved = localStorage.getItem('document-recent-searches');
+      if (saved) {
+        setRecentSearches(JSON.parse(saved));
+      }
     }
   }, []);
 
@@ -112,7 +114,10 @@ function AdminDocumentsContent() {
 
     const updated = [term, ...recentSearches.filter(s => s !== term)].slice(0, 5);
     setRecentSearches(updated);
-    localStorage.setItem('document-recent-searches', JSON.stringify(updated));
+
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.setItem('document-recent-searches', JSON.stringify(updated));
+    }
   };
 
   // Document type options

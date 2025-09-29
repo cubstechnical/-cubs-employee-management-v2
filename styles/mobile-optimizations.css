@@ -4,9 +4,9 @@
 html, body {
   overscroll-behavior: none;
   -webkit-overflow-scrolling: touch;
-  /* Fix iOS viewport height issues */
-  height: 100vh;
+  /* Fix iOS viewport height issues - use dvh for dynamic viewport height */
   height: 100dvh; /* Dynamic viewport height for mobile */
+  min-height: 100vh; /* Fallback for browsers that don't support dvh */
   overflow-x: hidden;
 }
 
@@ -21,8 +21,8 @@ html, body {
 /* Ensure full viewport coverage on mobile */
 @media (max-width: 768px) {
   #__next {
-    min-height: 100vh;
-    min-height: 100dvh;
+    min-height: 100dvh; /* Use dynamic viewport height */
+    min-height: 100vh; /* Fallback */
   }
 }
 
@@ -536,7 +536,8 @@ img {
   /* Fix any fixed height containers */
   .h-screen,
   .min-h-screen {
-    min-height: 100vh;
+    min-height: 100dvh; /* Use dynamic viewport height */
+    min-height: 100vh; /* Fallback */
     height: auto;
   }
   

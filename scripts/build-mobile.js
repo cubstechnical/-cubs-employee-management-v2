@@ -6,19 +6,16 @@ const path = require('path');
 function deleteDir(dirPath) {
   if (!fs.existsSync(dirPath)) return;
 
-  const entries = fs.readdirSync(dirPath, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const entryPath = path.join(dirPath, entry.name);
-
-    if (entry.isDirectory()) {
-      deleteDir(entryPath);
+  try {
+    // Use fs.rmSync for Node.js 14.14+ or fallback to rimraf
+    if (fs.rmSync) {
+      fs.rmSync(dirPath, { recursive: true, force: true });
     } else {
-      fs.unlinkSync(entryPath);
+      execSync(`npx rimraf "${dirPath}"`, { stdio: 'pipe' });
     }
+  } catch (error) {
+    console.warn(`Could not delete ${dirPath}:`, error.message);
   }
-
-  fs.rmdirSync(dirPath);
 }
 
 console.log('🚀 Starting mobile build process...');

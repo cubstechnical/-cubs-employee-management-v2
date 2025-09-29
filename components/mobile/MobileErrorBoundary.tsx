@@ -13,6 +13,7 @@ interface State {
   hasError: boolean;
   error: Error | null;
   isOnline: boolean;
+  retryCount: number;
 }
 
 export class MobileErrorBoundary extends Component<Props, State> {
@@ -21,7 +22,8 @@ export class MobileErrorBoundary extends Component<Props, State> {
     this.state = {
       hasError: false,
       error: null,
-      isOnline: navigator.onLine
+      isOnline: navigator.onLine,
+      retryCount: 0
     };
   }
 
@@ -29,7 +31,8 @@ export class MobileErrorBoundary extends Component<Props, State> {
     return {
       hasError: true,
       error,
-      isOnline: navigator.onLine
+      isOnline: navigator.onLine,
+      retryCount: 0
     };
   }
 
@@ -63,10 +66,42 @@ export class MobileErrorBoundary extends Component<Props, State> {
   };
 
   handleRetry = () => {
-    this.setState({
-      hasError: false,
-      error: null
-    });
+    const { retryCount } = this.state;
+    const newRetryCount = retryCount + 1;
+
+    if (newRetryCount <= 3) {
+      this.setState({
+        hasError: false,
+        error: null,
+        retryCount: newRetryCount
+      });
+      log.info(`MobileErrorBoundary: Retry attempt ${newRetryCount}`);
+    } else {
+      // After 3 retries, do a force refresh
+      this.handleForceRefresh();
+    }
+  };
+
+  handleForceRefresh = () => {
+    try {
+      // Clear all app data and reload
+      localStorage.clear();
+      sessionStorage.clear();
+
+      // Clear service worker caches if available
+      if ('caches' in window) {
+        caches.keys().then(names => {
+          names.forEach(name => caches.delete(name));
+        });
+      }
+
+      // Reload the app
+      window.location.reload();
+    } catch (error) {
+      log.error('MobileErrorBoundary: Force refresh failed:', error);
+      // Ultimate fallback
+      window.location.href = '/';
+    }
   };
 
   render() {
@@ -75,64 +110,100 @@ export class MobileErrorBoundary extends Component<Props, State> {
         return this.props.fallback;
       }
 
+      const { retryCount, isOnline } = this.state;
+      const canRetry = retryCount < 3;
+
       return (
-        <div className="min-h-screen flex items-center justify-center p-4 bg-gray-50 dark:bg-gray-900">
-          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 text-center">
+        <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 safe-area-all">
+          <div className="max-w-md w-full bg-white dark:bg-gray-800 rounded-xl shadow-2xl p-6 text-center">
             <div className="flex justify-center mb-4">
-              <AlertTriangle className="h-12 w-12 text-red-500" />
+              <div className="w-16 h-16 bg-gradient-to-br from-red-500 to-red-600 rounded-full flex items-center justify-center">
+                <AlertTriangle className="h-8 w-8 text-white" />
+              </div>
             </div>
-            
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
               Something went wrong
             </h2>
-            
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              {this.state.error?.message || 'An unexpected error occurred'}
+
+            <p className="text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
+              {this.state.error?.message || 'An unexpected error occurred while loading the app.'}
             </p>
 
             {/* Network Status */}
             <div className="flex items-center justify-center mb-4">
-              {this.state.isOnline ? (
-                <div className="flex items-center text-green-600">
+              {isOnline ? (
+                <div className="flex items-center text-green-600 bg-green-50 dark:bg-green-900/20 px-3 py-2 rounded-full">
                   <Wifi className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Online</span>
+                  <span className="text-sm font-medium">Online</span>
                 </div>
               ) : (
-                <div className="flex items-center text-red-600">
+                <div className="flex items-center text-red-600 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-full">
                   <WifiOff className="h-4 w-4 mr-2" />
-                  <span className="text-sm">Offline</span>
+                  <span className="text-sm font-medium">Offline</span>
                 </div>
               )}
             </div>
 
+            {/* Retry Status */}
+            {retryCount > 0 && (
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 mb-4">
+                <p className="text-sm text-blue-800 dark:text-blue-200">
+                  Retry attempt {retryCount} of 3
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
+              {canRetry ? (
+                <button
+                  onClick={this.handleRetry}
+                  className="w-full bg-[#d3194f] hover:bg-[#a91542] text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Try Again ({3 - retryCount} attempts left)
+                </button>
+              ) : (
+                <button
+                  onClick={this.handleForceRefresh}
+                  className="w-full bg-orange-600 hover:bg-orange-700 text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Force Refresh App
+                </button>
+              )}
+
               <button
-                onClick={this.handleRetry}
-                className="w-full bg-primary-600 hover:bg-primary-700 text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
+                onClick={() => this.handleGoHome()}
+                className="w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-3 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center"
               >
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Try Again
-              </button>
-              
-              <button
-                onClick={() => window.location.reload()}
-                className="w-full bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-900 dark:text-white font-medium py-2 px-4 rounded-lg transition-colors duration-200"
-              >
-                Reload App
+                Go to Home
               </button>
             </div>
 
-            {/* Mobile-specific tips */}
-            <div className="mt-6 text-left">
-              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
-                Troubleshooting Tips:
-              </h3>
-              <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-                <li>• Check your internet connection</li>
-                <li>• Try closing and reopening the app</li>
-                <li>• Restart your device if the problem persists</li>
-                <li>• Make sure you have the latest app version</li>
-              </ul>
+            {/* Enhanced Mobile-specific tips */}
+            <div className="mt-6 space-y-3">
+              <div className="text-left">
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2 flex items-center">
+                  <Wifi className="h-4 w-4 mr-1" />
+                  Troubleshooting Tips:
+                </h3>
+                <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
+                  <li>• Check your internet connection</li>
+                  <li>• Try switching between WiFi and mobile data</li>
+                  <li>• Try closing and reopening the app</li>
+                  <li>• Restart your device if the problem persists</li>
+                  <li>• Make sure you have the latest app version</li>
+                </ul>
+              </div>
+
+              {!isOnline && (
+                <div className="bg-yellow-50 dark:bg-yellow-900/20 rounded-lg p-3">
+                  <p className="text-xs text-yellow-800 dark:text-yellow-200">
+                    📱 You&apos;re currently offline. Some features may not work properly until you&apos;re back online.
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -141,6 +212,20 @@ export class MobileErrorBoundary extends Component<Props, State> {
 
     return this.props.children;
   }
+
+  handleGoHome = () => {
+    try {
+      // Clear any cached data that might be causing issues
+      localStorage.clear();
+      sessionStorage.clear();
+      // Navigate to home
+      window.location.href = '/';
+    } catch (error) {
+      log.error('MobileErrorBoundary: Failed to navigate home:', error);
+      // Fallback to reload
+      window.location.reload();
+    }
+  };
 }
 
 export default MobileErrorBoundary;

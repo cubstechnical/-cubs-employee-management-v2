@@ -85,8 +85,10 @@ export default function AdminApprovals() {
         await loadPendingUsers();
 
         // Notify dashboard to refresh
-        localStorage.setItem('adminDashboardRefresh', Date.now().toString());
-        window.dispatchEvent(new CustomEvent('adminDashboardRefresh'));
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('adminDashboardRefresh', Date.now().toString());
+          window.dispatchEvent(new CustomEvent('adminDashboardRefresh'));
+        }
       }
     } catch (error) {
       toast.error('Failed to approve user');
@@ -112,8 +114,10 @@ export default function AdminApprovals() {
         await loadPendingUsers();
 
         // Notify dashboard to refresh
-        localStorage.setItem('adminDashboardRefresh', Date.now().toString());
-        window.dispatchEvent(new CustomEvent('adminDashboardRefresh'));
+        if (typeof window !== 'undefined' && window.localStorage) {
+          localStorage.setItem('adminDashboardRefresh', Date.now().toString());
+          window.dispatchEvent(new CustomEvent('adminDashboardRefresh'));
+        }
       }
     } catch (error) {
       toast.error('Failed to reject user');

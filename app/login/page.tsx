@@ -16,6 +16,7 @@ import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { log } from '@/lib/utils/productionLogger';
+import { useMobileCrashDetection } from '@/hooks/useMobileCrashDetection';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -30,6 +31,9 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+
+  // Initialize mobile crash detection
+  useMobileCrashDetection();
   const {
     register,
     handleSubmit,
@@ -147,8 +151,10 @@ export default function LoginPage() {
                 style={{ width: '120px', height: '120px' }}
                 onError={(e) => {
                   log.info('Logo failed to load, using fallback');
-                  e.currentTarget.style.display = 'none';
-                  e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  if (typeof window !== 'undefined') {
+                    e.currentTarget.style.display = 'none';
+                    e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                  }
                 }}
               />
               {/* Fallback logo */}
@@ -262,8 +268,10 @@ export default function LoginPage() {
 
                 <Button
                   onClick={() => {
-                    const email = (document.getElementById('reset-email') as HTMLInputElement)?.value;
-                    handleForgotPassword(email);
+                    if (typeof document !== 'undefined') {
+                      const email = (document.getElementById('reset-email') as HTMLInputElement)?.value;
+                      handleForgotPassword(email);
+                    }
                   }}
                   className="w-full"
                   loading={isLoading}

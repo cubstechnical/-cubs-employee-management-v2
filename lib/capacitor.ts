@@ -65,11 +65,14 @@ export class CapacitorService {
         log.info('Back button pressed, canGoBack:', canGoBack);
         if (!canGoBack) {
           // Show confirmation before exiting
-          if (confirm('Are you sure you want to exit the app?')) {
+          if (typeof window !== 'undefined' && confirm('Are you sure you want to exit the app?')) {
             App.exitApp();
           }
         } else {
-          window.history.back();
+          // Guard window.history access for SSR compatibility
+          if (typeof window !== 'undefined' && window.history) {
+            window.history.back();
+          }
         }
       });
 

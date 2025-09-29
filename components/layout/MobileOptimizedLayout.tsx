@@ -16,6 +16,8 @@ export default function MobileOptimizedLayout({ children }: MobileOptimizedLayou
   const pathname = usePathname();
 
   useEffect(() => {
+    if (typeof window === 'undefined' || typeof document === 'undefined') return;
+
     const checkMobile = () => {
       setIsMobile(isMobileDevice());
       setScreenSize(getScreenSize());
@@ -28,10 +30,14 @@ export default function MobileOptimizedLayout({ children }: MobileOptimizedLayou
     window.addEventListener('resize', checkMobile);
     
     // Add mobile class to body
-    if (isMobileDevice()) {
-      document.body.classList.add('mobile-device');
-    } else {
-      document.body.classList.remove('mobile-device');
+    try {
+      if (isMobileDevice()) {
+        document.body.classList.add('mobile-device');
+      } else {
+        document.body.classList.remove('mobile-device');
+      }
+    } catch (error) {
+      // Ignore DOM manipulation errors during SSR
     }
 
     return () => {
@@ -41,18 +47,30 @@ export default function MobileOptimizedLayout({ children }: MobileOptimizedLayou
 
   // Add screen size class to body
   useEffect(() => {
-    document.body.classList.remove('mobile', 'tablet', 'desktop');
-    document.body.classList.add(screenSize);
+    if (typeof document === 'undefined') return;
+
+    try {
+      document.body.classList.remove('mobile', 'tablet', 'desktop');
+      document.body.classList.add(screenSize);
+    } catch (error) {
+      // Ignore DOM manipulation errors during SSR
+    }
   }, [screenSize]);
 
   // Add path-specific classes
   useEffect(() => {
-    const pathClass = pathname.replace(/\//g, '-').replace(/^-/, '') || 'home';
-    document.body.classList.add(`page-${pathClass}`);
-    
-    return () => {
-      document.body.classList.remove(`page-${pathClass}`);
-    };
+    if (typeof document === 'undefined') return;
+
+    try {
+      const pathClass = pathname.replace(/\//g, '-').replace(/^-/, '') || 'home';
+      document.body.classList.add(`page-${pathClass}`);
+      
+      return () => {
+        document.body.classList.remove(`page-${pathClass}`);
+      };
+    } catch (error) {
+      // Ignore DOM manipulation errors during SSR
+    }
   }, [pathname]);
 
   return (

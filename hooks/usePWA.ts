@@ -55,9 +55,13 @@ export function usePWA() {
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
                       window.innerWidth < 768;
 
-      if (isMobile) {
-        // Add mobile-specific classes
-        document.body.classList.add('mobile-device');
+      if (isMobile && typeof document !== 'undefined') {
+        try {
+          // Add mobile-specific classes
+          document.body.classList.add('mobile-device');
+        } catch (error) {
+          // Ignore DOM manipulation errors during SSR
+        }
       }
     };
 

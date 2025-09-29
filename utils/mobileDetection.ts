@@ -59,10 +59,12 @@ export const addMobileClass = (): void => {
   if (typeof document === 'undefined') return;
 
   try {
-    if (isMobileDevice()) {
-      document.body.classList.add('mobile-device');
-    } else {
-      document.body.classList.remove('mobile-device');
+    if (typeof document !== 'undefined') {
+      if (isMobileDevice()) {
+        document.body.classList.add('mobile-device');
+      } else {
+        document.body.classList.remove('mobile-device');
+      }
     }
   } catch (error) {
     // Silently handle any errors

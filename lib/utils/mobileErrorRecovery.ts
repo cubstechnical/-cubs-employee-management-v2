@@ -55,33 +55,33 @@ export class MobileErrorRecovery {
     setTimeout(() => {
       // Strategy 1: Reload the page
       if (this.retryCount === 1) {
-        if (typeof window !== 'undefined' && (window as any).location) {
-          (window as any).location.reload();
+        if (typeof window !== 'undefined' && window.location) {
+          window.location.reload();
         }
       }
       // Strategy 2: Clear cache and reload
       else if (this.retryCount === 2) {
-        if (typeof window !== 'undefined' && (window as any).location) {
-          if ('caches' in window) {
+        if (typeof window !== 'undefined' && window.location) {
+          if ('caches' in window && window.location) {
             caches.keys().then(names => {
               names.forEach(name => caches.delete(name));
-              if ((window as any).location) (window as any).location.reload();
+              window.location.reload();
             });
-          } else {
-            (window as any).location.reload();
+          } else if (window.location) {
+            window.location.reload();
           }
         }
       }
       // Strategy 3: Clear localStorage and reload
       else {
-        try {
-          if (typeof localStorage !== 'undefined') localStorage.clear();
-          if (typeof sessionStorage !== 'undefined') sessionStorage.clear();
-        } catch (e) {
-          // Ignore storage errors
-        }
-        if (typeof window !== 'undefined' && (window as any).location) {
-          (window as any).location.reload();
+        if (typeof window !== 'undefined' && window.location) {
+          try {
+            localStorage.clear();
+            sessionStorage.clear();
+          } catch (e) {
+            // Ignore storage errors
+          }
+          window.location.reload();
         }
       }
     }, 1000 * this.retryCount);

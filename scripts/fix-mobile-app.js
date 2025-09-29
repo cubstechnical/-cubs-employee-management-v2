@@ -14,13 +14,18 @@ console.log('🔧 Fixing Mobile App Issues...');
 // 1. Clean and rebuild everything
 function cleanAndRebuild() {
   console.log('🧹 Cleaning previous builds...');
-  
+
   const dirsToClean = ['.next', 'out', 'node_modules/.cache', 'android/app/build', 'ios/App/build'];
-  
+
   dirsToClean.forEach(dir => {
     if (fs.existsSync(dir)) {
       try {
-        execSync(`rm -rf "${dir}"`, { stdio: 'inherit' });
+        // Use rimraf or fs.rmSync for cross-platform compatibility
+        if (fs.rmSync) {
+          fs.rmSync(dir, { recursive: true, force: true });
+        } else {
+          execSync(`npx rimraf "${dir}"`, { stdio: 'inherit' });
+        }
         console.log(`✅ Cleaned ${dir}`);
       } catch (error) {
         console.warn(`⚠️ Could not clean ${dir}:`, error.message);
@@ -305,9 +310,11 @@ console.log('4. npx cap open ios');
 
   fs.writeFileSync(verificationPath, verificationContent);
   
-  // Make it executable
+  // Make it executable (skip on Windows)
   try {
-    execSync(`chmod +x ${verificationPath}`);
+    if (process.platform !== 'win32') {
+      execSync(`chmod +x ${verificationPath}`);
+    }
   } catch (e) {
     // Ignore chmod errors on Windows
   }
