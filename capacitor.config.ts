@@ -5,6 +5,7 @@ const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
   webDir: 'out',
+  version: '1.2.0',
   server: {
     // Enhanced server configuration for better mobile performance
     hostname: 'localhost',
