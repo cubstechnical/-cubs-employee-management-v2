@@ -38,9 +38,9 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
             const mobileSession = await Promise.race([
               MobileAuthService.restoreMobileSession(),
               new Promise((_, reject) => setTimeout(() => reject(new Error('Mobile session timeout')), 3000))
-            ]);
+            ]) as any;
             
-            if (mobileSession.session) {
+            if (mobileSession && mobileSession.session) {
               log.info('SimpleAuthContext: Mobile session restored successfully');
               setUser(mobileSession.session);
             } else {
@@ -82,10 +82,8 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
 
     // Fallback timeout to ensure loading never hangs
     const fallbackTimeout = setTimeout(() => {
-      if (isLoading) {
-        log.warn('SimpleAuthContext: Fallback timeout triggered, forcing loading to false');
-        setIsLoading(false);
-      }
+      log.warn('SimpleAuthContext: Fallback timeout triggered, forcing loading to false');
+      setIsLoading(false);
     }, 5000); // 5 second fallback
 
     // Simple auth state change listener
