@@ -108,15 +108,35 @@ export default function LoginPage() {
       log.info('Login page: Login successful, waiting for auth state update...');
 
       // Wait for auth state to update and verify authentication
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1500));
 
-      // Verify user is actually authenticated before redirecting
-      if (user) {
+      // Check authentication status more thoroughly
+      let isAuthenticated = false;
+      
+      // Try multiple methods to verify authentication
+      try {
+        // Method 1: Check context user
+        if (user) {
+          log.info('Login page: User found in context');
+          isAuthenticated = true;
+        } else {
+          // Method 2: Direct auth service check
+          const authUser = await AuthService.getCurrentUser();
+          if (authUser) {
+            log.info('Login page: User found via AuthService');
+            isAuthenticated = true;
+          }
+        }
+      } catch (authCheckError) {
+        log.warn('Login page: Auth verification failed:', authCheckError);
+      }
+
+      if (isAuthenticated) {
         log.info('Login page: User authenticated, redirecting to dashboard');
         toast.success('Login successful! Redirecting...');
         router.push('/dashboard');
       } else {
-        log.warn('Login page: User not found in context after login');
+        log.warn('Login page: Authentication verification failed');
         toast.error('Authentication verification failed. Please try logging in again.');
       }
 
@@ -182,13 +202,14 @@ export default function LoginPage() {
   }
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto"
-      style={{
-        contain: 'layout style paint',
-        scrollBehavior: 'smooth'
-      }}
-    >
+    <div className="main-login">
+      <div
+        className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all overflow-y-auto"
+        style={{
+          contain: 'layout style paint',
+          scrollBehavior: 'smooth'
+        }}
+      >
       <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">
         {/* Logo */}
         <div className="login-logo-container-image text-center">
@@ -386,6 +407,7 @@ export default function LoginPage() {
             </a>
           </p>
         </div>
+      </div>
       </div>
     </div>
   );
