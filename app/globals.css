@@ -318,9 +318,8 @@
 
   .login-card-image {
     animation: slideUp 0.6s ease-in-out;
-    backdrop-filter: blur(10px);
     background-color: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(0, 0, 0, 0.1);
   }
 
   .dark .login-card-image {
@@ -357,8 +356,7 @@
     
     .login-card-image {
       margin: 0;
-      backdrop-filter: blur(12px);
-      background-color: rgba(255, 255, 255, 0.98);
+      background-color: rgba(255, 255, 255, 0.95);
     }
     
     .dark .login-card-image {
