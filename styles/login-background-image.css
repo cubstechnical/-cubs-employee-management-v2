@@ -38,14 +38,6 @@ body, #__next, main {
   padding: 0;
   
   background: 
-    /* Fallback gradient while image loads */
-    linear-gradient(135deg, 
-      rgba(211, 25, 79, 0.05) 0%, 
-      rgba(176, 23, 58, 0.08) 25%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(176, 23, 58, 0.08) 75%,
-      rgba(211, 25, 79, 0.05) 100%
-    ),
     /* Optimized 78KB background image */
     url('/assets/bg1.webp');
   
@@ -62,14 +54,6 @@ body, #__next, main {
 /* Load the actual image after page load */
 .login-background-image.loaded {
   background-image: 
-    /* Overlay for better text readability */
-    linear-gradient(135deg, 
-      rgba(211, 25, 79, 0.1) 0%, 
-      rgba(176, 23, 58, 0.15) 25%,
-      rgba(0, 0, 0, 0.3) 50%,
-      rgba(176, 23, 58, 0.15) 75%,
-      rgba(211, 25, 79, 0.1) 100%
-    ),
     /* Actual background image */
     url('/assets/bg1.webp');
 }
@@ -103,31 +87,17 @@ body, #__next, main {
 
 .dark .login-background-image {
   background: 
-    /* Fallback for dark mode */
-    linear-gradient(135deg, 
-      rgba(211, 25, 79, 0.1) 0%, 
-      rgba(176, 23, 58, 0.15) 25%,
-      rgba(17, 24, 39, 0.95) 50%,
-      rgba(176, 23, 58, 0.15) 75%,
-      rgba(211, 25, 79, 0.1) 100%
-    );
-}
-
-.dark .login-background-image.loaded {
-  background-image: 
-    /* Darker overlay for dark mode */
-    linear-gradient(135deg, 
-      rgba(211, 25, 79, 0.2) 0%, 
-      rgba(176, 23, 58, 0.25) 25%,
-      rgba(0, 0, 0, 0.6) 50%,
-      rgba(176, 23, 58, 0.25) 75%,
-      rgba(211, 25, 79, 0.2) 100%
-    ),
     /* Actual background image */
     url('/assets/bg1.webp');
 }
 
-/* Enhanced logo container for better visibility over image - Fixed glaring */
+.dark .login-background-image.loaded {
+  background-image: 
+    /* Actual background image */
+    url('/assets/bg1.webp');
+}
+
+/* Clean logo container without glaring effects */
 .login-logo-container-image {
   position: relative;
   display: flex;
@@ -135,87 +105,69 @@ body, #__next, main {
   justify-content: center;
   align-items: center;
   margin-bottom: 0.5rem;
-  /* Reduced backdrop for less glaring effect */
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(5px);
-  border-radius: 10px;
+  /* Clean, minimal styling */
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 8px;
   padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   max-width: 300px;
   width: 100%;
 }
 
 .dark .login-logo-container-image {
-  background: rgba(17, 24, 39, 0.3);
+  background: rgba(17, 24, 39, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
-/* Enhanced text styling for maximum visibility */
+/* Clean text styling without glaring effects */
 .login-logo-container-image p {
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
-  letter-spacing: 0.8px;
-  font-weight: 700;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  letter-spacing: 0.5px;
+  font-weight: 600;
+  color: #374151;
+  text-align: center;
 }
 
 .dark .login-logo-container-image p {
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.9);
-  border: 2px solid rgba(255, 255, 255, 0.4);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6);
+  color: #f3f4f6;
 }
 
-/* Enhanced logo for better visibility over image */
+/* Clean logo styling without glaring effects */
 .login-logo-image {
   width: 120px;
   height: 120px;
   object-fit: contain;
-  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.3));
-  transition: transform 0.3s ease, filter 0.3s ease;
+  transition: transform 0.2s ease;
 }
 
 .login-logo-image:hover {
-  transform: scale(1.05);
-  filter: drop-shadow(0 6px 16px rgba(211, 25, 79, 0.4));
+  transform: scale(1.02);
 }
 
-/* Enhanced card styling for better visibility over image - Fixed glaring issue */
+/* Clean card styling without glaring effects */
 .login-card-image {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.15),
-    0 2px 8px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
   width: 100%;
   max-width: 24rem;
 }
 
 .dark .login-card-image {
   background: rgba(17, 24, 39, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.4),
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 .login-card-image:hover {
-  transform: translateY(-2px);
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.25),
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.15);
 }
 
 .dark .login-card-image:hover {
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.5),
-    0 4px 12px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.3);
 }
 
 /* Performance optimizations */
@@ -305,14 +257,8 @@ body, #__next, main {
 /* Loading state */
 .login-background-image.loading {
   background-image: 
-    /* Loading gradient */
-    linear-gradient(135deg, 
-      rgba(211, 25, 79, 0.05) 0%, 
-      rgba(176, 23, 58, 0.08) 25%,
-      rgba(255, 255, 255, 0.9) 50%,
-      rgba(176, 23, 58, 0.08) 75%,
-      rgba(211, 25, 79, 0.05) 100%
-    );
+    /* Actual background image */
+    url('/assets/bg1.webp');
 }
 
 /* Image preloading optimization */

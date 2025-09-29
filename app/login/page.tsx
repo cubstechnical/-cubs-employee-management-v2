@@ -146,7 +146,7 @@ export default function LoginPage() {
                 alt="CUBS Logo"
                 width={120}
                 height={120}
-                className="login-logo-image drop-shadow-lg"
+                className="login-logo-image"
                 priority
                 style={{ width: '120px', height: '120px' }}
                 onError={(e) => {
@@ -163,12 +163,12 @@ export default function LoginPage() {
               </div>
             </div>
           </div>
-          <p className="text-white dark:text-white mt-1 font-bold text-sm text-center drop-shadow-lg bg-black bg-opacity-50 px-3 py-1 rounded-lg backdrop-blur-sm whitespace-nowrap">
+          <p className="text-gray-700 dark:text-gray-300 mt-1 font-semibold text-sm text-center px-3 py-1 rounded-lg whitespace-nowrap">
             Employee Management Portal
           </p>
         </div>
 
-        <Card className="w-full p-6 login-card-image shadow-2xl">
+        <Card className="w-full p-6 login-card-image">
           {!isForgotPassword ? (
             <>
               <div className="text-center mb-6">

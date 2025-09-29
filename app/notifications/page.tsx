@@ -70,87 +70,56 @@ export default function NotificationsPage() {
   const loadNotifications = async () => {
     setIsLoading(true);
     try {
-      // Try to load notifications using client-side service
-      try {
-        const { NotificationService } = await import('@/lib/services/notifications');
-        const result = await NotificationService.getNotifications();
+      log.info('Loading notifications from API...');
+      
+      // Load notifications from API
+      const response = await fetch('/api/notifications');
+      const result = await response.json();
 
-        if (result.success && result.notifications) {
-          setNotifications(result.notifications);
+      if (result.success && result.notifications) {
+        // Transform API data to match our interface
+        const transformedNotifications: Notification[] = result.notifications.map((n: any) => ({
+          id: String(n.id),
+          title: String(n.title),
+          message: String(n.message),
+          type: (n.type as 'success' | 'warning' | 'error' | 'info') || 'info',
+          status: 'sent' as const, // Default status for API notifications
+          recipient: String(n.user_id || 'system'),
+          createdAt: String(n.created_at),
+          category: (n.category as 'visa' | 'document' | 'system' | 'approval') || 'system'
+        }));
 
-          // Calculate stats from real data
-          const today = new Date().toDateString();
-          const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+        setNotifications(transformedNotifications);
 
-          const newStats: NotificationStats = {
-            total: result.notifications.length,
-            sent: result.notifications.filter((n: Notification) => n.type === 'success').length,
-            pending: result.notifications.filter((n: Notification) => n.type === 'info').length,
-            failed: result.notifications.filter((n: Notification) => n.type === 'error').length,
-            today: result.notifications.filter((n: Notification) => new Date(n.createdAt).toDateString() === today).length,
-            thisWeek: result.notifications.filter((n: Notification) => new Date(n.createdAt) >= weekAgo).length
-          };
+        // Calculate stats from real data
+        const today = new Date().toDateString();
+        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-          setStats(newStats);
-          return;
-        }
-      } catch (serviceError) {
-        log.warn('Notification service not available, using fallback data:', serviceError);
+        const newStats: NotificationStats = {
+          total: transformedNotifications.length,
+          sent: transformedNotifications.filter(n => n.status === 'sent').length,
+          pending: transformedNotifications.filter(n => n.status === 'pending').length,
+          failed: transformedNotifications.filter(n => n.status === 'failed').length,
+          today: transformedNotifications.filter(n => new Date(n.createdAt).toDateString() === today).length,
+          thisWeek: transformedNotifications.filter(n => new Date(n.createdAt) >= weekAgo).length
+        };
+
+        setStats(newStats);
+        log.info('Notifications loaded successfully:', { count: transformedNotifications.length });
+      } else {
+        log.warn('No notifications found or API error:', result.error);
+        setNotifications([]);
+        setStats({
+          total: 0,
+          sent: 0,
+          pending: 0,
+          failed: 0,
+          today: 0,
+          thisWeek: 0
+        });
       }
-
-      // Fallback: Create mock notifications for demo purposes
-      const mockNotifications: Notification[] = [
-        {
-          id: '1',
-          title: 'System Startup',
-          message: 'CUBS Technical notification system is now active',
-          type: 'info',
-          status: 'sent',
-          recipient: 'info@cubstechnical.com',
-          createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          category: 'system'
-        },
-        {
-          id: '2',
-          title: 'Email Service Test',
-          message: 'Gmail SMTP service is configured and working',
-          type: 'success',
-          status: 'sent',
-          recipient: 'info@cubstechnical.com',
-          createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000).toISOString(),
-          category: 'system'
-        },
-        {
-          id: '3',
-          title: 'Visa Monitoring Active',
-          message: 'Automated visa expiry monitoring is now active',
-          type: 'info',
-          status: 'sent',
-          recipient: 'info@cubstechnical.com',
-          createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
-          category: 'visa'
-        }
-      ];
-
-      setNotifications(mockNotifications);
-
-      // Calculate stats from mock data
-      const today = new Date().toDateString();
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-      const newStats: NotificationStats = {
-        total: mockNotifications.length,
-        sent: mockNotifications.filter(n => n.status === 'sent').length,
-        pending: mockNotifications.filter(n => n.status === 'pending').length,
-        failed: mockNotifications.filter(n => n.status === 'failed').length,
-        today: mockNotifications.filter(n => new Date(n.createdAt).toDateString() === today).length,
-        thisWeek: mockNotifications.filter(n => new Date(n.createdAt) >= weekAgo).length
-      };
-
-      setStats(newStats);
     } catch (error) {
       log.error('Error loading notifications:', error);
-      // Show empty state on error
       setNotifications([]);
       setStats({
         total: 0,
@@ -168,32 +137,32 @@ export default function NotificationsPage() {
 
   const loadVisaStats = async () => {
     try {
-      // Try to load from client-side service first
-      try {
-        const { NotificationService } = await import('@/lib/services/notifications');
-        // For now, use empty stats since we don't have visa-specific logic
+      log.info('Loading visa statistics from API...');
+      
+      // Load visa stats from API
+      const response = await fetch('/api/visa-notifications');
+      const result = await response.json();
+
+      if (result.success && result.stats) {
+        const newVisaStats: VisaStats = {
+          totalEmployees: result.stats.total_tracked || 0,
+          expiringSoon: result.stats.expiring_soon || 0,
+          expired: result.stats.expired || 0,
+          notificationsSent: 0 // This will be updated when notifications are sent
+        };
+        setVisaStats(newVisaStats);
+        log.info('Visa statistics loaded successfully:', newVisaStats);
+      } else {
+        log.warn('No visa statistics found or API error:', result.error);
         setVisaStats({
           totalEmployees: 0,
           expiringSoon: 0,
           expired: 0,
           notificationsSent: 0
         });
-        return;
-      } catch (serviceError) {
-        log.warn('Service not available, using fallback visa stats:', serviceError);
       }
-
-      // Fallback: Generate mock visa stats
-      const mockVisaStats: VisaStats = {
-        totalEmployees: 125,
-        expiringSoon: 8,
-        expired: 3,
-        notificationsSent: 15
-      };
-      setVisaStats(mockVisaStats);
     } catch (error) {
       log.error('Error loading visa stats:', error);
-      // Set default values on error
       setVisaStats({
         totalEmployees: 0,
         expiringSoon: 0,
@@ -206,13 +175,33 @@ export default function NotificationsPage() {
   const sendTestEmail = async () => {
     setIsSendingTest(true);
     try {
-      // For mobile app, show that server-side implementation is needed
-      console.log('Test email request (client-side)');
-      toast('Test email requires server-side implementation', { icon: 'ℹ️' });
+      log.info('Sending test email...');
+      
+      const response = await fetch('/api/send-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          to: 'info@cubstechnical.com',
+          subject: 'CUBS Employee Management - Test Email',
+          message: 'This is a test email to verify that the email notification system is working correctly. The system is now ready to send automated visa expiry notifications.',
+          type: 'test'
+        }),
+      });
 
-      // Fallback: Simulate successful email send
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate delay
-      toast.success('Test email sent successfully to info@cubstechnical.com (Demo Mode)');
+      const result = await response.json();
+
+      if (result.success) {
+        toast.success('Test email sent successfully to info@cubstechnical.com');
+        log.info('Test email sent successfully:', result.messageId);
+        
+        // Refresh notifications to show the new test email
+        loadNotifications();
+      } else {
+        toast.error(`Failed to send test email: ${result.error}`);
+        log.error('Test email failed:', result.error);
+      }
     } catch (error) {
       log.error('Error sending test email:', error);
       toast.error('Failed to send test email');
@@ -224,20 +213,46 @@ export default function NotificationsPage() {
   const checkVisaExpiries = async () => {
     setIsCheckingVisa(true);
     try {
-      // Try to check via client-side service first
-      try {
-        // For now, just show success since we're not implementing the full logic
-        toast.success('Visa expiry check completed (client-side)');
-        loadVisaStats(); // Refresh stats
-        return;
-      } catch (serviceError) {
-        log.warn('Service not available, simulating visa check:', serviceError);
-      }
+      log.info('Checking visa expiries and sending notifications...');
+      
+      const response = await fetch('/api/visa-notifications', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // Fallback: Simulate visa check
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
-      toast.success('Visa expiry check completed (Demo Mode)');
-      loadVisaStats(); // Refresh stats
+      const result = await response.json();
+
+      if (result.success) {
+        const { notifications_sent, expiring_soon, expired, total_employees } = result.results;
+        
+        if (notifications_sent > 0) {
+          toast.success(`Visa expiry check completed! ${notifications_sent} notifications sent to info@cubstechnical.com`);
+        } else {
+          toast.success('Visa expiry check completed. No notifications needed at this time.');
+        }
+        
+        log.info('Visa expiry check completed:', {
+          notifications_sent,
+          expiring_soon,
+          expired,
+          total_employees
+        });
+        
+        // Update visa stats with notification count
+        setVisaStats(prev => ({
+          ...prev,
+          notificationsSent: notifications_sent
+        }));
+        
+        // Refresh both notifications and visa stats
+        loadNotifications();
+        loadVisaStats();
+      } else {
+        toast.error(`Failed to check visa expiries: ${result.error}`);
+        log.error('Visa expiry check failed:', result.error);
+      }
     } catch (error) {
       log.error('Error checking visa expiries:', error);
       toast.error('Failed to check visa expiries');
