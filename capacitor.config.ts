@@ -5,7 +5,6 @@ const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
   webDir: 'out', // Must match Next.js static export output
-  bundledWebRuntime: false, // Use local web runtime
   server: {
     androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',

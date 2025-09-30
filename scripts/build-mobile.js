@@ -375,7 +375,7 @@ try {
 
   <title>CUBS Employee Management</title>
   <meta name="description" content="Comprehensive employee management system for CUBS Technical Group" />
-  <meta name="version" content="1.2.0" />
+  <meta name="version" content="1.3.0" />
 
   <link rel="manifest" href="/manifest.json" />
   <link rel="icon" href="/assets/cubs.webp" sizes="32x32" type="image/webp" />

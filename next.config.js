@@ -143,7 +143,6 @@ const baseConfig = {
     ];
   }, */
   experimental: {
-    esmExternals: false, // Help with build issues
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
   },
