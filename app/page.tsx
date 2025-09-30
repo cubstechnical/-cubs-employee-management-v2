@@ -25,16 +25,16 @@ export default function HomePage() {
       if (!user) {
         console.log('🏠 HomePage: No user, redirecting to login');
         // User is not authenticated, redirect to login
-        router.push('/login');
+        router.replace('/login'); // Use replace to prevent back button issues
       } else if (!user.approved) {
         console.log('🏠 HomePage: User not approved, redirecting to pending approval');
         // User is authenticated but not approved, redirect to pending approval
-        router.push('/pending-approval');
+        router.replace('/pending-approval');
       } else {
         console.log('🏠 HomePage: User approved, redirecting to dashboard');
         // User is authenticated and approved, redirect to main dashboard
         // Both admin and regular users now use the same dashboard
-        router.push('/dashboard');
+        router.replace('/dashboard');
       }
     } else {
       console.log('🏠 HomePage: Still loading, showing loading screen');

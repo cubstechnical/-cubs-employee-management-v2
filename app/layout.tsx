@@ -18,7 +18,6 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
 import { suppressMobileWarnings } from '@/utils/mobileDetection'
 import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
-import MobileLoadingScreen from '@/components/ui/MobileLoadingScreen'
 import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
 import MobileStatusIndicator from '@/components/ui/MobileStatusIndicator'
 import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
@@ -27,6 +26,8 @@ import { ThemeProvider } from '@/lib/theme'
 import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
 import HideSplashScreen from '@/components/capacitor/HideSplashScreen'
 import NetworkErrorHandler from '@/components/ui/NetworkErrorHandler'
+import { Toaster } from 'react-hot-toast'
+import OfflineIndicator from '@/components/ui/OfflineIndicator'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -142,72 +143,51 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
-        {/* Client-side initialization moved to ClientOnly wrapper */}
-
         <ErrorBoundary>
           <ThemeProvider>
             <SimpleAuthProvider>
               <QueryProvider>
-                <OptimizedLayout>
-                  <ClientOnly fallback={
-                    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-                      </div>
+                <Toaster position="top-right" />
+                <OfflineIndicator />
+                
+                {/* Client-side initialization */}
+                <ClientOnly fallback={null}>
+                  {(() => {
+                    suppressMobileWarnings();
+                    initializeEnvironment();
+                    return null;
+                  })()}
+                  
+                  {/* PWA and Capacitor initialization */}
+                  <PWARegistration />
+                  <CapacitorInit />
+                  
+                  {/* Mobile components */}
+                  <MobileErrorBoundary>
+                    <MobileStatusIndicator />
+                  </MobileErrorBoundary>
+                  <MobileDebugOverlay />
+                  <HideSplashScreen />
+                  <NetworkErrorHandler />
+                  
+                  {/* Performance monitor for development */}
+                  {process.env.NODE_ENV === 'development' && (
+                    <div style={{ display: 'none' }}>
+                      <ErrorBoundary fallback={<div />}>
+                        <Suspense fallback={<div />}>
+                          <PerformanceMonitor />
+                        </Suspense>
+                      </ErrorBoundary>
                     </div>
-                  }>
-                    {/* Initialize mobile warnings and environment - client-side only */}
-                    {(() => {
-                      suppressMobileWarnings();
-                      initializeEnvironment();
-                      return null;
-                    })()}
+                  )}
+                </ClientOnly>
 
-                    {/* Only load performance monitor in development - client-side only */}
-                    {process.env.NODE_ENV === 'development' && (
-                      <div style={{ display: 'none' }}>
-                        <ErrorBoundary fallback={<div />}>
-                          <Suspense fallback={<div />}>
-                            <PerformanceMonitor />
-                          </Suspense>
-                        </ErrorBoundary>
-                      </div>
-                    )}
-
-                    {/* PWA and Capacitor initialization - client-side only */}
-                    <PWARegistration />
-                    <CapacitorInit />
-
-                    {/* Optimized Suspense boundary for lazy loading */}
-                    <Suspense fallback={
-                      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                        <div className="text-center">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                          <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
-                        </div>
-                      </div>
-                    }>
-                      {children}
-                    </Suspense>
-                  </ClientOnly>
-                </OptimizedLayout>
+                {/* Main content - no OptimizedLayout wrapper */}
+                {children}
               </QueryProvider>
             </SimpleAuthProvider>
           </ThemeProvider>
-      {/* Mobile loading screen disabled */}
-      {/* <MobileLoadingScreen isLoading={false} /> */}
-          <MobileErrorBoundary>
-            {/* Mobile status indicator - shows diagnostics in native app */}
-            <MobileStatusIndicator />
-          </MobileErrorBoundary>
-      {/* Mobile debug overlay - triple-tap top-left to toggle */}
-      <MobileDebugOverlay />
-      {/* Hide splash screen immediately on mobile */}
-      <HideSplashScreen />
-      {/* Network error handler for mobile */}
-      <NetworkErrorHandler />
-    </ErrorBoundary>
+        </ErrorBoundary>
       </body>
     </html>
   )

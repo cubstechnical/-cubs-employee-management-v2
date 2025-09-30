@@ -47,11 +47,14 @@ export default function LoginPage() {
   });
 
   const checkAuth = useCallback(async () => {
+    // Skip auth check if already checking or if we're in a redirect loop
+    if (isCheckingAuth) {
+      return;
+    }
+    
+    setIsCheckingAuth(true);
+    
     try {
-      // Skip auth check if already checking or if we're in a redirect loop
-      if (isCheckingAuth) {
-        return;
-      }
 
       // Use the same authentication logic for both web and mobile
       // If it works in web/PWA, it should work in mobile too
@@ -91,10 +94,14 @@ export default function LoginPage() {
       return;
     }
 
-    // Delay auth check to allow login page to render first - reduced delay for mobile
-    const timer = setTimeout(checkAuth, 200);
+    // Only check auth once on mount
+    const timer = setTimeout(() => {
+      checkAuth();
+    }, 200);
+    
     return () => clearTimeout(timer);
-  }, [checkAuth, isCheckingAuth]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run on mount, checkAuth is stable
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);

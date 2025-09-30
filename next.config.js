@@ -1,9 +1,12 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.DISABLE_PWA === 'true',
-  register: true,
-  skipWaiting: true,
-  buildExcludes: [/middleware-manifest\.json$/],
+// Disable PWA for mobile builds, enable for web builds
+const withPWA = process.env.BUILD_MOBILE === 'true'
+  ? (config) => config // No-op for mobile builds
+  : require('next-pwa')({
+      dest: 'public',
+      disable: process.env.DISABLE_PWA === 'true',
+      register: true,
+      skipWaiting: true,
+      buildExcludes: [/middleware-manifest\.json$/],
   runtimeCaching: [
     // Cache Backblaze public endpoints with Range support
     {
@@ -93,9 +96,9 @@ const baseConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
-    // Force client-side rendering for components that cause hydration issues
-    serverComponentsExternalPackages: ['@capacitor/cli', '@capacitor/core'],
   },
+  // Force client-side rendering for Capacitor packages
+  serverExternalPackages: ['@capacitor/cli', '@capacitor/core'],
   compress: true,
   eslint: {
     ignoreDuringBuilds: false, // Enable ESLint for production builds
@@ -167,10 +170,6 @@ const baseConfig = {
       },
     ];
   },
-  experimental: {
-    optimizeCss: true,
-    optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
-  },
   // Move turbo config to turbopack
   turbopack: {
     rules: {
@@ -199,8 +198,8 @@ const baseConfig = {
         ...config.optimization,
         splitChunks: {
           chunks: 'all',
-          minSize: 10000, // Reduced min size for better splitting
-          maxSize: 50000, // Reduced max size to 50KB for better mobile performance
+          minSize: 50000, // Increased to reduce total chunk count (was 10KB)
+          maxSize: 250000, // Increased to 250KB to reduce HTTP requests (was 50KB)
           cacheGroups: {
             // React and React DOM - highest priority
             react: {
