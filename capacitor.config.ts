@@ -4,21 +4,12 @@ import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
-  webDir: 'out', // Always use out directory for Capacitor builds
+  webDir: 'out', // Must match Next.js static export output
+  bundledWebRuntime: false, // Use local web runtime
   server: {
-    // Enhanced server configuration for better mobile performance
-    hostname: 'localhost',
+    androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',
-    androidScheme: 'https',
-    allowNavigation: [
-      'cubsgroups.com',
-      'localhost',
-      '127.0.0.1',
-      '0.0.0.0',
-      '192.168.1.0/24', // Allow local network access
-      '10.0.0.0/8',     // Allow local network access
-    ],
-    cleartext: true, // Allow HTTP for development
+    // Remove server.url for production (only for development)
   },
   plugins: {
     SplashScreen: {

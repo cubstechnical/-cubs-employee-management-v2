@@ -83,8 +83,9 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 /** @type {import('next').NextConfig} */
 const baseConfig = {
   // Mobile-optimized build configuration for Capacitor
-  // output: 'export', // Temporarily disabled for dynamic routes
+  output: 'export', // ✅ ENABLED for Capacitor static export
   trailingSlash: true,
+  distDir: '.next', // Build directory
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
     unoptimized: true, // Required for static export
@@ -96,8 +97,8 @@ const baseConfig = {
   // Mobile-specific optimizations
   poweredByHeader: false,
   generateEtags: false,
-  // Security headers for mobile app
-  async headers() {
+  // Note: headers() not supported in static export mode
+  /* async headers() {
     return [
       {
         source: '/(.*)',
@@ -140,8 +141,9 @@ const baseConfig = {
         ],
       },
     ];
-  },
+  }, */
   experimental: {
+    esmExternals: false, // Help with build issues
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
   },
