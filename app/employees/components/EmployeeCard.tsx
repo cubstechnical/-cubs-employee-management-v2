@@ -154,7 +154,7 @@ const EmployeeCard = memo(({
                   size="sm"
                   onClick={(e) => {
                     e?.stopPropagation();
-                    router.push(`/employees/${employee.id}`);
+                    router.push(`/employees/id?id=${employee.id}`);
                   }}
                   className="opacity-0 group-hover:opacity-100 transition-opacity"
                 >

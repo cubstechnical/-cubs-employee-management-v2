@@ -1,0 +1,15 @@
+/*
+  X-Frame-Options: DENY
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=()
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https: blob:; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://cubsgroups.com; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; object-src 'none'
+
+/_next/static/css/*
+  Content-Type: text/css
+
+/_next/static/chunks/*
+  Content-Type: application/javascript
+
+/_next/static/media/*
+  Cache-Control: public, max-age=31536000, immutable

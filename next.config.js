@@ -82,8 +82,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 /** @type {import('next').NextConfig} */
 const baseConfig = {
-  // Mobile-optimized build configuration for Capacitor
-  // Both web and mobile use server-side rendering for full functionality
+  // Static export configuration for mobile builds
+  output: process.env.BUILD_MOBILE === 'true' ? 'export' : undefined,
   trailingSlash: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
@@ -96,8 +96,8 @@ const baseConfig = {
   // Mobile-specific optimizations
   poweredByHeader: false,
   generateEtags: false,
-  // Note: headers() not supported in static export mode
-  /* async headers() {
+  // Headers configuration for static export
+  async headers() {
     return [
       {
         source: '/(.*)',
@@ -118,29 +118,48 @@ const baseConfig = {
             key: 'Permissions-Policy',
             value: 'camera=(), microphone=(), geolocation=(), payment=()',
           },
+        ],
+      },
+      // Fix CSS MIME type issues for static export
+      {
+        source: '/_next/static/css/:path*',
+        headers: [
           {
-            key: 'Content-Security-Policy',
-            value: [
-              "default-src 'self'",
-              "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://fonts.googleapis.com",
-              "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-              "img-src 'self' data: https: blob:",
-              "font-src 'self' https://fonts.gstatic.com",
-              "connect-src 'self' https://*.supabase.co https://*.backblazeb2.com https://cubsgroups.com",
-              "frame-ancestors 'none'",
-              "form-action 'self'",
-              "base-uri 'self'",
-              "object-src 'none'"
-            ].join('; '),
+            key: 'Content-Type',
+            value: 'text/css',
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Fix JS MIME type issues for static export
+      {
+        source: '/_next/static/chunks/:path*',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      // Fix media files MIME types for static export
+      {
+        source: '/_next/static/media/:path*',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
     ];
-  }, */
+  },
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],

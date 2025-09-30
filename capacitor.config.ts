@@ -4,7 +4,7 @@ import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 const config: CapacitorConfig = {
   appId: 'com.cubstechnical.employee',
   appName: 'CUBS Employee Management',
-  webDir: 'out', // Must match Next.js static export output
+  webDir: 'out', // Use static export output for mobile
   server: {
     androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',

@@ -115,6 +115,12 @@ export class DocumentService {
       params.set('prefix', cached.prefix);
       params.set('token', cached.token);
       params.set('base', cached.downloadBase);
+      // Use external API for static export builds
+      const apiUrl = process.env.NEXT_PUBLIC_DOCUMENTS_API_URL;
+      if (apiUrl) {
+        return `${apiUrl}/stream?${params.toString()}`;
+      }
+      // Fallback for development
       return `/api/documents/stream?${params.toString()}`;
     } catch (e) {
       return null;
@@ -2011,8 +2017,11 @@ export class DocumentService {
         return { previewUrl: null, error: 'Document not found' };
       }
 
-      // Use API route to get preview URL
-      const response = await fetch('/api/documents/preview', {
+      // Use external API for static export builds
+      const apiUrl = process.env.NEXT_PUBLIC_DOCUMENTS_API_URL;
+      const endpoint = apiUrl ? `${apiUrl}/preview` : '/api/documents/preview';
+
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -2275,9 +2284,12 @@ export class DocumentService {
           log.error('❌ Edge Function error:', edgeError);
         }
 
-        // 5) Fallback to local API route signing on Vercel
+        // 5) Fallback to external API for static export builds
         try {
-          const resp = await fetch('/api/documents/preview', {
+          const apiUrl = process.env.NEXT_PUBLIC_DOCUMENTS_API_URL;
+          const endpoint = apiUrl ? `${apiUrl}/preview` : '/api/documents/preview';
+
+          const resp = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filePath: (document as any).file_path })

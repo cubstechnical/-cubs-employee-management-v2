@@ -751,7 +751,7 @@ export default function EmployeesPage() {
                         <Button 
                           variant="outline" 
                           size="sm"
-                          onClick={() => router.push(`/employees/${employee.id}`)}
+                          onClick={() => router.push(`/employees/id?id=${employee.id}`)}
                         >
                           <Edit className="w-4 h-4" />
                         </Button>

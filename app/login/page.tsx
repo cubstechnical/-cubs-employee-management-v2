@@ -48,6 +48,11 @@ export default function LoginPage() {
 
   const checkAuth = useCallback(async () => {
     try {
+      // Skip auth check if already checking or if we're in a redirect loop
+      if (isCheckingAuth) {
+        return;
+      }
+
       // Use the same authentication logic for both web and mobile
       // If it works in web/PWA, it should work in mobile too
       // Reduced timeout to prevent hanging on mobile
@@ -59,8 +64,15 @@ export default function LoginPage() {
       const user = await Promise.race([authPromise, timeoutPromise]) as any;
 
       if (user) {
-        log.info('✅ User already authenticated, redirecting to dashboard');
-        router.push('/dashboard');
+        // Check if we're already on the login page to prevent redirect loops
+        const currentPath = window.location.pathname;
+        if (currentPath !== '/login') {
+          log.info('✅ User already authenticated, redirecting to dashboard');
+          router.push('/dashboard');
+        } else {
+          log.info('ℹ️ User authenticated but already on login page, staying here');
+          setIsCheckingAuth(false);
+        }
       } else {
         log.info('ℹ️ No authenticated user found, showing login form');
         setIsCheckingAuth(false);
@@ -70,7 +82,7 @@ export default function LoginPage() {
       // Don't redirect on error - just stay on login page
       setIsCheckingAuth(false);
     }
-  }, [router]);
+  }, [router, isCheckingAuth]);
 
   useEffect(() => {
     // Skip auth check on mobile to prevent loading screens
@@ -78,11 +90,11 @@ export default function LoginPage() {
       setIsCheckingAuth(false);
       return;
     }
-    
+
     // Delay auth check to allow login page to render first - reduced delay for mobile
     const timer = setTimeout(checkAuth, 200);
     return () => clearTimeout(timer);
-  }, [checkAuth]);
+  }, [checkAuth, isCheckingAuth]);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);

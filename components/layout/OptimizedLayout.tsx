@@ -23,8 +23,8 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
   const pathname = usePathname();
   const { isLoading: authLoading, user } = useAuth();
   
-  // Safety check for pathname
-  const currentPath = pathname || (typeof window !== 'undefined' ? window.location.pathname : '');
+  // Safety check for pathname (client-side only)
+  const currentPath = pathname || '';
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -151,6 +151,9 @@ function OptimizedLayoutContent({ children, className }: OptimizedLayoutProps) {
     // Redirect to login if trying to access protected page without auth
     if (typeof window !== 'undefined') {
       window.location.href = '/login';
+    } else {
+      // Fallback for SSR - use Next.js router if available
+      // This will be handled by the ClientOnly wrapper in layout.tsx
     }
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
