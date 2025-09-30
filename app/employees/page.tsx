@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -56,7 +57,7 @@ interface DeleteConfirmationState {
 }
 
 
-export default function EmployeesPage() {
+function EmployeesPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -917,4 +918,15 @@ export default function EmployeesPage() {
       )}
     </div>
   );
-} 
+}
+
+// Wrap with AuthenticatedLayout
+function EmployeesPageWrapper() {
+  return (
+    <AuthenticatedLayout requireAuth={true}>
+      <EmployeesPage />
+    </AuthenticatedLayout>
+  );
+}
+
+export default EmployeesPageWrapper; 

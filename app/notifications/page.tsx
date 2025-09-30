@@ -1,7 +1,7 @@
 'use client';
 
-
 import { useState, useEffect } from 'react';
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 import { Bell, Mail, Clock, CheckCircle, XCircle, Users, Calendar, Settings, Send, RefreshCw, Eye, Search } from 'lucide-react';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -37,7 +37,7 @@ interface VisaStats {
   notificationsSent: number;
 }
 
-export default function NotificationsPage() {
+function NotificationsPageContent() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<NotificationStats>({
     total: 0,
@@ -592,5 +592,13 @@ export default function NotificationsPage() {
         </div>
       </Card>
     </div>
+  );
+}
+
+export default function NotificationsPage() {
+  return (
+    <AuthenticatedLayout requireAuth={true}>
+      <NotificationsPageContent />
+    </AuthenticatedLayout>
   );
 }

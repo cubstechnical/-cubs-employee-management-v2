@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 
 // Lazy load heavy components for faster initial load
 const DocumentPreview = lazy(() => import('@/components/documents/DocumentPreview'));
@@ -802,8 +803,10 @@ function DocumentsContent() {
 
 export default function DocumentsOptimized() {
   return (
-    <Suspense fallback={<DocumentSkeleton />}>
-      <DocumentsContent />
-    </Suspense>
+    <AuthenticatedLayout requireAuth={true}>
+      <Suspense fallback={<DocumentSkeleton />}>
+        <DocumentsContent />
+      </Suspense>
+    </AuthenticatedLayout>
   );
 }
