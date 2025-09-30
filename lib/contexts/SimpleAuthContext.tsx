@@ -29,43 +29,22 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
           isSupabaseAvailable: typeof window !== 'undefined' && (window as any).supabase
         });
 
-        // For mobile apps, use a much simpler approach
-        if (isCapacitorApp()) {
-          log.info('SimpleAuthContext: Mobile app detected, using simplified auth');
-          
-          // Try mobile session restoration with shorter timeout
-          try {
-            const mobileSession = await Promise.race([
-              MobileAuthService.restoreMobileSession(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Mobile session timeout')), 3000))
-            ]) as any;
-            
-            if (mobileSession && mobileSession.session) {
-              log.info('SimpleAuthContext: Mobile session restored successfully');
-              setUser(mobileSession.session);
-            } else {
-              log.info('SimpleAuthContext: No mobile session found');
-            }
-          } catch (mobileError) {
-            log.warn('SimpleAuthContext: Mobile session restoration failed:', mobileError);
+        // Simplified session loading for both web and mobile
+        // Use the same approach to prevent conflicts and hanging
+        try {
+          const userData = await Promise.race([
+            AuthService.getCurrentUser(),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 2000))
+          ]) as any;
+
+          if (userData && userData.id) {
+            log.info('SimpleAuthContext: Session found');
+            setUser(userData);
+          } else {
+            log.info('SimpleAuthContext: No session found');
           }
-        } else {
-          // Web/PWA session loading
-          try {
-            const userData = await Promise.race([
-              AuthService.getCurrentUser(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 3000))
-            ]) as any;
-            
-            if (userData && userData.id) {
-              log.info('SimpleAuthContext: Web session found');
-              setUser(userData);
-            } else {
-              log.info('SimpleAuthContext: No web session found');
-            }
-          } catch (webError) {
-            log.warn('SimpleAuthContext: Web session loading failed:', webError);
-          }
+        } catch (error) {
+          log.warn('SimpleAuthContext: Session loading failed:', error);
         }
       } catch (error) {
         log.warn('SimpleAuthContext: Session loading failed (non-critical):', error);
@@ -84,7 +63,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
     const fallbackTimeout = setTimeout(() => {
       log.warn('SimpleAuthContext: Fallback timeout triggered, forcing loading to false');
       setIsLoading(false);
-    }, 5000); // 5 second fallback
+    }, 3000); // 3 second fallback - reduced for mobile
 
     // Simple auth state change listener - only if Supabase is available
     let subscription: any = null;
@@ -116,7 +95,10 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
 
     return () => {
       clearTimeout(fallbackTimeout);
-      subscription.unsubscribe()
+      // CRITICAL FIX: Only unsubscribe if subscription exists
+      if (subscription && typeof subscription.unsubscribe === 'function') {
+        subscription.unsubscribe()
+      }
     }
   }, [])
 

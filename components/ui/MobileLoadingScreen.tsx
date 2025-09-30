@@ -46,19 +46,28 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
         log.info('MobileLoadingScreen: Mobile app detected, starting aggressive debugging');
 
         // Show immediate alert for debugging
-        setTimeout(() => {
+        const alertTimer = setTimeout(() => {
           if (!isAppReady) {
             alert('🔍 Mobile App Debug: Loading screen active. Check if events are firing.');
           }
         }, 1000);
 
         // Force set ready after 3 seconds as emergency fallback
-        setTimeout(() => {
+        const fallbackTimer = setTimeout(() => {
           if (!isAppReady) {
             log.warn('MobileLoadingScreen: Emergency fallback - forcing app ready');
             setIsAppReady(true);
           }
         }, 3000);
+
+        return () => {
+          clearTimeout(alertTimer);
+          clearTimeout(fallbackTimer);
+          events.forEach(event => {
+            window.removeEventListener(event, handleAppReady);
+          });
+          document.removeEventListener('DOMContentLoaded', handleDOMContentLoaded);
+        };
       }
 
       return () => {
@@ -68,6 +77,7 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
         document.removeEventListener('DOMContentLoaded', handleDOMContentLoaded);
       };
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -118,17 +128,7 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
       <div className="text-center max-w-sm mx-auto px-6">
         {/* Logo/Brand */}
         <div className="w-20 h-20 bg-white dark:bg-gray-800 rounded-2xl flex items-center justify-center mb-6 mx-auto shadow-lg border border-gray-200 dark:border-gray-700">
-          <img
-            src="/assets/cubs.webp"
-            alt="CUBS Technical Logo"
-            className="w-12 h-12 object-contain"
-            onError={(e) => {
-              // Fallback to "C" if image fails to load
-              const target = e.target as HTMLImageElement;
-              target.style.display = 'none';
-              target.parentElement!.innerHTML = '<span class="text-[#d3194f] font-bold text-2xl">C</span>';
-            }}
-          />
+          <div className="text-[#d3194f] font-bold text-2xl">C</div>
         </div>
 
         {/* Loading Spinner */}
@@ -165,20 +165,34 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
           ))}
         </div>
 
+        {/* Manual Escape Button - appears after extended loading */}
+        {showExtendedLoading && (
+          <div className="mt-6 space-y-2">
+            <button
+              onClick={() => {
+                log.warn('Manual escape: User dismissed loading screen');
+                setIsAppReady(true);
+              }}
+              className="px-4 py-2 text-sm bg-[#d3194f] text-white rounded-lg hover:bg-[#b01640] transition-colors"
+            >
+              ⚠️ Continue Anyway
+            </button>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              Click if app is not loading
+            </p>
+          </div>
+        )}
+        
         {/* Debug Button for Mobile Testing */}
-        {isCapacitorApp() && (
+        {isCapacitorApp() && showExtendedLoading && (
           <div className="mt-4">
             <button
               onClick={() => {
-                alert('🔍 Mobile Debug: Test button clicked. Events should fire now.');
-                log.info('Manual test button clicked in mobile app');
-                window.dispatchEvent(new CustomEvent('capacitor-ready'));
-                window.dispatchEvent(new CustomEvent('app-initialized'));
-                window.dispatchEvent(new CustomEvent('mobile-app-ready'));
+                window.location.href = '/debug';
               }}
               className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
             >
-              🚀 Test Events
+              🔍 Open Debug Console
             </button>
           </div>
         )}

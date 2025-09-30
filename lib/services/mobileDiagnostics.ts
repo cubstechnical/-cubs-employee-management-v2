@@ -102,7 +102,7 @@ export class MobileDiagnosticsService {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           isCapacitor: !!(window as any).Capacitor,
-          isNative: !!(window as any).Capacitor?.isNative,
+          isNative: !!((window as any).Capacitor?.isNative || (window as any).Capacitor?.platform),
           screenSize: {
             width: window.innerWidth,
             height: window.innerHeight
@@ -154,7 +154,7 @@ ${summary}
 📱 Environment:
 - Platform: ${navigator.platform}
 - Capacitor: ${!!(window as any).Capacitor ? 'Yes' : 'No'}
-- Native: ${!!(window as any).Capacitor?.isNative ? 'Yes' : 'No'}
+- Native: ${!!((window as any).Capacitor?.isNative || (window as any).Capacitor?.platform) ? 'Yes' : 'No'}
 
 💾 Storage Test: ${this.testStorage() ? '✅ Working' : '❌ Failed'}
 
@@ -248,7 +248,7 @@ ${summary}
       },
       {
         test: 'Capacitor Native',
-        check: () => !!(window as any).Capacitor?.isNative,
+        check: () => !!((window as any).Capacitor?.isNative || (window as any).Capacitor?.platform),
         message: 'Running on native platform'
       },
       {

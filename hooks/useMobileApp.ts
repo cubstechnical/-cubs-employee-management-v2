@@ -14,7 +14,7 @@ export function useMobileApp() {
       try {
         // Check if running on web platform (not mobile app)
         const isWeb = typeof window !== 'undefined' &&
-          (!((window as any).Capacitor && (window as any).Capacitor.isNativePlatform));
+          (!((window as any).Capacitor && ((window as any).Capacitor.isNative || (window as any).Capacitor.platform)));
 
         // Skip mobile-specific initialization on web platform
         if (isWeb) {

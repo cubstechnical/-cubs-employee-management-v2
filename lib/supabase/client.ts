@@ -33,7 +33,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
       persistSession: true,
       detectSessionInUrl: true,
       // Add mobile-specific configuration
-      ...(typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative ? {
+      ...(typeof window !== 'undefined' && window.Capacitor && (window.Capacitor.isNative || (window as any).Capacitor.platform) ? {
         storage: window.localStorage, // Ensure localStorage is used for session persistence
         storageKey: 'cubs-auth-token', // Custom storage key for mobile app
       } : {}),
@@ -44,7 +44,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
     });
 
     // Add mobile-specific session recovery
-    if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
+    if (typeof window !== 'undefined' && window.Capacitor && (window.Capacitor.isNative || (window as any).Capacitor.platform)) {
       log.info('Mobile app detected, initializing mobile-specific auth handling');
 
       // Ensure session is properly loaded on app start

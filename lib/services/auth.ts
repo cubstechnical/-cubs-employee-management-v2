@@ -75,8 +75,8 @@ export class AuthService {
         return { session: null, error: { message: error.message } };
       }
 
-      // Mobile-specific session validation
-      if (isCapacitorApp() && session) {
+      // Mobile-specific session validation - only if we detect a real mobile app
+      if (typeof window !== 'undefined' && window.Capacitor && (window.Capacitor.isNative || (window as any).Capacitor.platform) && session) {
         log.info('AuthService: Mobile app session detected, validating...');
 
         // Additional validation for mobile sessions

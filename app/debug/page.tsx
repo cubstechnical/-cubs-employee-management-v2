@@ -1,373 +1,354 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { log } from '@/lib/utils/productionLogger';
-import { MobileDiagnosticsService } from '@/lib/services/mobileDiagnostics';
-
-interface DebugInfo {
-  timestamp: string;
-  userAgent: string;
-  platform: string;
-  isCapacitor: boolean;
-  isNative: boolean;
-  screenSize: { width: number; height: number };
-  localStorage: boolean;
-  sessionStorage: boolean;
-  cookies: boolean;
-  networkOnline: boolean;
-  capacitorReady: boolean;
-  appInitialized: boolean;
-  mobileAppReady: boolean;
-  errors: string[];
-  warnings: string[];
-}
+import { useRouter } from 'next/navigation';
+import { Capacitor } from '@capacitor/core';
+import { useAuth } from '@/lib/contexts/SimpleAuthContext';
+import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 
 export default function DebugPage() {
-  const [debugInfo, setDebugInfo] = useState<DebugInfo | null>(null);
-  const [errors, setErrors] = useState<string[]>([]);
-  const [warnings, setWarnings] = useState<string[]>([]);
-  const [diagnosticResults, setDiagnosticResults] = useState<any[]>([]);
-  const [isRunningDiagnostics, setIsRunningDiagnostics] = useState(false);
+  const router = useRouter();
+  const { user, isLoading } = useAuth();
+  const [diagnostics, setDiagnostics] = useState<any>({});
+  const [testResults, setTestResults] = useState<string[]>([]);
 
   useEffect(() => {
-    const collectDebugInfo = () => {
+    // Gather all diagnostic information
+    const gatherDiagnostics = async () => {
+      const diag: any = {
+        timestamp: new Date().toISOString(),
+        environment: {
+          isClient: typeof window !== 'undefined',
+          isBrowser: typeof window !== 'undefined' && typeof document !== 'undefined',
+          userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'N/A',
+          windowSize: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : 'N/A',
+          devicePixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 'N/A',
+        },
+        capacitor: {
+          isNativePlatform: Capacitor.isNativePlatform(),
+          platform: Capacitor.getPlatform(),
+          isPluginAvailable: Capacitor.isPluginAvailable('SplashScreen'),
+        },
+        location: {
+          href: typeof window !== 'undefined' ? window.location.href : 'N/A',
+          protocol: typeof window !== 'undefined' ? window.location.protocol : 'N/A',
+          hostname: typeof window !== 'undefined' ? window.location.hostname : 'N/A',
+        },
+        storage: {
+          localStorageAvailable: false,
+          sessionStorageAvailable: false,
+          itemCount: 0,
+        },
+        auth: {
+          isLoading,
+          hasUser: !!user,
+          userId: user?.id || 'N/A',
+          userEmail: user?.email || 'N/A',
+        },
+        performance: {
+          navigationStart: 'N/A',
+          domReady: 'N/A',
+          loadComplete: 'N/A',
+        }
+      };
+
+      // Test localStorage
       try {
-        const info: DebugInfo = {
-          timestamp: new Date().toISOString(),
-          userAgent: navigator.userAgent,
-          platform: navigator.platform,
-          isCapacitor: !!(window as any).Capacitor,
-          isNative: !!(window as any).Capacitor?.isNative,
-          screenSize: {
-            width: window.innerWidth,
-            height: window.innerHeight
-          },
-          localStorage: false,
-          sessionStorage: false,
-          cookies: false,
-          networkOnline: navigator.onLine,
-          capacitorReady: false,
-          appInitialized: false,
-          mobileAppReady: false,
-          errors: [],
-          warnings: []
-        };
-
-        // Test storage capabilities
-        try {
-          localStorage.setItem('debug-test', 'test');
-          localStorage.removeItem('debug-test');
-          info.localStorage = true;
-        } catch (e) {
-          info.errors.push(`localStorage failed: ${e}`);
+        if (typeof localStorage !== 'undefined') {
+          localStorage.setItem('__test__', 'test');
+          localStorage.removeItem('__test__');
+          diag.storage.localStorageAvailable = true;
+          diag.storage.itemCount = localStorage.length;
         }
-
-        try {
-          sessionStorage.setItem('debug-test', 'test');
-          sessionStorage.removeItem('debug-test');
-          info.sessionStorage = true;
-        } catch (e) {
-          info.errors.push(`sessionStorage failed: ${e}`);
-        }
-
-        try {
-          document.cookie = 'debug-test=value';
-          info.cookies = document.cookie.includes('debug-test=value');
-          document.cookie = 'debug-test=; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-        } catch (e) {
-          info.errors.push(`cookies failed: ${e}`);
-        }
-
-        // Check for ready events
-        info.capacitorReady = !!(window as any).__capacitorReady;
-        info.appInitialized = !!(window as any).__appInitialized;
-        info.mobileAppReady = !!(window as any).__mobileAppReady;
-
-        setDebugInfo(info);
-        log.info('Debug info collected:', info);
-      } catch (error) {
-        log.error('Error collecting debug info:', error);
-        setErrors(prev => [...prev, `Debug collection failed: ${error}`]);
+      } catch (e) {
+        diag.storage.localStorageError = String(e);
       }
+
+      // Test sessionStorage
+      try {
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.setItem('__test__', 'test');
+          sessionStorage.removeItem('__test__');
+          diag.storage.sessionStorageAvailable = true;
+        }
+      } catch (e) {
+        diag.storage.sessionStorageError = String(e);
+      }
+
+      // Performance metrics
+      if (typeof window !== 'undefined' && window.performance && window.performance.timing) {
+        const timing = window.performance.timing;
+        diag.performance.navigationStart = timing.navigationStart;
+        diag.performance.domReady = timing.domContentLoadedEventEnd - timing.navigationStart;
+        diag.performance.loadComplete = timing.loadEventEnd - timing.navigationStart;
+      }
+
+      setDiagnostics(diag);
     };
 
-    collectDebugInfo();
+    gatherDiagnostics();
+  }, [user, isLoading]);
 
-    // Set up event listeners to track ready states
-    const handleCapacitorReady = () => {
-      (window as any).__capacitorReady = true;
-      setDebugInfo(prev => prev ? { ...prev, capacitorReady: true } : null);
-      log.info('capacitor-ready event received');
-    };
-
-    const handleAppInitialized = () => {
-      (window as any).__appInitialized = true;
-      setDebugInfo(prev => prev ? { ...prev, appInitialized: true } : null);
-      log.info('app-initialized event received');
-    };
-
-    const handleMobileAppReady = () => {
-      (window as any).__mobileAppReady = true;
-      setDebugInfo(prev => prev ? { ...prev, mobileAppReady: true } : null);
-      log.info('mobile-app-ready event received');
-    };
-
-    window.addEventListener('capacitor-ready', handleCapacitorReady);
-    window.addEventListener('app-initialized', handleAppInitialized);
-    window.addEventListener('mobile-app-ready', handleMobileAppReady);
-
-    return () => {
-      window.removeEventListener('capacitor-ready', handleCapacitorReady);
-      window.removeEventListener('app-initialized', handleAppInitialized);
-      window.removeEventListener('mobile-app-ready', handleMobileAppReady);
-    };
-  }, []);
-
-  const triggerTestEvents = () => {
-    log.info('Manually triggering test events...');
-
-    // Dispatch test events
-    window.dispatchEvent(new CustomEvent('capacitor-ready'));
-    window.dispatchEvent(new CustomEvent('app-initialized'));
-    window.dispatchEvent(new CustomEvent('mobile-app-ready'));
-
-    // Force refresh debug info
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
-  };
-
-  const clearStorage = () => {
+  const runTest = async (testName: string, testFn: () => Promise<string>) => {
     try {
-      localStorage.clear();
-      sessionStorage.clear();
-      log.info('Storage cleared');
+      const result = await testFn();
+      const log = `✅ ${testName}: ${result}`;
+      console.log(log);
+      setTestResults(prev => [...prev, log]);
     } catch (error) {
-      log.error('Error clearing storage:', error);
+      const log = `❌ ${testName}: ${error}`;
+      console.error(log);
+      setTestResults(prev => [...prev, log]);
     }
   };
 
-  const runComprehensiveDiagnostics = async () => {
-    setIsRunningDiagnostics(true);
-    try {
-      const results = await MobileDiagnosticsService.runAllDiagnostics();
-      setDiagnosticResults(results);
-      MobileDiagnosticsService.logResults();
-    } catch (error) {
-      log.error('Error running diagnostics:', error);
-      setErrors(prev => [...prev, `Diagnostics failed: ${error}`]);
-    } finally {
-      setIsRunningDiagnostics(false);
+  const tests = [
+    {
+      name: 'Capacitor Detection',
+      fn: async () => {
+        const isNative = Capacitor.isNativePlatform();
+        const platform = Capacitor.getPlatform();
+        return `Platform: ${platform}, Native: ${isNative}`;
+      }
+    },
+    {
+      name: 'localStorage Test',
+      fn: async () => {
+        const testKey = '__mobile_test__';
+        const testValue = 'test_value_' + Date.now();
+        localStorage.setItem(testKey, testValue);
+        const retrieved = localStorage.getItem(testKey);
+        localStorage.removeItem(testKey);
+        if (retrieved === testValue) {
+          return 'localStorage works correctly';
+        } else {
+          throw new Error('localStorage read/write failed');
+        }
+      }
+    },
+    {
+      name: 'Network Test (Supabase)',
+      fn: async () => {
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+        if (!supabaseUrl) {
+          throw new Error('NEXT_PUBLIC_SUPABASE_URL not configured');
+        }
+        
+        try {
+          const response = await fetch(supabaseUrl + '/rest/v1/', {
+            method: 'GET',
+            headers: {
+              'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+            }
+          });
+          return `Supabase reachable: ${response.ok} (${response.status})`;
+        } catch (e) {
+          throw new Error(`Network error: ${e}`);
+        }
+      }
+    },
+    {
+      name: 'Auth Service Test',
+      fn: async () => {
+        if (user) {
+          return `User authenticated: ${user.email}`;
+        } else {
+          return 'No user authenticated (expected on debug page)';
+        }
+      }
+    },
+    {
+      name: 'DOM Rendering Test',
+      fn: async () => {
+        const testDiv = document.createElement('div');
+        testDiv.id = '__test_render__';
+        testDiv.style.display = 'none';
+        document.body.appendChild(testDiv);
+        const found = document.getElementById('__test_render__');
+        if (found) {
+          document.body.removeChild(testDiv);
+          return 'DOM manipulation works';
+        } else {
+          throw new Error('DOM manipulation failed');
+        }
+      }
+    },
+    {
+      name: 'CSS Test',
+      fn: async () => {
+        const computed = window.getComputedStyle(document.body);
+        const bgColor = computed.backgroundColor;
+        return `Body background: ${bgColor}`;
+      }
+    }
+  ];
+
+  const runAllTests = async () => {
+    setTestResults([]);
+    for (const test of tests) {
+      await runTest(test.name, test.fn);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4">
       <div className="max-w-4xl mx-auto">
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-6">
-            🔍 Mobile App Debug Dashboard
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            🔍 Mobile Debug Console
           </h1>
+          <Button onClick={() => router.push('/login')} variant="outline">
+            Back to Login
+          </Button>
+        </div>
 
-          <div className="space-y-6">
-            {/* Current Status */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">
-                📊 Current Status
-              </h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Platform:</span>
-                  <div className="text-blue-600 dark:text-blue-400">
-                    {debugInfo?.platform || 'Unknown'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">Capacitor:</span>
-                  <div className={`font-bold ${debugInfo?.isCapacitor ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.isCapacitor ? '✅ Yes' : '❌ No'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">Native:</span>
-                  <div className={`font-bold ${debugInfo?.isNative ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.isNative ? '✅ Yes' : '❌ No'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">Network:</span>
-                  <div className={`font-bold ${debugInfo?.networkOnline ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.networkOnline ? '✅ Online' : '❌ Offline'}
-                  </div>
-                </div>
+        {/* Platform Information */}
+        <Card className="p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Platform Information
+          </h2>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-gray-600 dark:text-gray-400">Is Native:</div>
+              <div className="text-gray-900 dark:text-white font-bold">
+                {diagnostics.capacitor?.isNativePlatform ? '✅ YES' : '❌ NO'}
               </div>
-            </div>
-
-            {/* Storage Status */}
-            <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold text-green-900 dark:text-green-100 mb-2">
-                💾 Storage Status
-              </h2>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">localStorage:</span>
-                  <div className={`font-bold ${debugInfo?.localStorage ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.localStorage ? '✅ Working' : '❌ Failed'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">sessionStorage:</span>
-                  <div className={`font-bold ${debugInfo?.sessionStorage ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.sessionStorage ? '✅ Working' : '❌ Failed'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">Cookies:</span>
-                  <div className={`font-bold ${debugInfo?.cookies ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.cookies ? '✅ Working' : '❌ Failed'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Event Status */}
-            <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold text-purple-900 dark:text-purple-100 mb-2">
-                🎯 Event Status
-              </h2>
-              <div className="grid grid-cols-3 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">capacitor-ready:</span>
-                  <div className={`font-bold ${debugInfo?.capacitorReady ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.capacitorReady ? '✅ Received' : '❌ Not Received'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">app-initialized:</span>
-                  <div className={`font-bold ${debugInfo?.appInitialized ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.appInitialized ? '✅ Received' : '❌ Not Received'}
-                  </div>
-                </div>
-                <div>
-                  <span className="font-medium">mobile-app-ready:</span>
-                  <div className={`font-bold ${debugInfo?.mobileAppReady ? 'text-green-600' : 'text-red-600'}`}>
-                    {debugInfo?.mobileAppReady ? '✅ Received' : '❌ Not Received'}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Screen Info */}
-            <div className="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
-                📱 Screen Information
-              </h2>
-              <div className="text-sm">
-                <div><strong>Size:</strong> {debugInfo?.screenSize.width} x {debugInfo?.screenSize.height}</div>
-                <div><strong>User Agent:</strong> {debugInfo?.userAgent}</div>
-              </div>
-            </div>
-
-            {/* Errors */}
-            {errors.length > 0 && (
-              <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-red-900 dark:text-red-100 mb-2">
-                  ❌ Errors
-                </h2>
-                <div className="text-sm text-red-700 dark:text-red-300">
-                  {errors.map((error, index) => (
-                    <div key={index}>{error}</div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Action Buttons */}
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                🔧 Debug Actions
-              </h2>
-              <div className="flex flex-wrap gap-3">
-                <button
-                  onClick={runComprehensiveDiagnostics}
-                  disabled={isRunningDiagnostics}
-                  className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50"
-                >
-                  {isRunningDiagnostics ? '🔍 Running...' : '🔍 Run Full Diagnostics'}
-                </button>
-                <button
-                  onClick={triggerTestEvents}
-                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-                >
-                  🚀 Trigger Test Events
-                </button>
-                <button
-                  onClick={clearStorage}
-                  className="px-4 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700"
-                >
-                  🗑️ Clear Storage
-                </button>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
-                >
-                  🔄 Reload Page
-                </button>
-              </div>
-            </div>
-
-            {/* Comprehensive Diagnostics Results */}
-            {diagnosticResults.length > 0 && (
-              <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg">
-                <h2 className="text-lg font-semibold text-indigo-900 dark:text-indigo-100 mb-4">
-                  📊 Comprehensive Diagnostics Results
-                </h2>
-                <div className="space-y-2">
-                  {diagnosticResults.map((result, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-lg">
-                          {result.status === 'pass' ? '✅' : result.status === 'fail' ? '❌' : '⚠️'}
-                        </span>
-                        <span className="font-medium">{result.test}</span>
-                      </div>
-                      <span className={`font-medium ${
-                        result.status === 'pass' ? 'text-green-600' :
-                        result.status === 'fail' ? 'text-red-600' : 'text-yellow-600'
-                      }`}>
-                        {result.status.toUpperCase()}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <details className="mt-4">
-                  <summary className="cursor-pointer text-indigo-600 dark:text-indigo-400">
-                    View Detailed Results
-                  </summary>
-                  <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs overflow-auto">
-                    {JSON.stringify(diagnosticResults, null, 2)}
-                  </pre>
-                </details>
-              </div>
-            )}
-
-            {/* Technical Details */}
-            <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-                🔍 Technical Details
-              </h2>
-              <details className="text-sm">
-                <summary className="cursor-pointer text-blue-600 dark:text-blue-400">
-                  Click to expand debug information
-                </summary>
-                <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-xs overflow-auto">
-                  {JSON.stringify(debugInfo, null, 2)}
-                </pre>
-              </details>
+              
+              <div className="text-gray-600 dark:text-gray-400">Platform:</div>
+              <div className="text-gray-900 dark:text-white">{diagnostics.capacitor?.platform}</div>
+              
+              <div className="text-gray-600 dark:text-gray-400">Protocol:</div>
+              <div className="text-gray-900 dark:text-white">{diagnostics.location?.protocol}</div>
+              
+              <div className="text-gray-600 dark:text-gray-400">Window Size:</div>
+              <div className="text-gray-900 dark:text-white">{diagnostics.environment?.windowSize}</div>
             </div>
           </div>
-        </div>
+        </Card>
+
+        {/* Authentication Status */}
+        <Card className="p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Authentication Status
+          </h2>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-gray-600 dark:text-gray-400">Loading:</div>
+              <div className="text-gray-900 dark:text-white">
+                {isLoading ? '⏳ Loading...' : '✅ Ready'}
+              </div>
+              
+              <div className="text-gray-600 dark:text-gray-400">User:</div>
+              <div className="text-gray-900 dark:text-white">
+                {user ? `✅ ${user.email}` : '❌ Not authenticated'}
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Storage Information */}
+        <Card className="p-6 mb-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Storage Status
+          </h2>
+          <div className="space-y-2 font-mono text-sm">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="text-gray-600 dark:text-gray-400">localStorage:</div>
+              <div className="text-gray-900 dark:text-white">
+                {diagnostics.storage?.localStorageAvailable ? '✅ Available' : '❌ Not available'}
+              </div>
+              
+              <div className="text-gray-600 dark:text-gray-400">Items in storage:</div>
+              <div className="text-gray-900 dark:text-white">{diagnostics.storage?.itemCount || 0}</div>
+            </div>
+          </div>
+        </Card>
+
+        {/* Test Suite */}
+        <Card className="p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+              Test Suite
+            </h2>
+            <Button onClick={runAllTests} variant="primary">
+              Run All Tests
+            </Button>
+          </div>
+          
+          {testResults.length === 0 ? (
+            <p className="text-gray-600 dark:text-gray-400">
+              Click &quot;Run All Tests&quot; to verify mobile app functionality
+            </p>
+          ) : (
+            <div className="space-y-2 font-mono text-sm max-h-96 overflow-y-auto">
+              {testResults.map((result, index) => (
+                <div
+                  key={index}
+                  className={`p-2 rounded ${
+                    result.startsWith('✅')
+                      ? 'bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-100'
+                      : 'bg-red-100 dark:bg-red-900 text-red-900 dark:text-red-100'
+                  }`}
+                >
+                  {result}
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+
+        {/* Full Diagnostics */}
+        <Card className="p-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Full Diagnostics (JSON)
+          </h2>
+          <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto text-xs">
+            {JSON.stringify(diagnostics, null, 2)}
+          </pre>
+        </Card>
+
+        {/* Quick Actions */}
+        <Card className="p-6 mt-6">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+            Quick Actions
+          </h2>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              onClick={() => {
+                localStorage.clear();
+                alert('localStorage cleared!');
+              }}
+              variant="outline"
+            >
+              Clear localStorage
+            </Button>
+            <Button
+              onClick={() => window.location.reload()}
+              variant="outline"
+            >
+              Reload Page
+            </Button>
+            <Button
+              onClick={() => {
+                console.log('Test console.log');
+                console.error('Test console.error');
+                alert('Check console for test messages');
+              }}
+              variant="outline"
+            >
+              Test Console
+            </Button>
+            <Button
+              onClick={() => {
+                throw new Error('Test error thrown from debug page');
+              }}
+              variant="outline"
+            >
+              Throw Test Error
+            </Button>
+          </div>
+        </Card>
       </div>
     </div>
   );

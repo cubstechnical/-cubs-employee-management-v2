@@ -24,6 +24,7 @@ import MobileStatusIndicator from '@/components/ui/MobileStatusIndicator'
 import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
+import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -187,6 +188,8 @@ export default function RootLayout({
             {/* Mobile status indicator - shows diagnostics in native app */}
             <MobileStatusIndicator />
           </MobileErrorBoundary>
+          {/* Mobile debug overlay - triple-tap top-left to toggle */}
+          <MobileDebugOverlay />
         </ErrorBoundary>
       </body>
     </html>

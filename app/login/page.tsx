@@ -16,7 +16,7 @@ import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { log } from '@/lib/utils/productionLogger';
-import { useMobileCrashDetection } from '@/hooks/useMobileCrashDetection';
+// import { useMobileCrashDetection } from '@/hooks/useMobileCrashDetection'; // Temporarily disabled to prevent hanging
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -35,7 +35,7 @@ export default function LoginPage() {
   const [logoFailed, setLogoFailed] = useState(false);
 
   // Initialize mobile crash detection
-  useMobileCrashDetection();
+  // useMobileCrashDetection(); // Temporarily disabled to prevent hanging
   const {
     register,
     handleSubmit,
@@ -47,56 +47,22 @@ export default function LoginPage() {
 
   const checkAuth = useCallback(async () => {
     try {
-      // Check if we're in mobile app environment using proper Capacitor detection
-      const isMobileApp = typeof window !== 'undefined' &&
-        window.Capacitor &&
-        (window as any).Capacitor.isNativePlatform?.();
+      // Use the same authentication logic for both web and mobile
+      // If it works in web/PWA, it should work in mobile too
+      // Reduced timeout to prevent hanging on mobile
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Auth check timeout')), 1000)
+      );
 
-      if (isMobileApp) {
-        // In mobile app, be more careful about redirects
-        log.info('Mobile app detected, checking authentication...');
+      const authPromise = AuthService.getCurrentUser();
+      const user = await Promise.race([authPromise, timeoutPromise]) as any;
 
-        // Use shorter timeout and more robust error handling for mobile
-        setTimeout(async () => {
-          try {
-            const { MobileAuthService } = await import('@/lib/services/mobileAuth');
-            const mobileSession = await MobileAuthService.restoreMobileSession();
-
-            if (mobileSession?.session) {
-              log.info('✅ Mobile session found, redirecting to dashboard');
-              // Add a small delay before redirect to prevent loops
-              setTimeout(() => {
-                router.push('/dashboard');
-              }, 500);
-            } else {
-              log.info('ℹ️ No mobile session found, showing login form');
-              setIsCheckingAuth(false);
-            }
-          } catch (mobileError) {
-            log.warn('Mobile session check failed:', mobileError);
-            // Don't block the app - just show login form
-            setIsCheckingAuth(false);
-          }
-        }, 100); // Very short delay to prevent blocking
-
-        // Immediately show login form for mobile apps to prevent hanging
-        setIsCheckingAuth(false);
+      if (user) {
+        log.info('✅ User already authenticated, redirecting to dashboard');
+        router.push('/dashboard');
       } else {
-        // Standard web/PWA auth check
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Auth check timeout')), 2000)
-        );
-
-        const authPromise = AuthService.getCurrentUser();
-        const user = await Promise.race([authPromise, timeoutPromise]) as any;
-
-        if (user) {
-          log.info('✅ User already authenticated, redirecting to dashboard');
-          router.push('/dashboard');
-        } else {
-          log.info('ℹ️ No authenticated user found, showing login form');
-          setIsCheckingAuth(false);
-        }
+        log.info('ℹ️ No authenticated user found, showing login form');
+        setIsCheckingAuth(false);
       }
     } catch (error) {
       log.info('Auth check failed (non-critical):', error);
@@ -106,8 +72,8 @@ export default function LoginPage() {
   }, [router]);
 
   useEffect(() => {
-    // Delay auth check to allow login page to render first
-    const timer = setTimeout(checkAuth, 500);
+    // Delay auth check to allow login page to render first - reduced delay for mobile
+    const timer = setTimeout(checkAuth, 200);
     return () => clearTimeout(timer);
   }, [checkAuth]);
 
@@ -428,6 +394,11 @@ export default function LoginPage() {
             >
               ChocoSoft Dev
             </a>
+          </p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
+            <Link href="/debug" className="underline hover:text-gray-600 dark:hover:text-gray-400">
+              🔍 Debug Console
+            </Link>
           </p>
         </div>
       </div>

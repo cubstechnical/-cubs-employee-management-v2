@@ -76,7 +76,7 @@
       if (window.Capacitor) {
         log('✅ Capacitor is available', 'success');
         log(`📱 Platform: ${window.Capacitor.getPlatform?.() || 'unknown'}`, 'info');
-        log(`🔌 Is Native: ${window.Capacitor.isNativePlatform?.() || false}`, 'info');
+        log(`🔌 Is Native: ${window.Capacitor?.isNative || window.Capacitor?.platform || false}`, 'info');
       } else {
         log('❌ Capacitor not found', 'error');
       }
