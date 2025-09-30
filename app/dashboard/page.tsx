@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-// Layout is now handled by the root layout
+import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 import { EmployeeMetrics } from '@/components/dashboard/EmployeeMetrics';
 import CUBSDashboardHeader from '@/components/dashboard/CUBSDashboardHeader';
 
@@ -116,8 +116,9 @@ export default function Dashboard() {
   }, []);
 
   return (
-    <UnifiedErrorBoundary context="Dashboard" showNetworkStatus={true}>
-      <div className="space-y-6" data-testid="dashboard">
+    <AuthenticatedLayout requireAuth={true}>
+      <UnifiedErrorBoundary context="Dashboard" showNetworkStatus={true}>
+        <div className="space-y-6" data-testid="dashboard">
         {/* Error Banner */}
         {error && (
           <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
@@ -195,7 +196,8 @@ export default function Dashboard() {
         {/* Performance Monitor - Temporarily disabled to fix infinite loops */}
         {/* <PerformanceMonitor componentName="Dashboard" />
         <CoreWebVitals /> */}
-      </div>
-    </UnifiedErrorBoundary>
+        </div>
+      </UnifiedErrorBoundary>
+    </AuthenticatedLayout>
   );
 }
