@@ -18,7 +18,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [isLoading, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(false) // Start with false to prevent loading screens
 
   useEffect(() => {
     // Simplified session loading to prevent white page issues

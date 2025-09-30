@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(false); // Start with false to prevent loading
   const [logoFailed, setLogoFailed] = useState(false);
 
   // Initialize mobile crash detection
@@ -73,6 +73,12 @@ export default function LoginPage() {
   }, [router]);
 
   useEffect(() => {
+    // Skip auth check on mobile to prevent loading screens
+    if (isCapacitorApp()) {
+      setIsCheckingAuth(false);
+      return;
+    }
+    
     // Delay auth check to allow login page to render first - reduced delay for mobile
     const timer = setTimeout(checkAuth, 200);
     return () => clearTimeout(timer);

@@ -26,6 +26,7 @@ import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
 import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
 import HideSplashScreen from '@/components/capacitor/HideSplashScreen'
+import NetworkErrorHandler from '@/components/ui/NetworkErrorHandler'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -193,6 +194,8 @@ export default function RootLayout({
       <MobileDebugOverlay />
       {/* Hide splash screen immediately on mobile */}
       <HideSplashScreen />
+      {/* Network error handler for mobile */}
+      <NetworkErrorHandler />
     </ErrorBoundary>
       </body>
     </html>
