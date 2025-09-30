@@ -16,6 +16,7 @@ import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { log } from '@/lib/utils/productionLogger';
+import { isCapacitorApp } from '@/utils/mobileDetection';
 // import { useMobileCrashDetection } from '@/hooks/useMobileCrashDetection'; // Temporarily disabled to prevent hanging
 
 const loginSchema = z.object({
