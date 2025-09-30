@@ -89,6 +89,13 @@ const baseConfig = {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
     unoptimized: true, // Required for static export
   },
+  // Disable SSR for problematic components in static export
+  experimental: {
+    optimizeCss: true,
+    optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
+    // Force client-side rendering for components that cause hydration issues
+    serverComponentsExternalPackages: ['@capacitor/cli', '@capacitor/core'],
+  },
   compress: true,
   eslint: {
     ignoreDuringBuilds: false, // Enable ESLint for production builds

@@ -108,6 +108,9 @@ export default function RootLayout({
 }: {
   children: React.ReactNode
 }) {
+  // For static export, render everything client-side to avoid hydration issues
+  const isStaticExport = process.env.BUILD_MOBILE === 'true';
+
   return (
     <html lang="en">
       <head>
@@ -124,12 +127,12 @@ export default function RootLayout({
         <meta name="apple-touch-fullscreen" content="yes" />
         <meta name="apple-mobile-web-app-orientations" content="portrait" />
         <meta name="mobile-web-app-status-bar-style" content="default" />
-        
+
         {/* Resource hints for performance */}
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="dns-prefetch" href="https://s3.us-east-005.backblazeb2.com" />
-        
+
         {/* App icons and manifest */}
         <link rel="manifest" href="/manifest.json" />
         <link rel="icon" href="/assets/cubs.webp" sizes="32x32" type="image/webp" />
@@ -139,48 +142,56 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
       </head>
       <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
-        {/* Suppress harmless mobile app warnings and initialize environment */}
-        {(() => {
-          suppressMobileWarnings();
-          initializeEnvironment();
-          return null;
-        })()}
-        {/* Only load performance monitor in development - with error handling */}
-        {process.env.NODE_ENV === 'development' && (
-          <ErrorBoundary fallback={<div />}>
-            <Suspense fallback={<div />}>
-              <PerformanceMonitor />
-            </Suspense>
-          </ErrorBoundary>
-        )}
-                <PWARegistration />
-                <CapacitorInit />
-                <ErrorBoundary>
+        {/* Client-side initialization moved to ClientOnly wrapper */}
+
+        <ErrorBoundary>
           <ThemeProvider>
             <SimpleAuthProvider>
               <QueryProvider>
                 <OptimizedLayout>
-                <ClientOnly fallback={
-                  <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                      <p className="text-gray-600 dark:text-gray-400">Loading...</p>
-                    </div>
-                  </div>
-                }>
-                  {/* Optimized Suspense boundary for lazy loading */}
-                  <Suspense fallback={
+                  <ClientOnly fallback={
                     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
                       <div className="text-center">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-                        <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
+                        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
                       </div>
                     </div>
                   }>
-                    {children}
-                  </Suspense>
-                </ClientOnly>
-              </OptimizedLayout>
+                    {/* Initialize mobile warnings and environment - client-side only */}
+                    {(() => {
+                      suppressMobileWarnings();
+                      initializeEnvironment();
+                      return null;
+                    })()}
+
+                    {/* Only load performance monitor in development - client-side only */}
+                    {process.env.NODE_ENV === 'development' && (
+                      <div style={{ display: 'none' }}>
+                        <ErrorBoundary fallback={<div />}>
+                          <Suspense fallback={<div />}>
+                            <PerformanceMonitor />
+                          </Suspense>
+                        </ErrorBoundary>
+                      </div>
+                    )}
+
+                    {/* PWA and Capacitor initialization - client-side only */}
+                    <PWARegistration />
+                    <CapacitorInit />
+
+                    {/* Optimized Suspense boundary for lazy loading */}
+                    <Suspense fallback={
+                      <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
+                        <div className="text-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+                          <p className="text-gray-600 dark:text-gray-400">Loading page...</p>
+                        </div>
+                      </div>
+                    }>
+                      {children}
+                    </Suspense>
+                  </ClientOnly>
+                </OptimizedLayout>
               </QueryProvider>
             </SimpleAuthProvider>
           </ThemeProvider>
