@@ -83,9 +83,8 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 /** @type {import('next').NextConfig} */
 const baseConfig = {
   // Mobile-optimized build configuration for Capacitor
-  output: 'export', // ✅ ENABLED for Capacitor static export
+  // Both web and mobile use server-side rendering for full functionality
   trailingSlash: true,
-  distDir: '.next', // Build directory
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
     unoptimized: true, // Required for static export

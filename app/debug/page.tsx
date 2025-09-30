@@ -17,7 +17,7 @@ export default function DebugPage() {
     // Gather all diagnostic information
     const gatherDiagnostics = async () => {
       const diag: any = {
-        timestamp: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
         environment: {
           isClient: typeof window !== 'undefined',
           isBrowser: typeof window !== 'undefined' && typeof document !== 'undefined',
@@ -61,7 +61,7 @@ export default function DebugPage() {
           diag.storage.localStorageAvailable = true;
           diag.storage.itemCount = localStorage.length;
         }
-      } catch (e) {
+        } catch (e) {
         diag.storage.localStorageError = String(e);
       }
 
@@ -72,7 +72,7 @@ export default function DebugPage() {
           sessionStorage.removeItem('__test__');
           diag.storage.sessionStorageAvailable = true;
         }
-      } catch (e) {
+        } catch (e) {
         diag.storage.sessionStorageError = String(e);
       }
 
@@ -207,14 +207,14 @@ export default function DebugPage() {
         <Card className="p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Platform Information
-          </h2>
+              </h2>
           <div className="space-y-2 font-mono text-sm">
             <div className="grid grid-cols-2 gap-2">
               <div className="text-gray-600 dark:text-gray-400">Is Native:</div>
               <div className="text-gray-900 dark:text-white font-bold">
                 {diagnostics.capacitor?.isNativePlatform ? '✅ YES' : '❌ NO'}
-              </div>
-              
+            </div>
+
               <div className="text-gray-600 dark:text-gray-400">Platform:</div>
               <div className="text-gray-900 dark:text-white">{diagnostics.capacitor?.platform}</div>
               
@@ -223,8 +223,8 @@ export default function DebugPage() {
               
               <div className="text-gray-600 dark:text-gray-400">Window Size:</div>
               <div className="text-gray-900 dark:text-white">{diagnostics.environment?.windowSize}</div>
-            </div>
-          </div>
+                  </div>
+                </div>
         </Card>
 
         {/* Authentication Status */}
@@ -237,32 +237,32 @@ export default function DebugPage() {
               <div className="text-gray-600 dark:text-gray-400">Loading:</div>
               <div className="text-gray-900 dark:text-white">
                 {isLoading ? '⏳ Loading...' : '✅ Ready'}
-              </div>
-              
+            </div>
+
               <div className="text-gray-600 dark:text-gray-400">User:</div>
               <div className="text-gray-900 dark:text-white">
                 {user ? `✅ ${user.email}` : '❌ Not authenticated'}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
         </Card>
 
         {/* Storage Information */}
         <Card className="p-6 mb-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Storage Status
-          </h2>
+              </h2>
           <div className="space-y-2 font-mono text-sm">
             <div className="grid grid-cols-2 gap-2">
               <div className="text-gray-600 dark:text-gray-400">localStorage:</div>
               <div className="text-gray-900 dark:text-white">
                 {diagnostics.storage?.localStorageAvailable ? '✅ Available' : '❌ Not available'}
-              </div>
-              
+            </div>
+
               <div className="text-gray-600 dark:text-gray-400">Items in storage:</div>
               <div className="text-gray-900 dark:text-white">{diagnostics.storage?.itemCount || 0}</div>
-            </div>
-          </div>
+                </div>
+              </div>
         </Card>
 
         {/* Test Suite */}
@@ -270,12 +270,12 @@ export default function DebugPage() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">
               Test Suite
-            </h2>
+              </h2>
             <Button onClick={runAllTests} variant="primary">
               Run All Tests
             </Button>
-          </div>
-          
+            </div>
+
           {testResults.length === 0 ? (
             <p className="text-gray-600 dark:text-gray-400">
               Click &quot;Run All Tests&quot; to verify mobile app functionality
@@ -292,9 +292,9 @@ export default function DebugPage() {
                   }`}
                 >
                   {result}
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
           )}
         </Card>
 
@@ -305,14 +305,14 @@ export default function DebugPage() {
           </h2>
           <pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded overflow-x-auto text-xs">
             {JSON.stringify(diagnostics, null, 2)}
-          </pre>
+                  </pre>
         </Card>
 
         {/* Quick Actions */}
         <Card className="p-6 mt-6">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
             Quick Actions
-          </h2>
+              </h2>
           <div className="flex flex-wrap gap-3">
             <Button
               onClick={() => {
@@ -347,7 +347,7 @@ export default function DebugPage() {
             >
               Throw Test Error
             </Button>
-          </div>
+            </div>
         </Card>
       </div>
     </div>
