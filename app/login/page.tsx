@@ -201,35 +201,37 @@ export default function LoginPage() {
         }}
       >
       <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">
-        {/* Logo */}
-        <div className="login-logo-container-image text-center">
-          <div className="flex justify-center mb-4">
-            <div className="relative">
-              {!logoFailed ? (
-                <Image
-                  src="/assets/cubs.webp"
-                  alt="CUBS Logo"
-                  width={120}
-                  height={120}
-                  className="login-logo-image"
-                  priority
-                  style={{ width: '120px', height: '120px' }}
-                  onError={() => {
-                    log.info('Logo failed to load, using fallback');
-                    setLogoFailed(true);
-                  }}
-                />
-              ) : (
-                <div className="w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                  CUBS
-                </div>
-              )}
+        {/* Logo removed for mobile */}
+        {!isCapacitorApp() && (
+          <div className="login-logo-container-image text-center">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                {!logoFailed ? (
+                  <Image
+                    src="/assets/cubs.webp"
+                    alt="CUBS Logo"
+                    width={120}
+                    height={120}
+                    className="login-logo-image"
+                    priority
+                    style={{ width: '120px', height: '120px' }}
+                    onError={() => {
+                      log.info('Logo failed to load, using fallback');
+                      setLogoFailed(true);
+                    }}
+                  />
+                ) : (
+                  <div className="w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                    CUBS
+                  </div>
+                )}
+              </div>
             </div>
+            <p className="text-gray-700 dark:text-gray-300 mt-1 font-semibold text-sm text-center px-3 py-1 rounded-lg whitespace-nowrap">
+              Employee Management Portal
+            </p>
           </div>
-          <p className="text-gray-700 dark:text-gray-300 mt-1 font-semibold text-sm text-center px-3 py-1 rounded-lg whitespace-nowrap">
-            Employee Management Portal
-          </p>
-        </div>
+        )}
 
         <Card className="w-full p-6 login-card-image">
           {!isForgotPassword ? (

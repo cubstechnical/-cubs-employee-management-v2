@@ -25,6 +25,7 @@ import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
 import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
+import HideSplashScreen from '@/components/capacitor/HideSplashScreen'
 
 const inter = Inter({ 
   subsets: ['latin'],
@@ -182,15 +183,17 @@ export default function RootLayout({
               </QueryProvider>
             </SimpleAuthProvider>
           </ThemeProvider>
-          {/* Mobile loading screen for Capacitor apps - only show during actual loading */}
-          <MobileLoadingScreen isLoading={false} />
+      {/* Mobile loading screen disabled */}
+      {/* <MobileLoadingScreen isLoading={false} /> */}
           <MobileErrorBoundary>
             {/* Mobile status indicator - shows diagnostics in native app */}
             <MobileStatusIndicator />
           </MobileErrorBoundary>
-          {/* Mobile debug overlay - triple-tap top-left to toggle */}
-          <MobileDebugOverlay />
-        </ErrorBoundary>
+      {/* Mobile debug overlay - triple-tap top-left to toggle */}
+      <MobileDebugOverlay />
+      {/* Hide splash screen immediately on mobile */}
+      <HideSplashScreen />
+    </ErrorBoundary>
       </body>
     </html>
   )

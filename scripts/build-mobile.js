@@ -167,27 +167,10 @@ try {
       console.log('🌐 Location:', window.location.href);
       
       try {
-        // Show loading indicator
-        document.body.innerHTML = \`
-          <div id="mobile-loading" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; background: #f8fafc; font-family: system-ui;">
-            <div style="text-align: center;">
-              <div style="width: 60px; height: 60px; border: 4px solid #d3194f; border-top: 4px solid transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-              <h2 style="color: #d3194f; margin: 0 0 10px;">Loading CUBS App...</h2>
-              <p id="loading-status" style="color: #666; margin: 0;">Initializing...</p>
-            </div>
-          </div>
-          <style>
-            @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-          </style>
-        \`;
+        // No loading screen - app loads directly
+        console.log('📱 Mobile app loading without splash screen...');
         
-        const updateStatus = (status) => {
-          const statusEl = document.getElementById('loading-status');
-          if (statusEl) statusEl.textContent = status;
-          console.log('📱 Status:', status);
-        };
-
-        updateStatus('Loading CSS files...');
+        // No status updates needed
         // Load CSS files first (dynamically from build manifest)
         const cssFiles = ${JSON.stringify(cssFiles)};
 
