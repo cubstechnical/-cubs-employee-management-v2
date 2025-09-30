@@ -63,7 +63,9 @@ playwright-report/
 
 # Capacitor
 android/app/build/
+android/app/src/main/assets/public/
 ios/App/build/
+ios/App/App/public/
 
 # Vercel
 .vercel/
