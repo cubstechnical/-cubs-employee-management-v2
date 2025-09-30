@@ -430,7 +430,7 @@ workflows:
         submit_to_testflight: true
         submit_to_app_store: false
         beta_groups:
-          - "Internal Testing"
+          - "CUBSTesters"
       email:
         recipients:
           - info@cubstechnical.com
