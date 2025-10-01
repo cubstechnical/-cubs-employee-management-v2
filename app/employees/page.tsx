@@ -73,11 +73,15 @@ function EmployeesPage() {
     isDeleting: false
   });
 
-  // Debounce search term with longer delay for better performance
+  // Debounce search term with adaptive delay based on device
   useEffect(() => {
+    // Use longer delay on mobile for better performance
+    const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
+    const debounceDelay = isMobileDevice ? 600 : 400; // Longer on mobile
+    
     const timer = setTimeout(() => {
       setDebouncedSearchTerm(searchTerm);
-    }, 500); // Increased from 300ms to 500ms for better performance
+    }, debounceDelay);
 
     return () => clearTimeout(timer);
   }, [searchTerm]);
@@ -856,10 +860,10 @@ function EmployeesPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Mobile Optimized */}
       {deleteConfirmation.isOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={(e) => e.target === e.currentTarget && cancelDelete()}>
+          <div className="delete-confirmation bg-white dark:bg-gray-800 rounded-lg p-6 max-w-md w-full mx-auto shadow-2xl animate-fadeIn">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center">
                 <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
@@ -887,16 +891,17 @@ function EmployeesPage() {
               </p>
             </div>
             
-            <div className="flex gap-3 justify-end">
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
               <Button
                 variant="outline"
                 onClick={cancelDelete}
                 disabled={deleteConfirmation.isDeleting}
+                className="w-full sm:w-auto order-2 sm:order-1"
               >
                 Cancel
               </Button>
               <Button
-                className="bg-red-600 hover:bg-red-700 text-white"
+                className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto order-1 sm:order-2"
                 onClick={confirmDelete}
                 disabled={deleteConfirmation.isDeleting}
               >

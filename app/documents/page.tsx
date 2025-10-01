@@ -7,7 +7,7 @@ import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 const DocumentPreview = lazy(() => import('@/components/documents/DocumentPreview'));
 const LazyUploadModal = lazy(() => import('@/components/documents/UploadModal'));
 
-// Simple debounce utility
+// Adaptive debounce utility with mobile optimization
 function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number
@@ -21,7 +21,12 @@ function debounce<T extends (...args: any[]) => any>(
     };
     
     if (timeout) clearTimeout(timeout);
-    timeout = setTimeout(later, wait);
+    
+    // Adaptive delay: longer on mobile for better performance
+    const isMobileDevice = typeof window !== 'undefined' && window.innerWidth < 768;
+    const adaptiveWait = isMobileDevice ? wait * 1.5 : wait;
+    
+    timeout = setTimeout(later, adaptiveWait);
   };
 }
 import Card from '@/components/ui/Card';

@@ -1,0 +1,381 @@
+/* ============================================
+   MOBILE CRUD OPERATIONS OPTIMIZATIONS
+   ============================================ */
+
+/* Improve touch targets for mobile */
+@media (max-width: 768px) {
+  /* Minimum touch target size: 44x44px (Apple HIG) / 48x48px (Material Design) */
+  button,
+  .button,
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  a.btn {
+    min-height: 44px !important;
+    min-width: 44px !important;
+    padding: 12px 16px !important;
+  }
+
+  /* Input fields - larger for easier mobile interaction */
+  input[type="text"],
+  input[type="email"],
+  input[type="tel"],
+  input[type="date"],
+  input[type="number"],
+  input[type="search"],
+  textarea,
+  select {
+    min-height: 48px !important;
+    font-size: 16px !important; /* Prevents zoom on iOS */
+    padding: 12px 16px !important;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Prevent double-tap zoom on buttons */
+  button,
+  .button,
+  [role="button"] {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+  }
+
+  /* Search input improvements */
+  input[type="search"] {
+    -webkit-appearance: none;
+    border-radius: 8px;
+    padding-right: 40px; /* Space for clear button */
+  }
+
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    height: 20px;
+    width: 20px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%23999' d='M10 8.586L2.929 1.515 1.515 2.929 8.586 10l-7.071 7.071 1.414 1.414L10 11.414l7.071 7.071 1.414-1.414L11.414 10l7.071-7.071-1.414-1.414L10 8.586z'/%3E%3C/svg%3E");
+    cursor: pointer;
+  }
+
+  /* File upload button */
+  input[type="file"] {
+    font-size: 16px;
+    padding: 12px;
+  }
+
+  input[type="file"]::file-selector-button {
+    min-height: 44px;
+    padding: 8px 16px;
+    margin-right: 12px;
+    background: #d3194f;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-weight: 500;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  /* Delete/Action buttons - make more visible and touchable */
+  button[type="button"].delete-btn,
+  button[type="button"].action-btn {
+    min-width: 48px;
+    min-height: 48px;
+    padding: 12px;
+  }
+
+  /* Modal improvements for mobile */
+  .modal-content,
+  [role="dialog"] {
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Form spacing on mobile */
+  form {
+    padding: 16px;
+  }
+
+  form .form-group,
+  form .field-group {
+    margin-bottom: 20px; /* More space between fields */
+  }
+
+  /* Card improvements */
+  .card {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+  }
+
+  /* Employee/Document cards - easier to tap */
+  .employee-card,
+  .document-card {
+    padding: 16px !important;
+    margin-bottom: 12px !important;
+    min-height: 80px !important;
+    cursor: pointer;
+    -webkit-tap-highlight-color: rgba(211, 25, 79, 0.1);
+  }
+
+  .employee-card:active,
+  .document-card:active {
+    background-color: rgba(211, 25, 79, 0.05);
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+
+  /* Search suggestions dropdown */
+  .search-suggestions,
+  .autocomplete-dropdown {
+    max-height: 50vh !important;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    position: absolute;
+    z-index: 50;
+    width: 100%;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    margin-top: 4px;
+  }
+
+  .search-suggestions li,
+  .autocomplete-dropdown li {
+    min-height: 48px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #f0f0f0;
+    cursor: pointer;
+    touch-action: manipulation;
+  }
+
+  .search-suggestions li:active,
+  .autocomplete-dropdown li:active {
+    background-color: rgba(211, 25, 79, 0.1);
+  }
+
+  /* Filter dropdowns */
+  select {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 16px;
+    background-position: right 12px center;
+    background-size: 16px;
+  }
+
+  /* Date picker improvements */
+  input[type="date"] {
+    min-height: 48px;
+    padding: 12px 16px;
+    font-size: 16px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  /* Confirmation dialogs */
+  .confirmation-dialog,
+  .delete-confirmation {
+    padding: 24px !important;
+    border-radius: 12px !important;
+  }
+
+  .confirmation-dialog button,
+  .delete-confirmation button {
+    min-height: 48px !important;
+    min-width: 120px !important;
+    font-size: 16px !important;
+    margin: 8px !important;
+  }
+
+  /* Loading states */
+  .loading-spinner {
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Error messages */
+  .error-message,
+  .field-error {
+    font-size: 14px;
+    padding: 8px 12px;
+    margin-top: 4px;
+    border-radius: 6px;
+  }
+
+  /* Success toast/messages */
+  .toast,
+  .notification {
+    min-height: 56px;
+    padding: 16px;
+    font-size: 16px;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  }
+
+  /* Pagination controls */
+  .pagination button {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    margin: 4px !important;
+  }
+
+  /* Upload progress bars */
+  .upload-progress {
+    height: 8px !important;
+    border-radius: 4px !important;
+    margin: 12px 0 !important;
+  }
+
+  /* Dropdown menus (3-dot menus) */
+  .dropdown-menu {
+    min-width: 200px !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+  }
+
+  .dropdown-menu li,
+  .dropdown-menu button {
+    min-height: 48px !important;
+    padding: 12px 16px !important;
+    font-size: 16px !important;
+  }
+
+  /* Keyboard improvements */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: 2px solid #d3194f;
+    outline-offset: 2px;
+    border-color: #d3194f;
+  }
+
+  /* Prevent horizontal scroll on mobile forms */
+  form,
+  .form-container {
+    overflow-x: hidden;
+    max-width: 100%;
+  }
+
+  /* Grid improvements for mobile */
+  .grid,
+  .grid-cols-2,
+  .grid-cols-3 {
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+  }
+
+  /* Sticky action buttons at bottom */
+  .form-actions,
+  .sticky-actions {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 16px;
+    border-top: 1px solid #e5e5e5;
+    box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+  }
+
+  /* Better visual feedback for disabled states */
+  button:disabled,
+  input:disabled,
+  select:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Improve scrolling performance */
+  .scrollable-list,
+  .infinite-scroll {
+    -webkit-overflow-scrolling: touch;
+    will-change: scroll-position;
+  }
+
+  /* Fix for Safari mobile input zoom */
+  @supports (-webkit-touch-callout: none) {
+    input,
+    select,
+    textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* ============================================
+   MOBILE LANDSCAPE MODE
+   ============================================ */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce padding in landscape to maximize screen space */
+  .modal-content,
+  [role="dialog"] {
+    max-height: 85vh !important;
+    padding: 12px !important;
+  }
+
+  form {
+    padding: 12px;
+  }
+
+  /* Two columns in landscape if space permits */
+  @media (min-width: 568px) {
+    .grid-mobile-landscape {
+      grid-template-columns: 1fr 1fr !important;
+      gap: 12px !important;
+    }
+  }
+}
+
+/* ============================================
+   TABLET OPTIMIZATIONS (768px - 1024px)
+   ============================================ */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Touch-friendly but utilize more space */
+  button,
+  .button {
+    min-height: 40px !important;
+    padding: 10px 20px !important;
+  }
+
+  input,
+  select,
+  textarea {
+    min-height: 44px !important;
+    font-size: 15px !important;
+  }
+
+  /* Two-column layout on tablets */
+  .grid-cols-2-tablet {
+    grid-template-columns: 1fr 1fr !important;
+  }
+
+  .grid-cols-3-tablet {
+    grid-template-columns: 1fr 1fr 1fr !important;
+  }
+}
+
+/* ============================================
+   ACCESSIBILITY IMPROVEMENTS
+   ============================================ */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  button,
+  input,
+  select {
+    border-width: 2px !important;
+  }
+
+  .error-message {
+    border: 2px solid currentColor !important;
+  }
+}
+
