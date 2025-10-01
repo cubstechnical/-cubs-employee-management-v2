@@ -14,6 +14,7 @@ import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
 import { EmployeeService } from '@/lib/services/employees';
 import { log } from '@/lib/utils/productionLogger';
+import { generateNextEmployeeId, previewNextEmployeeId, getCompanyPrefix } from '@/lib/utils/employeeIdGenerator';
 
 // Comprehensive validation schema for the employee form
 const employeeSchema = z.object({
@@ -77,6 +78,8 @@ export default function NewEmployee() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [companies, setCompanies] = useState<{ value: string; label: string }[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState(true);
+  const [previewEmployeeId, setPreviewEmployeeId] = useState<string>('');
+  const [generatingId, setGeneratingId] = useState(false);
 
   const {
     register,
@@ -93,6 +96,7 @@ export default function NewEmployee() {
 
   // Watch form values for conditional rendering
   const watchedValues = watch();
+  const selectedCompany = watch('company_name');
 
   // Load companies from database
   useEffect(() => {
@@ -130,15 +134,58 @@ export default function NewEmployee() {
     loadCompanies();
   }, []);
 
-  // Generate unique employee ID using EmployeeService
-  const generateEmployeeId = async (companyName: string, employeeName: string): Promise<string> => {
+  // Preview employee ID when company is selected
+  useEffect(() => {
+    const loadPreviewId = async () => {
+      if (!selectedCompany) {
+        setPreviewEmployeeId('');
+        return;
+      }
+
+      setGeneratingId(true);
+      try {
+        const preview = await previewNextEmployeeId(selectedCompany);
+        if (preview) {
+          setPreviewEmployeeId(preview);
+          log.info(`Preview employee ID: ${preview} for company: ${selectedCompany}`);
+        } else {
+          setPreviewEmployeeId('');
+          log.warn(`No preview available for company: ${selectedCompany}`);
+        }
+      } catch (error) {
+        log.error('Error generating preview ID:', error);
+        setPreviewEmployeeId('');
+      } finally {
+        setGeneratingId(false);
+      }
+    };
+
+    loadPreviewId();
+  }, [selectedCompany]);
+
+  // Generate unique employee ID using the new employeeIdGenerator utility
+  const generateEmployeeId = async (companyName: string, employeeName?: string): Promise<string> => {
     try {
-      return await EmployeeService.generateEmployeeId(companyName, employeeName);
+      const employeeId = await generateNextEmployeeId(companyName);
+      if (employeeId) {
+        log.info(`✅ Generated employee ID: ${employeeId} for company: ${companyName}`);
+        return employeeId;
+      }
+      
+      // Fallback to old method if new generator fails
+      log.warn('Falling back to old employee ID generation method');
+      if (employeeName) {
+        return await EmployeeService.generateEmployeeId(companyName, employeeName);
+      }
+      // If no employee name provided, use timestamp
+      const timestamp = Date.now().toString().slice(-4);
+      const companyPrefix = getCompanyPrefix(companyName) || EmployeeService.generateCompanyPrefix(companyName);
+      return `${companyPrefix}${timestamp}`;
     } catch (error) {
       log.error('Error generating employee ID:', error);
-      // Fallback to timestamp-based ID
+      // Ultimate fallback to timestamp-based ID
       const timestamp = Date.now().toString().slice(-4);
-      const companyPrefix = EmployeeService.generateCompanyPrefix(companyName);
+      const companyPrefix = getCompanyPrefix(companyName) || EmployeeService.generateCompanyPrefix(companyName);
       return `${companyPrefix}${timestamp}`;
     }
   };
@@ -147,8 +194,15 @@ export default function NewEmployee() {
     setIsSubmitting(true);
     
     try {
-      // Generate a unique employee ID
+      // Generate a unique employee ID based on company
       const employeeId = await generateEmployeeId(data.company_name, data.name);
+      
+      if (!employeeId) {
+        toast.error('Failed to generate employee ID. Please try again.');
+        return;
+      }
+      
+      log.info(`🆔 Using employee ID: ${employeeId} for new employee: ${data.name}`);
       
       // Prepare the data for insertion with all available fields
       const employeeData = {
@@ -368,6 +422,40 @@ export default function NewEmployee() {
                   ))}
                 </select>
                 {errors.company_name && <p className="text-red-500 text-sm mt-1">{errors.company_name.message}</p>}
+                
+                {/* Employee ID Preview */}
+                {selectedCompany && (
+                  <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-xs text-blue-700 dark:text-blue-300 font-medium mb-1">
+                          Employee ID will be:
+                        </p>
+                        <p className="text-lg font-bold text-blue-900 dark:text-blue-100">
+                          {generatingId ? (
+                            <span className="flex items-center gap-2">
+                              <span className="animate-spin">⏳</span>
+                              Generating...
+                            </span>
+                          ) : previewEmployeeId ? (
+                            previewEmployeeId
+                          ) : (
+                            'Auto-generated on save'
+                          )}
+                        </p>
+                      </div>
+                      <div className="text-2xl">
+                        {previewEmployeeId ? '🆔' : '⚡'}
+                      </div>
+                    </div>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
+                      {previewEmployeeId 
+                        ? 'This ID will be automatically assigned when you save the employee.'
+                        : 'ID will be generated based on company selection.'
+                      }
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
