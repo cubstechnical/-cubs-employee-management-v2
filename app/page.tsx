@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
-import { AppLoadingScreen } from '@/components';
+import Image from 'next/image';
 
 export default function HomePage() {
   const router = useRouter();
@@ -24,8 +24,8 @@ export default function HomePage() {
     if (!isLoading) {
       if (!user) {
         console.log('🏠 HomePage: No user, redirecting to login');
-        // User is not authenticated, redirect to login
-        router.replace('/login'); // Use replace to prevent back button issues
+        // User is not authenticated, redirect to login immediately
+        router.replace('/login');
       } else if (!user.approved) {
         console.log('🏠 HomePage: User not approved, redirecting to pending approval');
         // User is authenticated but not approved, redirect to pending approval
@@ -33,31 +33,34 @@ export default function HomePage() {
       } else {
         console.log('🏠 HomePage: User approved, redirecting to dashboard');
         // User is authenticated and approved, redirect to main dashboard
-        // Both admin and regular users now use the same dashboard
         router.replace('/dashboard');
       }
-    } else {
-      console.log('🏠 HomePage: Still loading, showing loading screen');
     }
   }, [user, isLoading, router]);
 
-  // Show loading screen while checking authentication
-  if (isLoading) {
-    return (
-      <AppLoadingScreen 
-        message="Initializing Application..." 
-        showProgress={true}
-        progress={50}
-      />
-    );
-  }
-
-  // Show loading while redirecting
+  // Show minimal loading screen (faster, smaller logo)
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400">Redirecting...</p>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#d3194f]/5 via-white to-[#b0173a]/5 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="text-center space-y-4">
+        {/* Small CUBS Logo */}
+        <div className="w-16 h-16 bg-white dark:bg-gray-800 rounded-xl flex items-center justify-center mx-auto shadow-lg border border-gray-200 dark:border-gray-700">
+          <Image
+            src="/assets/cubs.webp"
+            alt="CUBS Technical"
+            width={40}
+            height={40}
+            className="object-contain"
+            priority
+          />
+        </div>
+        
+        {/* Loading Spinner */}
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f]"></div>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            {isLoading ? 'Loading...' : 'Redirecting...'}
+          </p>
+        </div>
       </div>
     </div>
   );
