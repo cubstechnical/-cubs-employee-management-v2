@@ -34,6 +34,7 @@ export default function LoginPage() {
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [isCheckingAuth, setIsCheckingAuth] = useState(false); // Start with false to prevent loading
   const [logoFailed, setLogoFailed] = useState(false);
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
 
   // Initialize mobile crash detection
   // useMobileCrashDetection(); // Temporarily disabled to prevent hanging
@@ -102,6 +103,45 @@ export default function LoginPage() {
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount, checkAuth is stable
+
+  // Handle keyboard open/close on mobile to improve UX
+  useEffect(() => {
+    if (typeof window === 'undefined' || !isCapacitorApp()) return;
+
+    // Detect keyboard open/close
+    const handleResize = () => {
+      // On mobile, if viewport height reduces significantly, keyboard is likely open
+      const viewportHeight = window.visualViewport?.height || window.innerHeight;
+      const windowHeight = window.innerHeight;
+      const heightDiff = windowHeight - viewportHeight;
+      
+      // If height difference is > 150px, keyboard is likely open
+      setIsKeyboardOpen(heightDiff > 150);
+    };
+
+    // Listen for resize events
+    window.visualViewport?.addEventListener('resize', handleResize);
+    window.addEventListener('resize', handleResize);
+
+    // Focus event - scroll input into view
+    const handleFocus = (e: FocusEvent) => {
+      const target = e.target;
+      if (target && (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement)) {
+        // Small delay to let keyboard open first
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
+    };
+
+    document.addEventListener('focusin', handleFocus);
+
+    return () => {
+      window.visualViewport?.removeEventListener('resize', handleResize);
+      window.removeEventListener('resize', handleResize);
+      document.removeEventListener('focusin', handleFocus);
+    };
+  }, []);
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -219,14 +259,15 @@ export default function LoginPage() {
   return (
     <div className="main-login">
       <div
-        className="min-h-screen flex flex-col items-center justify-center py-4 px-4 login-background-image relative safe-area-all"
+        className="min-h-screen overflow-y-auto flex flex-col items-center py-8 px-4 login-background-image relative safe-area-all"
         style={{
-          contain: 'layout style paint',
           scrollBehavior: 'smooth',
-          backgroundColor: '#111827' // Ensure no white background
+          backgroundColor: '#111827', // Ensure no white background
+          minHeight: '100vh',
+          height: 'auto' // Allow height to grow beyond viewport
         }}
       >
-      <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2">
+      <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2 my-auto">
         {/* Logo removed for mobile */}
         {!isCapacitorApp() && (
           <div className="login-logo-container-image text-center">
@@ -259,7 +300,7 @@ export default function LoginPage() {
           </div>
         )}
 
-        <Card className="w-full p-6 login-card-image">
+        <Card className={`w-full ${isKeyboardOpen ? 'p-4' : 'p-6'} login-card-image transition-all duration-300`}>
           {!isForgotPassword ? (
             <>
               <div className="text-center mb-6">

@@ -49,6 +49,23 @@
     -webkit-overflow-scrolling: touch;
   }
 
+  /* Login page mobile keyboard fix */
+  .main-login {
+    position: relative;
+    width: 100%;
+    min-height: 100vh;
+    min-height: 100dvh; /* Dynamic viewport height for mobile */
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+
+  /* Ensure smooth scrolling on iOS */
+  @supports (-webkit-touch-callout: none) {
+    .main-login {
+      -webkit-overflow-scrolling: touch;
+    }
+  }
+
   /* Fix for iOS Safari viewport issues */
   html {
     -webkit-text-size-adjust: 100%;
