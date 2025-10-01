@@ -1,225 +1,150 @@
 #!/usr/bin/env node
 
+/**
+ * Script to replace console.log statements with production logger
+ * This ensures logs are properly filtered in production
+ */
+
 const fs = require('fs');
 const path = require('path');
 
-console.log('🧹 Cleaning up console logs for production...');
-
-// Files to clean up console logs
-const filesToClean = [
-  'lib/services/employees.ts',
-  'lib/services/documents.ts',
-  'app/login/page.tsx',
-  'app/dashboard/page.tsx',
+// Files to process (exclude debug page which needs console logs)
+const filesToProcess = [
+  'app/page.tsx',
+  'app/documents/page.tsx',
   'app/employees/page.tsx',
-  'app/employees/page-enhanced.tsx',
-  'app/admin/employees/page.tsx',
-  'app/admin/documents/page.tsx',
-  'components/employees/VirtualizedEmployeeList.tsx',
-  'lib/services/auth.ts',
-  'lib/services/notifications.ts',
-  'lib/services/dashboard.ts',
-  'lib/services/backblaze.ts',
-  'lib/services/email-server.ts',
-  'lib/services/audit.ts',
-  'lib/services/visaNotifications.ts',
-  'lib/services/settings.ts',
-  'lib/services/companyStats.ts',
-  'lib/services/fileUpload.ts',
-  'lib/services/edgeFunctions.ts',
-  'lib/services/email.ts',
-  'lib/services/offline.ts',
-  'lib/monitoring/performance.ts',
-  'lib/utils/performanceMonitor.ts',
-  'lib/utils/performance.ts',
-  'lib/utils/errorHandler.ts',
-  'lib/utils/logger.ts',
-  'lib/capacitor.ts',
-  'lib/supabase/client.ts',
-  'lib/contexts/AuthContext.tsx',
-  'lib/contexts/SimpleAuthContext.tsx',
-  'components/performance/PerformanceMonitor.tsx',
-  'components/performance/LoadingTracker.tsx',
-  'components/performance/CoreWebVitals.tsx',
-  'components/ui/PerformanceTracker.tsx',
-  'components/ui/UnifiedErrorBoundary.tsx',
-  'components/ui/DashboardErrorBoundary.tsx',
-  'components/ui/MobileErrorBoundary.tsx',
-  'components/mobile/MobileErrorBoundary.tsx',
-  'components/layout/OptimizedLayout.tsx',
-  'components/dashboard/Settings.tsx',
-  'components/dashboard/EmployeeGrowthChart.tsx',
-  'components/dashboard/DashboardRefreshButton.tsx',
-  'components/documents/UploadModal.tsx',
-  'components/documents/DocumentPreview.tsx',
-  'components/documents/SearchDemo.tsx',
-  'components/documents/VirtualizedDocumentList.tsx',
-  'components/documents/DocumentSearch.tsx',
-  'components/documents/DocumentBulkActions.tsx',
-  'components/auth/PendingApproval.tsx',
-  'components/auth/ForgotPassword.tsx',
-  'components/auth/ResetPassword.tsx',
-  'components/auth/Register.tsx',
-  'components/auth/Callback.tsx',
-  'components/admin/EmployeeDetail.tsx',
-  'components/admin/Notifications.tsx',
-  'components/admin/EmployeeMappings.tsx',
-  'components/admin/PerformanceDashboard.tsx',
-  'components/debug/MobileAuthDebug.tsx',
-  'components/layout/AppErrorBoundary.tsx',
-  'components/pwa/PWARegistration.tsx',
-  'hooks/usePWA.ts',
-  'hooks/usePerformance.ts',
-  'hooks/useMobileApp.ts',
-  'hooks/useRealtimeDashboard.ts',
-  'lib/hooks/useDocuments.ts',
-  'lib/hooks/useEmployees.ts',
-  'app/employees/[id]/page.tsx',
-  'app/employees/new/page.tsx',
-  'app/employees/components/EmployeeCard.tsx',
-  'app/employees/components/BulkActions.tsx',
-  'app/employees/components/EnhancedSearch.tsx',
-  'app/employees/components/EnhancedFilters.tsx',
-  'app/employees/components/EnhancedPagination.tsx',
-  'app/notifications/page.tsx',
-  'app/pending-approval/page.tsx',
-  'app/delete-account/page.tsx',
-  'app/admin/notifications/page.tsx',
-  'app/admin/employee-mappings/page.tsx',
-  'app/admin/dashboard/page.tsx',
-  'app/admin/dashboard-new/page.tsx',
-  'app/admin/dashboard-modern/page.tsx',
-  'app/admin/settings/page.tsx',
   'app/admin/users/page.tsx',
-  'app/admin/admins/page.tsx',
-  'app/admin/employees/new/page.tsx',
-  'app/error.tsx',
-  'app/not-found.tsx',
-  'app/callback/page.tsx',
-  'app/forgot-password/page.tsx',
-  'app/register/page.tsx',
-  'app/reset-password/page.tsx',
-  'app/settings/page.tsx',
-  'app/contact/page.tsx',
-  'app/about/page.tsx',
-  'app/terms/page.tsx',
-  'app/privacy/page.tsx',
-  'app/diagnostics/page.tsx',
-  'app/pending/page.tsx',
-  'utils/mobileDetection.ts',
-  'utils/performance.ts',
-  'lib/utils/environment.ts',
-  'lib/api/middleware.ts',
-  'supabase/doc-manager/index.ts',
-  'supabase/send-visa-notifications/index.ts'
+  'app/admin/settings/page.tsx',
+  'app/employees/page-enhanced.tsx',
+  'app/delete-account/page.tsx',
+  'app/documents/page-optimized.tsx',
+  'app/notifications/page.tsx',
+  'app/login/page.tsx',
 ];
 
-// Production logger import
-const productionLoggerImport = `import { log } from '@/lib/utils/productionLogger';`;
-
-// Console log patterns to replace
-const consolePatterns = [
+// Replacement patterns
+const replacements = [
   {
     pattern: /console\.log\(/g,
-    replacement: 'log.info('
-  },
-  {
-    pattern: /console\.warn\(/g,
-    replacement: 'log.warn('
+    replacement: 'log.info(',
+    description: 'Replace console.log with log.info'
   },
   {
     pattern: /console\.error\(/g,
-    replacement: 'log.error('
+    replacement: 'log.error(',
+    description: 'Replace console.error with log.error'
   },
   {
-    pattern: /console\.debug\(/g,
-    replacement: 'log.debug('
+    pattern: /console\.warn\(/g,
+    replacement: 'log.warn(',
+    description: 'Replace console.warn with log.warn'
   },
   {
     pattern: /console\.info\(/g,
-    replacement: 'log.info('
+    replacement: 'log.info(',
+    description: 'Replace console.info with log.info'
   },
-  {
-    pattern: /console\.group\(/g,
-    replacement: 'log.group('
-  },
-  {
-    pattern: /console\.groupEnd\(/g,
-    replacement: 'log.groupEnd('
-  },
-  {
-    pattern: /console\.time\(/g,
-    replacement: 'perfLog.start('
-  },
-  {
-    pattern: /console\.timeEnd\(/g,
-    replacement: 'perfLog.end('
-  },
-  {
-    pattern: /console\.timeStamp\(/g,
-    replacement: 'perfLog.mark('
-  }
 ];
 
-function cleanConsoleLogs(filePath) {
-  if (!fs.existsSync(filePath)) {
-    console.log(`⚠️  File not found: ${filePath}`);
-    return;
-  }
-
-  let content = fs.readFileSync(filePath, 'utf8');
-  let hasConsoleLogs = false;
-  let hasLoggerImport = false;
-
-  // Check if file has console logs
-  if (content.includes('console.')) {
-    hasConsoleLogs = true;
-  }
-
-  // Check if file already has logger import
-  if (content.includes('@/lib/utils/productionLogger')) {
-    hasLoggerImport = true;
-  }
-
-  if (!hasConsoleLogs) {
-    return; // No console logs to clean
-  }
-
-  // Add logger import if needed
-  if (hasConsoleLogs && !hasLoggerImport) {
-    // Find the best place to add the import
-    const lines = content.split('\n');
-    let insertIndex = 0;
-    
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].startsWith('import ') || lines[i].startsWith("import ")) {
-        insertIndex = i + 1;
-      }
-    }
-    
-    lines.splice(insertIndex, 0, productionLoggerImport);
-    content = lines.join('\n');
-  }
-
-  // Replace console patterns
-  consolePatterns.forEach(({ pattern, replacement }) => {
-    content = content.replace(pattern, replacement);
-  });
-
-  // Add perfLog import if needed
-  if (content.includes('perfLog.') && !content.includes('perfLog')) {
-    content = content.replace(
-      productionLoggerImport,
-      `${productionLoggerImport}\nimport { perfLog } from '@/lib/utils/productionLogger';`
-    );
-  }
-
-  fs.writeFileSync(filePath, content);
-  console.log(`✅ Cleaned: ${filePath}`);
+// Check if logger import exists
+function hasLoggerImport(content) {
+  return /import.*\{.*log.*\}.*from.*['"]@\/lib\/utils\/productionLogger['"]/.test(content);
 }
 
-// Clean all files
-filesToClean.forEach(cleanConsoleLogs);
+// Add logger import if missing
+function addLoggerImport(content) {
+  // Check if there are already imports
+  const importMatch = content.match(/^(import[^;]+;?\n)+/m);
+  
+  if (importMatch) {
+    // Add after existing imports
+    const lastImportIndex = importMatch[0].length;
+    return content.slice(0, lastImportIndex) + 
+           "import { log } from '@/lib/utils/productionLogger';\n" +
+           content.slice(lastImportIndex);
+  } else {
+    // Add at the beginning
+    return "import { log } from '@/lib/utils/productionLogger';\n" + content;
+  }
+}
 
-console.log('🎉 Console log cleanup complete!');
-console.log('📝 Note: All console statements now use production-safe logging.');
+// Process a single file
+function processFile(filePath) {
+  const fullPath = path.join(process.cwd(), filePath);
+  
+  if (!fs.existsSync(fullPath)) {
+    console.log(`⚠️  File not found: ${filePath}`);
+    return { processed: false, changes: 0 };
+  }
+
+  let content = fs.readFileSync(fullPath, 'utf8');
+  let changes = 0;
+  
+  // Apply replacements
+  replacements.forEach(({ pattern, replacement, description }) => {
+    const matches = content.match(pattern);
+    if (matches) {
+      content = content.replace(pattern, replacement);
+      changes += matches.length;
+      console.log(`   ✓ ${description}: ${matches.length} replacements`);
+    }
+  });
+
+  // Add logger import if needed and changes were made
+  if (changes > 0 && !hasLoggerImport(content)) {
+    content = addLoggerImport(content);
+    console.log(`   ✓ Added production logger import`);
+  }
+
+  // Write back to file
+  if (changes > 0) {
+    fs.writeFileSync(fullPath, content, 'utf8');
+    console.log(`✅ Processed: ${filePath} (${changes} changes)`);
+    return { processed: true, changes };
+  } else {
+    console.log(`⏭️  Skipped: ${filePath} (no console statements found)`);
+    return { processed: false, changes: 0 };
+  }
+}
+
+// Main execution
+function main() {
+  console.log('🧹 Console Log Cleanup Script\n');
+  console.log('This script will replace console.* calls with production logger');
+  console.log('The production logger automatically filters logs in production\n');
+  console.log('━'.repeat(60));
+  console.log('');
+
+  let totalFiles = 0;
+  let totalChanges = 0;
+
+  filesToProcess.forEach(file => {
+    const result = processFile(file);
+    if (result.processed) {
+      totalFiles++;
+      totalChanges += result.changes;
+    }
+    console.log('');
+  });
+
+  console.log('━'.repeat(60));
+  console.log('');
+  console.log('📊 Summary:');
+  console.log(`   Files processed: ${totalFiles}`);
+  console.log(`   Total replacements: ${totalChanges}`);
+  console.log('');
+
+  if (totalChanges > 0) {
+    console.log('✅ Cleanup complete!');
+    console.log('');
+    console.log('Next steps:');
+    console.log('   1. Review the changes: git diff');
+    console.log('   2. Test the app: npm run build');
+    console.log('   3. Commit: git add . && git commit -m "chore: replace console logs with production logger"');
+  } else {
+    console.log('ℹ️  No changes needed - all files are already clean!');
+  }
+}
+
+// Run the script
+main();
