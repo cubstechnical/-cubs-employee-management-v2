@@ -385,46 +385,49 @@ export default function LoginPage() {
           )}
         </Card>
 
-        {/* Footer */}
+        {/* Footer - High Contrast for Dark Background */}
         <div className="text-center mt-8 space-y-2">
-          <div className="flex justify-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
+          <div className="flex justify-center space-x-4 text-xs text-white/80">
             <Link 
               href="/privacy" 
-              className="underline hover:text-gray-700 dark:hover:text-gray-300"
+              className="underline hover:text-white transition-colors duration-200"
             >
               Privacy Policy
             </Link>
-            <span>•</span>
+            <span className="text-white/60">•</span>
             <Link 
               href="/terms" 
-              className="underline hover:text-gray-700 dark:hover:text-gray-300"
+              className="underline hover:text-white transition-colors duration-200"
             >
               Terms of Service
             </Link>
-            <span>•</span>
+            <span className="text-white/60">•</span>
             <Link 
               href="/contact" 
-              className="underline hover:text-gray-700 dark:hover:text-gray-300"
+              className="underline hover:text-white transition-colors duration-200"
             >
               Contact Support
             </Link>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <p className="text-sm text-white/70">
             © 2025 CUBS Technical. All rights reserved.
           </p>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-white/70">
             Developed by{' '}
             <a
               href="https://chocosoftdev.com/"
               target="_blank"
               rel="noopener noreferrer"
-              className="underline hover:text-gray-700 dark:hover:text-gray-300"
+              className="underline hover:text-white transition-colors duration-200 font-medium"
             >
               ChocoSoft Dev
             </a>
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
-            <Link href="/debug" className="underline hover:text-gray-600 dark:hover:text-gray-400">
+          <p className="text-xs text-white/60 mt-2">
+            <Link 
+              href="/debug" 
+              className="underline hover:text-white transition-colors duration-200"
+            >
               🔍 Debug Console
             </Link>
           </p>
