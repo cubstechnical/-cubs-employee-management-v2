@@ -539,9 +539,9 @@ function NotificationsPageContent() {
                 }
               </p>
               {notifications.length === 0 && (
-                <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 max-w-md mx-auto">
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
-                    <strong>Setup Required:</strong> Run the database migration to create the notifications table and start tracking notifications.
+                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 max-w-md mx-auto">
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    No notifications found. Notifications will appear here when they are generated.
                   </p>
                 </div>
               )}
