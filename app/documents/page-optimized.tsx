@@ -1,5 +1,7 @@
 'use client';
 
+import { log } from '@/lib/utils/productionLogger';
+
 import React, { useState, useEffect, useCallback, useRef, Suspense, useMemo } from 'react';
 import Layout from '@/components/layout/Layout';
 import Card from '@/components/ui/Card';
@@ -312,16 +314,16 @@ function DocumentsContent() {
     if (!lastClearTime || (now - parseInt(lastClearTime)) > oneHour) {
       DocumentService.clearCache();
       localStorage.setItem('docs:last-clear-time', now.toString());
-      console.log('🧹 Cleared document cache (time-based refresh)');
+      log.info('🧹 Cleared document cache (time-based refresh)');
     } else {
-      console.log('📦 Using existing document cache');
+      log.info('📦 Using existing document cache');
     }
   }, []);
 
   const loadItems = useCallback(async () => {
     const requestId = ++latestRequestIdRef.current;
     try {
-      console.log('🔄 Loading items for path:', currentPath);
+      log.info('🔄 Loading items for path:', currentPath);
       let showSpinner = true;
       
       if (currentPath === '/') {
@@ -456,7 +458,7 @@ function DocumentsContent() {
         }
       }
     } catch (error) {
-      console.error('Error loading items:', error);
+      log.error('Error loading items:', error);
       toast.error('Failed to load documents');
     } finally {
       if (latestRequestIdRef.current === requestId) {
@@ -513,7 +515,7 @@ function DocumentsContent() {
       // Ensure next navigation bypasses cache to avoid stale folder lists
       shouldBypassCacheRef.current = true;
     } catch (e) {
-      console.error('Bulk download error', e);
+      log.error('Bulk download error', e);
       toast.error('Failed to prepare zip');
     } finally {
       setIsBulkDownloading(false);
@@ -576,22 +578,22 @@ function DocumentsContent() {
               }
             }
             try {
-              console.log('🔍 Attempting to get presigned URL for document:', item.document_id);
+              log.info('🔍 Attempting to get presigned URL for document:', item.document_id);
               // Mark that we should refresh when user returns to this tab
               shouldRefreshOnFocusRef.current = true;
               const { data: url, error } = await DocumentService.getDocumentPresignedUrl(item.document_id);
               const target = viewerRef.current;
               if (error) {
-                console.error('❌ Presigned URL error:', error);
+                log.error('❌ Presigned URL error:', error);
                 if (item.file_url) {
-                  console.log('🔄 Using fallback file_url:', item.file_url);
+                  log.info('🔄 Using fallback file_url:', item.file_url);
                   if (target && !target.closed) target.location.href = item.file_url; else window.open(item.file_url, 'docview');
                 } else {
                   if (target && !target.closed) target.close();
                   toast.error('Document URL not available');
                 }
               } else if (url) {
-                console.log('✅ Opening presigned URL:', url);
+                log.info('✅ Opening presigned URL:', url);
                 if (target && !target.closed) {
                   try {
                     target.location.href = url;
@@ -607,12 +609,12 @@ function DocumentsContent() {
                   }
                 }
               } else {
-                console.error('❌ No presigned URL returned');
+                log.error('❌ No presigned URL returned');
                 if (target && !target.closed) target.close();
                 toast.error('Failed to open document');
               }
             } catch (err) {
-              console.error('❌ Error opening document:', err);
+              log.error('❌ Error opening document:', err);
               if (viewerRef.current && !viewerRef.current.closed) viewerRef.current.close();
               toast.error('Failed to open document');
             }
@@ -622,13 +624,13 @@ function DocumentsContent() {
           break;
         case 'download':
           if (item.document_id) {
-            console.log('🔍 Attempting to get download URL for document:', item.document_id);
+            log.info('🔍 Attempting to get download URL for document:', item.document_id);
             const { downloadUrl, error } = await DocumentService.downloadDocument(item.document_id);
             if (error) {
-              console.error('❌ Download URL error:', error);
+              log.error('❌ Download URL error:', error);
               // Fallback to stored file_url
               if (item.file_url) {
-                console.log('🔄 Using fallback file_url for download:', item.file_url);
+                log.info('🔄 Using fallback file_url for download:', item.file_url);
                 const link = document.createElement('a');
                 link.href = item.file_url;
                 link.download = item.name;
@@ -639,7 +641,7 @@ function DocumentsContent() {
                 toast.error('Document URL not available');
               }
             } else if (downloadUrl) {
-              console.log('✅ Downloading with URL:', downloadUrl);
+              log.info('✅ Downloading with URL:', downloadUrl);
               const link = document.createElement('a');
               link.href = downloadUrl;
               link.download = item.name;
@@ -649,10 +651,10 @@ function DocumentsContent() {
               // Invalidate caches after a download to avoid stale states
               shouldBypassCacheRef.current = true;
             } else {
-              console.error('❌ No download URL returned');
+              log.error('❌ No download URL returned');
               // Fallback to stored file_url
               if (item.file_url) {
-                console.log('🔄 Using fallback file_url for download:', item.file_url);
+                log.info('🔄 Using fallback file_url for download:', item.file_url);
                 const link = document.createElement('a');
                 link.href = item.file_url;
                 link.download = item.name;
@@ -680,7 +682,7 @@ function DocumentsContent() {
           break;
       }
     } catch (error) {
-      console.error('Error handling document action:', error);
+      log.error('Error handling document action:', error);
       toast.error('Failed to perform action');
     } finally {
       setLoadingDocumentId(null);

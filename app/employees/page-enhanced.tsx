@@ -17,6 +17,7 @@ import {
 import toast from 'react-hot-toast';
 import { AuditService } from '@/lib/services/audit';
 import { EmployeeService } from '@/lib/services/employees';
+import { log } from '@/lib/utils/productionLogger';
 
 // Enhanced Components
 import EmployeeCard from './components/EmployeeCard';
@@ -119,7 +120,7 @@ export default function EnhancedEmployeesPage() {
     ],
     queryFn: async () => {
       try {
-        console.log('🚀 Fetching combined employee data...');
+        log.info('🚀 Fetching combined employee data...');
         
         // Build base query
         let query = supabase
@@ -201,10 +202,10 @@ export default function EnhancedEmployeesPage() {
           }
         };
 
-        console.log('✅ Combined data fetched successfully:', result);
+        log.info('✅ Combined data fetched successfully:', result);
         return result;
       } catch (err) {
-        console.error('❌ Error fetching combined data:', err);
+        log.error('❌ Error fetching combined data:', err);
         throw err;
       }
     },

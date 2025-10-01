@@ -43,7 +43,7 @@ export default function DeleteAccountPage() {
       }
 
       // For mobile app, show that server-side implementation is needed
-      console.log('Account deletion request (client-side):', { email, reason, confirmation });
+      log.info('Account deletion request (client-side):', { email, reason, confirmation });
 
       // For demo purposes, just sign out
       toast('Account deletion requires server-side implementation', { icon: 'ℹ️' });

@@ -4,34 +4,35 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import Image from 'next/image';
+import { log } from '@/lib/utils/productionLogger';
 
 export default function HomePage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
-  console.log('🏠 HomePage: Auth state:', { 
+  log.info('🏠 HomePage: Auth state:', { 
     isLoading, 
     hasUser: !!user, 
     userRole: user?.role 
   });
 
   useEffect(() => {
-    console.log('🏠 HomePage: useEffect triggered with:', { 
+    log.info('🏠 HomePage: useEffect triggered with:', { 
       isLoading, 
       hasUser: !!user
     });
     
     if (!isLoading) {
       if (!user) {
-        console.log('🏠 HomePage: No user, redirecting to login');
+        log.info('🏠 HomePage: No user, redirecting to login');
         // User is not authenticated, redirect to login immediately
         router.replace('/login');
       } else if (!user.approved) {
-        console.log('🏠 HomePage: User not approved, redirecting to pending approval');
+        log.info('🏠 HomePage: User not approved, redirecting to pending approval');
         // User is authenticated but not approved, redirect to pending approval
         router.replace('/pending-approval');
       } else {
-        console.log('🏠 HomePage: User approved, redirecting to dashboard');
+        log.info('🏠 HomePage: User approved, redirecting to dashboard');
         // User is authenticated and approved, redirect to main dashboard
         router.replace('/dashboard');
       }

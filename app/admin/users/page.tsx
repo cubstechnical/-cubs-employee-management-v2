@@ -1,5 +1,7 @@
 'use client';
 
+import { log } from '@/lib/utils/productionLogger';
+
 import { useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Card from '@/components/ui/Card';
@@ -26,7 +28,7 @@ export default function AdminUsers() {
     setLoading(true);
     try {
       // For mobile app, show that server-side implementation is needed
-      console.log('Admin provisioning request (client-side):', { email, password });
+      log.info('Admin provisioning request (client-side):', { email, password });
       toast('Admin provisioning requires server-side implementation', { icon: 'ℹ️' });
       setEmail('');
       await load();

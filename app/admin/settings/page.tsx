@@ -55,7 +55,7 @@ export default function AdminSettings() {
     try {
       // For now, just use the default settings
       // In a real app, you might load from localStorage or a client-side service
-      console.log('Loading admin settings (client-side)');
+      log.info('Loading admin settings (client-side)');
 
       // Simulate loading time
       await new Promise(resolve => setTimeout(resolve, 500));

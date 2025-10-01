@@ -1,5 +1,7 @@
 'use client';
 
+import { log } from '@/lib/utils/productionLogger';
+
 import { useState, useEffect, useCallback, useRef, Suspense, lazy } from 'react';
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 
@@ -373,7 +375,7 @@ function DocumentsContent() {
   // Simplified navigation handling with TanStack Query
   const handleItemClick = (item: FolderItem) => {
     if (item.type === 'folder') {
-      console.log('📁 Folder clicked:', item.name, 'Path:', item.path);
+      log.info('📁 Folder clicked:', item.name, 'Path:', item.path);
       setCurrentPath(item.path);
       setSelectedIds(new Set());
     }
@@ -382,7 +384,7 @@ function DocumentsContent() {
   // Background preloading for better UX (simplified)
   const preloadCompanyData = useCallback(async (companyName: string) => {
     // TanStack Query handles preloading automatically
-    console.log('⚡ Preloading employees for:', companyName);
+    log.info('⚡ Preloading employees for:', companyName);
   }, []);
 
   const toggleSelect = (docId?: string) => {
@@ -406,7 +408,7 @@ function DocumentsContent() {
       await refreshDocuments();
       toast.success('Documents refreshed');
     } catch (e) {
-      console.error('Bulk download error', e);
+      log.error('Bulk download error', e);
       toast.error('Feature not available in mobile app');
     } finally {
       setIsBulkDownloading(false);
@@ -443,45 +445,45 @@ function DocumentsContent() {
 
   const handleDocumentView = async (item: FolderItem) => {
     if (!item.document_id) {
-      console.log('⚠️ No document ID found for item:', item.name);
+      log.info('⚠️ No document ID found for item:', item.name);
       return;
     }
 
     try {
       setLoadingDocumentId(item.document_id);
-      console.log('👁️ Opening document:', item.document_id, item.name);
+      log.info('👁️ Opening document:', item.document_id, item.name);
 
       // First, try to get a fresh signed URL from the Edge Function
-      console.log('🔍 Attempting to get signed URL for document:', item.document_id);
+      log.info('🔍 Attempting to get signed URL for document:', item.document_id);
       const { data: signedUrl, error: signedUrlError } = await DocumentService.getDocumentPresignedUrl(item.document_id);
 
       if (signedUrlError || !signedUrl) {
-        console.log('⚠️ Could not get signed URL, trying fallback method');
-        console.log('❌ Signed URL error:', signedUrlError);
+        log.info('⚠️ Could not get signed URL, trying fallback method');
+        log.info('❌ Signed URL error:', signedUrlError);
 
         // Fallback: Use the stored URL if available
         if (item.file_url) {
-          console.log('🔗 Using stored URL as fallback:', item.file_url);
+          log.info('🔗 Using stored URL as fallback:', item.file_url);
           const newTab = window.open(item.file_url, '_blank', 'noopener,noreferrer');
           if (newTab) {
             newTab.focus();
-            console.log('✅ Document opened via fallback method');
+            log.info('✅ Document opened via fallback method');
           return;
           } else {
-            console.log('⚠️ Popup blocked or failed to open fallback URL');
+            log.info('⚠️ Popup blocked or failed to open fallback URL');
           }
         }
         return;
       }
 
-      console.log('🔗 Opening document with fresh signed URL:', signedUrl);
+      log.info('🔗 Opening document with fresh signed URL:', signedUrl);
 
       // Open document in new tab/browser
       const newTab = window.open(signedUrl, '_blank', 'noopener,noreferrer');
       
       if (newTab) {
         newTab.focus();
-        console.log('✅ Document opened successfully');
+        log.info('✅ Document opened successfully');
       } else {
         // Fallback for popup blockers
         const link = document.createElement('a');
@@ -491,11 +493,11 @@ function DocumentsContent() {
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
-        console.log('✅ Document opened via fallback method');
+        log.info('✅ Document opened via fallback method');
       }
 
     } catch (error) {
-      console.log('⚠️ Error opening document:', error);
+      log.info('⚠️ Error opening document:', error);
       // Try fallback with item URL if available
       if (item.file_url) {
         window.open(item.file_url, '_blank', 'noopener,noreferrer');
@@ -510,17 +512,17 @@ function DocumentsContent() {
 
     try {
       setLoadingDocumentId(item.document_id);
-      console.log('⬇️ Downloading document:', item.document_id, item.name);
+      log.info('⬇️ Downloading document:', item.document_id, item.name);
 
       // First, try to get a fresh signed URL from the Edge Function
       const { data: signedUrl, error: signedUrlError } = await DocumentService.getDocumentPresignedUrl(item.document_id);
 
       if (signedUrlError || !signedUrl) {
-        console.log('⚠️ Could not get signed URL, trying fallback method');
+        log.info('⚠️ Could not get signed URL, trying fallback method');
 
         // Fallback: Use the stored URL if available
         if (item.file_url) {
-          console.log('⬇️ Using stored URL as fallback:', item.file_url);
+          log.info('⬇️ Using stored URL as fallback:', item.file_url);
           const link = document.createElement('a');
           link.href = item.file_url;
           link.download = item.name;
@@ -533,7 +535,7 @@ function DocumentsContent() {
         return;
       }
 
-      console.log('⬇️ Downloading document with fresh signed URL:', signedUrl);
+      log.info('⬇️ Downloading document with fresh signed URL:', signedUrl);
 
       // Create download link
       const link = document.createElement('a');
@@ -544,10 +546,10 @@ function DocumentsContent() {
       link.click();
       document.body.removeChild(link);
       
-      console.log('✅ Download started successfully');
+      log.info('✅ Download started successfully');
 
     } catch (error) {
-      console.log('⚠️ Error downloading document:', error);
+      log.info('⚠️ Error downloading document:', error);
       // Try fallback with item URL if available
       if (item.file_url) {
         const link = document.createElement('a');
@@ -568,14 +570,20 @@ function DocumentsContent() {
 
     try {
       setLoadingDocumentId(item.document_id);
-      console.log('🗑️ Deleting document:', item.document_id);
+      log.info('🗑️ Deleting document:', item.document_id);
       
-      // For mobile app, show that server-side implementation is needed
-      console.log('Document deletion request (client-side):', item.document_id);
-      toast('Document deletion requires server-side implementation', { icon: 'ℹ️' });
-      refreshDocuments();
+      const { error } = await DocumentService.deleteDocument(item.document_id);
+      
+      if (error) {
+        log.error('❌ Error deleting document:', error);
+        toast.error(`Failed to delete document: ${error}`);
+      } else {
+        log.info('✅ Document deleted successfully');
+        toast.success('Document deleted successfully');
+        refreshDocuments(); // Refresh the document list
+      }
     } catch (error) {
-      console.error('❌ Error deleting document:', error);
+      log.error('❌ Error deleting document:', error);
       toast.error('Failed to delete document');
     } finally {
       setLoadingDocumentId(null);
@@ -682,7 +690,7 @@ function DocumentsContent() {
             <div className="mb-4">
               <button
                 onClick={() => {
-                  console.log('🔄 "Back to Companies" button clicked - navigating to root');
+                  log.info('🔄 "Back to Companies" button clicked - navigating to root');
                   setCurrentPath('/');
                   setSelectedIds(new Set());
                 }}
