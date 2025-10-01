@@ -23,7 +23,8 @@ import MobileStatusIndicator from '@/components/ui/MobileStatusIndicator'
 import { SimpleAuthProvider } from '@/lib/contexts/SimpleAuthContext'
 import { QueryProvider } from '@/components/providers/QueryProvider'
 import { ThemeProvider } from '@/lib/theme'
-import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
+// Debug overlay removed for production
+// import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
 import HideSplashScreen from '@/components/capacitor/HideSplashScreen'
 import NetworkErrorHandler from '@/components/ui/NetworkErrorHandler'
 import { Toaster } from 'react-hot-toast'
@@ -166,7 +167,8 @@ export default function RootLayout({
                   <MobileErrorBoundary>
                     <MobileStatusIndicator />
                   </MobileErrorBoundary>
-                  <MobileDebugOverlay />
+                  {/* Debug overlay removed for production */}
+                  {/* <MobileDebugOverlay /> */}
                   <HideSplashScreen />
                   <NetworkErrorHandler />
                   

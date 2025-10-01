@@ -45,7 +45,6 @@ export default function Settings() {
     notifications: {
       email: true,
       push: true,
-      sms: false,
       visaExpiryAlerts: true,
       documentUploadAlerts: true
     },
@@ -455,19 +454,6 @@ export default function Settings() {
                 type="checkbox"
                 checked={settings.notifications.push}
                 onChange={(e) => handleNestedChange('notifications', 'push', e.target.checked)}
-                disabled={!isEditing}
-                className="w-4 h-4 text-[#d3194f] bg-gray-100 border-gray-300 rounded focus:ring-[#d3194f]"
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="font-medium text-gray-900 dark:text-white">SMS Notifications</p>
-                <p className="text-sm text-gray-600 dark:text-gray-400">Receive notifications via SMS</p>
-              </div>
-              <input
-                type="checkbox"
-                checked={settings.notifications.sms}
-                onChange={(e) => handleNestedChange('notifications', 'sms', e.target.checked)}
                 disabled={!isEditing}
                 className="w-4 h-4 text-[#d3194f] bg-gray-100 border-gray-300 rounded focus:ring-[#d3194f]"
               />

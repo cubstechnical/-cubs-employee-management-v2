@@ -464,14 +464,6 @@ export default function LoginPage() {
               ChocoSoft Dev
             </a>
           </p>
-          <p className="text-xs text-white/60 mt-2">
-            <Link 
-              href="/debug" 
-              className="underline hover:text-white transition-colors duration-200"
-            >
-              🔍 Debug Console
-            </Link>
-          </p>
         </div>
       </div>
       </div>
