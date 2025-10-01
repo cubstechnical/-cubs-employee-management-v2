@@ -1,7 +1,7 @@
 # 📱 App Store Readiness Checklist
 
 **App**: CUBS Employee Management  
-**Version**: 1.3.0  
+**Version**: 1.4.0  
 **Date**: October 1, 2025  
 **Status**: ✅ **READY FOR APP STORE SUBMISSION**
 
@@ -457,7 +457,7 @@ For any questions about the app, please contact info@cubstechnical.com
 
 ### **Build Configuration**
 - [x] **Bundle ID**: com.cubstechnical.employee
-- [x] **Version**: 1.3.0
+- [x] **Version**: 1.4.0
 - [x] **Build Number**: Auto-incremented
 - [x] **Provisioning**: App Store Distribution
 

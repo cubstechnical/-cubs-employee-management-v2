@@ -304,5 +304,5 @@ If you've completed the deployment checklist and the app loads successfully, con
 ---
 
 **Last Updated**: September 30, 2025  
-**Version**: 1.3.0  
+**Version**: 1.4.0  
 **Status**: ✅ READY FOR DEPLOYMENT

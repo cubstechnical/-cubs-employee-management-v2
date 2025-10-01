@@ -399,7 +399,7 @@ If you encounter any issues:
 ---
 
 **Last Updated:** September 30, 2025  
-**Build Version:** 1.3.0  
+**Build Version:** 1.4.0  
 **Commit Hash:** `35e8b18`  
 **Status:** ✅ **PRODUCTION READY**
 

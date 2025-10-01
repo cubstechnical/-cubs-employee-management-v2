@@ -2,7 +2,7 @@
 
 **Status:** 95% Complete  
 **Date:** October 1, 2025  
-**Version:** 1.3.0
+**Version:** 1.4.0
 
 ---
 
@@ -299,7 +299,7 @@ npx cap sync
 ### Web Deployment (Vercel)
 ```bash
 git add .
-git commit -m "chore: production release v1.3.0"
+git commit -m "chore: production release v1.4.0"
 git push origin main
 
 # Vercel auto-deploys from main branch
@@ -311,7 +311,7 @@ git push origin main
 # 1. Open Xcode
 npx cap open ios
 
-# 2. Update version: 1.3.0
+# 2. Update version: 1.4.0
 # 3. Update build number: Increment
 # 4. Select "Any iOS Device (arm64)"
 # 5. Product > Archive
