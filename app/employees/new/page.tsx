@@ -15,16 +15,51 @@ import { AuditService } from '@/lib/services/audit';
 import { EmployeeService } from '@/lib/services/employees';
 import { log } from '@/lib/utils/productionLogger';
 
-// Validation schema for the employee form - adapted to our schema
+// Comprehensive validation schema for the employee form
 const employeeSchema = z.object({
+  // Basic Information
   name: z.string().min(1, 'Full name is required'),
   email_id: z.string().email('Please enter a valid email address').optional().or(z.literal('')),
   mobile_number: z.string().optional(),
+  phone: z.string().optional(),
+  home_phone_number: z.string().optional(),
+  address: z.string().optional(),
+  
+  // Employment Details
   trade: z.string().min(1, 'Trade/Position is required'),
   company_name: z.string().min(1, 'Company is required'),
   nationality: z.string().min(1, 'Nationality is required'),
   status: z.string().min(1, 'Status is required'),
+  joining_date: z.string().optional(),
+  basic_salary: z.string().optional(),
+  salary: z.number().optional(),
+  
+  // Personal Information
+  dob: z.string().optional(),
+  date_of_birth: z.string().optional(),
+  
+  // Passport Information
+  passport_no: z.string().optional(),
+  passport_number: z.string().optional(),
+  passport_expiry: z.string().optional(),
+  
+  // Visa Information
   visa_expiry_date: z.string().optional(),
+  visa_number: z.string().optional(),
+  visa_type: z.string().optional(),
+  visa_status: z.string().optional(),
+  visastamping_date: z.string().optional(),
+  
+  // Work Permits
+  labourcard_no: z.string().optional(),
+  labourcard_expiry: z.string().optional(),
+  eid: z.string().optional(),
+  wcc: z.string().optional(),
+  lulu_wps_card: z.string().optional(),
+  
+  // Additional Information
+  leave_date: z.string().optional(),
+  is_temporary: z.boolean().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -115,18 +150,38 @@ export default function NewEmployee() {
       // Generate a unique employee ID
       const employeeId = await generateEmployeeId(data.company_name, data.name);
       
-      // Prepare the data for insertion - only use fields that exist in our schema
+      // Prepare the data for insertion with all available fields
       const employeeData = {
         employee_id: employeeId,
         name: data.name,
         email_id: data.email_id || null,
         mobile_number: data.mobile_number || null,
+        phone: data.phone || null,
+        home_phone_number: data.home_phone_number || null,
+        address: data.address || null,
         trade: data.trade,
         company_name: data.company_name,
         nationality: data.nationality,
         status: data.status,
         is_active: data.status === 'active',
+        joining_date: data.joining_date || null,
+        basic_salary: data.basic_salary || null,
+        salary: data.salary || null,
+        dob: data.dob || data.date_of_birth || null,
+        passport_no: data.passport_no || data.passport_number || null,
+        passport_expiry: data.passport_expiry || null,
         visa_expiry_date: data.visa_expiry_date || null,
+        visa_number: data.visa_number || null,
+        visa_type: data.visa_type || null,
+        visa_status: data.visa_status || null,
+        visastamping_date: data.visastamping_date || null,
+        labourcard_no: data.labourcard_no || null,
+        labourcard_expiry: data.labourcard_expiry || null,
+        eid: data.eid || null,
+        wcc: data.wcc || null,
+        lulu_wps_card: data.lulu_wps_card || null,
+        leave_date: data.leave_date || null,
+        is_temporary: data.is_temporary || false,
         created_at: new Date().toISOString(),
       };
 
@@ -192,10 +247,10 @@ export default function NewEmployee() {
       {/* Form */}
       <Card className="p-6">
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
-          {/* Form Fields in Two-Column Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Column 1 */}
-            <div className="space-y-6">
+          {/* Basic Information Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Basic Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Full Name *
@@ -223,6 +278,67 @@ export default function NewEmployee() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Mobile Number
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Enter mobile number"
+                  {...register('mobile_number')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Phone Number
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Enter phone number"
+                  {...register('phone')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Home Phone
+                </label>
+                <Input
+                  type="tel"
+                  placeholder="Enter home phone number"
+                  {...register('home_phone_number')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Date of Birth
+                </label>
+                <Input
+                  type="date"
+                  {...register('dob')}
+                />
+              </div>
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Address
+                </label>
+                <textarea
+                  {...register('address')}
+                  placeholder="Enter address"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#d3194f] focus:border-transparent"
+                  rows={3}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Employment Details Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Employment Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Trade/Position *
                 </label>
                 <Input
@@ -233,20 +349,6 @@ export default function NewEmployee() {
                 {errors.trade && <p className="text-red-500 text-sm mt-1">{errors.trade.message}</p>}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Mobile Number
-                </label>
-                <Input
-                  type="tel"
-                  placeholder="Enter mobile number"
-                  {...register('mobile_number')}
-                />
-              </div>
-            </div>
-
-            {/* Column 2 */}
-            <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Company *
@@ -270,6 +372,18 @@ export default function NewEmployee() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Nationality *
+                </label>
+                <Input
+                  placeholder="Enter nationality"
+                  className={errors.nationality ? 'border-red-500' : ''}
+                  {...register('nationality')}
+                />
+                {errors.nationality && <p className="text-red-500 text-sm mt-1">{errors.nationality.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Status *
                 </label>
                 <select
@@ -287,14 +401,107 @@ export default function NewEmployee() {
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Nationality *
+                  Joining Date
                 </label>
                 <Input
-                  placeholder="Enter nationality"
-                  className={errors.nationality ? 'border-red-500' : ''}
-                  {...register('nationality')}
+                  type="date"
+                  {...register('joining_date')}
                 />
-                {errors.nationality && <p className="text-red-500 text-sm mt-1">{errors.nationality.message}</p>}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Basic Salary
+                </label>
+                <Input
+                  type="text"
+                  placeholder="Enter basic salary"
+                  {...register('basic_salary')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Salary (Numeric)
+                </label>
+                <Input
+                  type="number"
+                  placeholder="Enter salary amount"
+                  {...register('salary', { valueAsNumber: true })}
+                />
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  {...register('is_temporary')}
+                  className="h-4 w-4 text-[#d3194f] focus:ring-[#d3194f] border-gray-300 rounded"
+                />
+                <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                  Temporary Employee
+                </label>
+              </div>
+            </div>
+          </div>
+
+          {/* Passport Information Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Passport Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Passport Number
+                </label>
+                <Input
+                  placeholder="Enter passport number"
+                  {...register('passport_no')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Passport Expiry Date
+                </label>
+                <Input
+                  type="date"
+                  {...register('passport_expiry')}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Visa Information Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Visa Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Visa Number
+                </label>
+                <Input
+                  placeholder="Enter visa number"
+                  {...register('visa_number')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Visa Type
+                </label>
+                <Input
+                  placeholder="Enter visa type"
+                  {...register('visa_type')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Visa Status
+                </label>
+                <Input
+                  placeholder="Enter visa status"
+                  {...register('visa_status')}
+                />
               </div>
 
               <div>
@@ -304,6 +511,82 @@ export default function NewEmployee() {
                 <Input
                   type="date"
                   {...register('visa_expiry_date')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Visa Stamping Date
+                </label>
+                <Input
+                  type="date"
+                  {...register('visastamping_date')}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Work Permits Section */}
+          <div className="border-b border-gray-200 dark:border-gray-700 pb-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Work Permits</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Labour Card Number
+                </label>
+                <Input
+                  placeholder="Enter labour card number"
+                  {...register('labourcard_no')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Labour Card Expiry
+                </label>
+                <Input
+                  type="date"
+                  {...register('labourcard_expiry')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  EID Number
+                </label>
+                <Input
+                  placeholder="Enter EID number"
+                  {...register('eid')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  WCC Number
+                </label>
+                <Input
+                  placeholder="Enter WCC number"
+                  {...register('wcc')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Lulu WPS Card
+                </label>
+                <Input
+                  placeholder="Enter Lulu WPS card number"
+                  {...register('lulu_wps_card')}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Leave Date
+                </label>
+                <Input
+                  type="date"
+                  {...register('leave_date')}
                 />
               </div>
             </div>
