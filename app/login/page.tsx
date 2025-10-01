@@ -35,6 +35,7 @@ export default function LoginPage() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(false); // Start with false to prevent loading
   const [logoFailed, setLogoFailed] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
+  const [loginAttempted, setLoginAttempted] = useState(false);
 
   // Initialize mobile crash detection
   // useMobileCrashDetection(); // Temporarily disabled to prevent hanging
@@ -143,6 +144,32 @@ export default function LoginPage() {
     };
   }, []);
 
+  // Listen for user changes after login attempt
+  useEffect(() => {
+    if (loginAttempted && user && user.id) {
+      log.info('Login page: User detected after login attempt, redirecting...');
+      toast.success('Login successful! Redirecting...');
+      router.push('/dashboard');
+      setLoginAttempted(false);
+    }
+  }, [user, loginAttempted, router]);
+
+  // Timeout fallback for login verification
+  useEffect(() => {
+    if (loginAttempted) {
+      const timeout = setTimeout(() => {
+        if (loginAttempted) {
+          log.warn('Login page: Timeout waiting for user state update');
+          toast.error('Authentication verification failed. Please try logging in again.');
+          setLoginAttempted(false);
+          setIsLoading(false);
+        }
+      }, 10000); // 10 second timeout
+
+      return () => clearTimeout(timeout);
+    }
+  }, [loginAttempted]);
+
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
 
@@ -152,40 +179,23 @@ export default function LoginPage() {
       // Use AuthContext signIn method which properly updates the context
       await signIn(data.email, data.password);
 
-      log.info('Login page: Login successful, waiting for auth state update...');
+      log.info('Login page: Login successful, setting login attempted flag...');
+      setLoginAttempted(true);
 
-      // Wait for auth state to update and verify authentication
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Wait a bit for the user state to update
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Check authentication status more thoroughly
-      let isAuthenticated = false;
-      
-      // Try multiple methods to verify authentication
-      try {
-        // Method 1: Check context user
-        if (user) {
-          log.info('Login page: User found in context');
-          isAuthenticated = true;
-        } else {
-          // Method 2: Direct auth service check
-          const authUser = await AuthService.getCurrentUser();
-          if (authUser) {
-            log.info('Login page: User found via AuthService');
-            isAuthenticated = true;
-          }
-        }
-      } catch (authCheckError) {
-        log.warn('Login page: Auth verification failed:', authCheckError);
-      }
-
-      if (isAuthenticated) {
-        log.info('Login page: User authenticated, redirecting to dashboard');
+      // If user is already available, redirect immediately
+      if (user && user.id) {
+        log.info('Login page: User already available, redirecting immediately');
         toast.success('Login successful! Redirecting...');
         router.push('/dashboard');
-      } else {
-        log.warn('Login page: Authentication verification failed');
-        toast.error('Authentication verification failed. Please try logging in again.');
+        setLoginAttempted(false);
+        return;
       }
+
+      // Otherwise, the useEffect will handle the redirect when user state updates
+      log.info('Login page: Waiting for user state to update...');
 
     } catch (error) {
       log.error('Login page: Login error:', error);
