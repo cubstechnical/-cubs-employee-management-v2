@@ -149,7 +149,17 @@ export default function LoginPage() {
     if (loginAttempted && user && user.id) {
       log.info('Login page: User detected after login attempt, redirecting...');
       toast.success('Login successful! Redirecting...');
-      router.push('/dashboard');
+      
+      // Android Capacitor fix: Use window.location for more reliable navigation
+      if (isCapacitorApp()) {
+        log.info('Login page: Using window.location for Capacitor redirect (useEffect)');
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 100);
+      } else {
+        router.push('/dashboard');
+      }
+      
       setLoginAttempted(false);
     }
   }, [user, loginAttempted, router]);
@@ -189,7 +199,15 @@ export default function LoginPage() {
       if (user && user.id) {
         log.info('Login page: User already available, redirecting immediately');
         toast.success('Login successful! Redirecting...');
-        router.push('/dashboard');
+        
+        // Android Capacitor fix: Use window.location for more reliable navigation
+        if (isCapacitorApp()) {
+          log.info('Login page: Using window.location for Capacitor redirect');
+          window.location.href = '/dashboard';
+        } else {
+          router.push('/dashboard');
+        }
+        
         setLoginAttempted(false);
         return;
       }

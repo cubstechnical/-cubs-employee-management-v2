@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import Image from 'next/image';
 import { log } from '@/lib/utils/productionLogger';
+import { isCapacitorApp } from '@/utils/mobileDetection';
 
 export default function HomePage() {
   const router = useRouter();
@@ -19,22 +20,32 @@ export default function HomePage() {
   useEffect(() => {
     log.info('🏠 HomePage: useEffect triggered with:', { 
       isLoading, 
-      hasUser: !!user
+      hasUser: !!user,
+      isCapacitor: isCapacitorApp()
     });
     
     if (!isLoading) {
+      let redirectPath = '';
+      
       if (!user) {
         log.info('🏠 HomePage: No user, redirecting to login');
-        // User is not authenticated, redirect to login immediately
-        router.replace('/login');
+        redirectPath = '/login';
       } else if (!user.approved) {
         log.info('🏠 HomePage: User not approved, redirecting to pending approval');
-        // User is authenticated but not approved, redirect to pending approval
-        router.replace('/pending-approval');
+        redirectPath = '/pending-approval';
       } else {
         log.info('🏠 HomePage: User approved, redirecting to dashboard');
-        // User is authenticated and approved, redirect to main dashboard
-        router.replace('/dashboard');
+        redirectPath = '/dashboard';
+      }
+      
+      // Android Capacitor fix: Use window.location for more reliable navigation
+      if (isCapacitorApp() && redirectPath) {
+        log.info('🏠 HomePage: Using window.location for Capacitor redirect to:', redirectPath);
+        setTimeout(() => {
+          window.location.href = redirectPath;
+        }, 100);
+      } else if (redirectPath) {
+        router.replace(redirectPath);
       }
     }
   }, [user, isLoading, router]);
