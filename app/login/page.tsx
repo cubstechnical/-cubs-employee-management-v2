@@ -73,7 +73,14 @@ export default function LoginPage() {
         const currentPath = window.location.pathname;
         if (currentPath !== '/login') {
           log.info('✅ User already authenticated, redirecting to dashboard');
-          router.push('/dashboard');
+          
+          // Android Capacitor fix: Use window.location for more reliable navigation
+          if (isCapacitorApp()) {
+            log.info('Login checkAuth: Using window.location for Capacitor redirect');
+            window.location.href = '/dashboard';
+          } else {
+            router.push('/dashboard');
+          }
         } else {
           log.info('ℹ️ User authenticated but already on login page, staying here');
           setIsCheckingAuth(false);
