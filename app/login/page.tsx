@@ -74,10 +74,10 @@ export default function LoginPage() {
         if (currentPath !== '/login') {
           log.info('✅ User already authenticated, redirecting to dashboard');
           
-          // Android Capacitor fix: Use window.location for more reliable navigation
+          // Android Capacitor fix: Use router.replace for in-app navigation
           if (isCapacitorApp()) {
-            log.info('Login checkAuth: Using window.location for Capacitor redirect');
-            window.location.href = '/dashboard';
+            log.info('Login checkAuth: Using router.replace for Capacitor redirect');
+            router.replace('/dashboard');
           } else {
             router.push('/dashboard');
           }
@@ -157,11 +157,11 @@ export default function LoginPage() {
       log.info('Login page: User detected after login attempt, redirecting...');
       toast.success('Login successful! Redirecting...');
       
-      // Android Capacitor fix: Use window.location for more reliable navigation
+      // Android Capacitor fix: Use router.replace for in-app navigation
       if (isCapacitorApp()) {
-        log.info('Login page: Using window.location for Capacitor redirect (useEffect)');
+        log.info('Login page: Using router.replace for Capacitor redirect (useEffect)');
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          router.replace('/dashboard');
         }, 100);
       } else {
         router.push('/dashboard');
@@ -207,10 +207,10 @@ export default function LoginPage() {
         log.info('Login page: User already available, redirecting immediately');
         toast.success('Login successful! Redirecting...');
         
-        // Android Capacitor fix: Use window.location for more reliable navigation
+        // Android Capacitor fix: Use router.replace for in-app navigation  
         if (isCapacitorApp()) {
-          log.info('Login page: Using window.location for Capacitor redirect');
-          window.location.href = '/dashboard';
+          log.info('Login page: Using router.replace for Capacitor redirect');
+          router.replace('/dashboard');
         } else {
           router.push('/dashboard');
         }

@@ -38,14 +38,12 @@ export default function HomePage() {
         redirectPath = '/dashboard';
       }
       
-      // Android Capacitor fix: Use window.location for more reliable navigation
-      if (isCapacitorApp() && redirectPath) {
-        log.info('🏠 HomePage: Using window.location for Capacitor redirect to:', redirectPath);
+      // Use router.replace for all platforms to stay in-app
+      if (redirectPath) {
+        log.info('🏠 HomePage: Redirecting to:', redirectPath);
         setTimeout(() => {
-          window.location.href = redirectPath;
+          router.replace(redirectPath);
         }, 100);
-      } else if (redirectPath) {
-        router.replace(redirectPath);
       }
     }
   }, [user, isLoading, router]);
