@@ -149,7 +149,8 @@ export default function RootLayout({
             <SimpleAuthProvider>
               <QueryProvider>
                 <Toaster position="top-right" />
-                <OfflineIndicator />
+                {/* Offline indicator disabled for production - causes confusion */}
+                {/* <OfflineIndicator /> */}
                 
                 {/* Client-side initialization */}
                 <ClientOnly fallback={null}>
@@ -165,7 +166,8 @@ export default function RootLayout({
                   
                   {/* Mobile components */}
                   <MobileErrorBoundary>
-                    <MobileStatusIndicator />
+                    {/* Mobile status indicator disabled for production */}
+                    {/* <MobileStatusIndicator /> */}
                   </MobileErrorBoundary>
                   {/* Debug overlay removed for production */}
                   {/* <MobileDebugOverlay /> */}

@@ -183,19 +183,7 @@ export default function MobileLoadingScreen({ isLoading }: MobileLoadingScreenPr
           </div>
         )}
         
-        {/* Debug Button for Mobile Testing */}
-        {isCapacitorApp() && showExtendedLoading && (
-          <div className="mt-4">
-            <button
-              onClick={() => {
-                window.location.href = '/debug';
-              }}
-              className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-            >
-              🔍 Open Debug Console
-            </button>
-          </div>
-        )}
+        {/* Debug functionality removed for production */}
       </div>
     </div>
   );
