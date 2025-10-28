@@ -51,11 +51,6 @@
   "exclude": [
     "node_modules",
     "supabase/**/*",
-    "tests/**/*",
-    "**/*.test.ts",
-    "**/*.test.tsx",
-    "**/*.spec.ts",
-    "**/*.spec.tsx",
     "temp-repo/**/*"
   ]
 }

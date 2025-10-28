@@ -1,0 +1,18 @@
+{
+  "timestamp": "2025-10-23T06:03:20.394Z",
+  "results": {
+    "basic": false,
+    "unit": false,
+    "integration": false,
+    "e2e": false,
+    "coverage": false
+  },
+  "summary": [
+    "❌ BASIC: \u001b[31mFAIL",
+    "❌ UNIT: \u001b[31mFAIL",
+    "❌ INTEGRATION: \u001b[31mFAIL",
+    "❌ E2E: \u001b[31mFAIL",
+    "❌ COVERAGE: \u001b[31mFAIL"
+  ],
+  "allPassed": false
+}

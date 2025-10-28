@@ -5,16 +5,20 @@
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
+// Detect Capacitor (native mobile)
+const isNativeMobile = typeof window !== 'undefined' && (window as any).Capacitor;
+// Suppress logs on native mobile even in development to avoid noisy debug console
+const allowVerboseLogs = isDevelopment && !isNativeMobile;
 
 // Production-safe console methods
 export const log = {
   info: (...args: any[]) => {
-    if (isDevelopment) {
+    if (allowVerboseLogs) {
       console.log(...args);
     }
   },
   warn: (...args: any[]) => {
-    if (isDevelopment) {
+    if (allowVerboseLogs) {
       console.warn(...args);
     }
   },
@@ -23,17 +27,17 @@ export const log = {
     console.error(...args);
   },
   debug: (...args: any[]) => {
-    if (isDevelopment) {
+    if (allowVerboseLogs) {
       console.debug(...args);
     }
   },
   group: (label: string) => {
-    if (isDevelopment) {
+    if (allowVerboseLogs) {
       console.group(label);
     }
   },
   groupEnd: () => {
-    if (isDevelopment) {
+    if (allowVerboseLogs) {
       console.groupEnd();
     }
   }
@@ -76,7 +80,7 @@ export const conditionalLog = {
 };
 
 // Remove console methods in production
-if (isProduction) {
+if (isProduction || isNativeMobile) {
   // Override console methods to be no-ops in production
   const noop = () => {};
   

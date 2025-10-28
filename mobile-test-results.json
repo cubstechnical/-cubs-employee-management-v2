@@ -1,0 +1,31 @@
+{
+  "timestamp": "2025-10-26T15:46:25.803Z",
+  "platform": "Android Mobile",
+  "server": "http://localhost:3000",
+  "results": {
+    "server": false,
+    "responsive": false,
+    "touch": false,
+    "playwrightMobile": false,
+    "capacitor": true,
+    "androidConfig": true
+  },
+  "summary": [
+    "❌ SERVER: \u001b[31mFAIL",
+    "❌ RESPONSIVE: \u001b[31mFAIL",
+    "❌ TOUCH: \u001b[31mFAIL",
+    "❌ PLAYWRIGHTMOBILE: \u001b[31mFAIL",
+    "✅ CAPACITOR: \u001b[32mPASS",
+    "✅ ANDROIDCONFIG: \u001b[32mPASS"
+  ],
+  "passedCount": 2,
+  "totalCount": 6,
+  "serverStatus": false,
+  "androidConfig": {
+    "appId": "com.cubstechnical.employee",
+    "minSdk": 24,
+    "targetSdk": 35,
+    "versionCode": 3,
+    "versionName": "1.4.0"
+  }
+}

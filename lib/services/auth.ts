@@ -405,6 +405,12 @@ export class AuthService {
       return { user: null, error: { message: 'Authentication service unavailable' } };
     }
     try {
+      // Clear stale auth state on Capacitor to avoid redirect/login loops
+      if (isCapacitorApp()) {
+        try { await supabase.auth.signOut(); } catch (_) {}
+        try { if (typeof window !== 'undefined') localStorage.removeItem('cubs-auth-token'); } catch (_) {}
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
@@ -417,6 +423,13 @@ export class AuthService {
 
       if (!data.user) {
         return { user: null, error: { message: 'No user data returned' } };
+      }
+
+      // On Capacitor, explicitly persist session and trigger a refresh to stabilize auth state
+      if (isCapacitorApp() && (data as any).session) {
+        try { if (typeof window !== 'undefined') localStorage.setItem('cubs-auth-token', JSON.stringify((data as any).session)); } catch (_) {}
+        try { await supabase.auth.refreshSession(); } catch (_) {}
+        try { await supabase.auth.getSession(); } catch (_) {}
       }
 
       // Get user profile from profiles table
