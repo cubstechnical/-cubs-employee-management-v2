@@ -324,4 +324,18 @@ const baseConfig = {
   },
 }
 
-module.exports = withBundleAnalyzer(withPWA(baseConfig))
+// Base configuration for all environments
+const nextConfig = {
+  // Enable static export
+  output: 'export',
+  // Optional: Change the output directory to 'out' to match Capacitor's webDir
+  distDir: 'out',
+  // Add any other static export configurations here
+  images: {
+    unoptimized: true, // Required for static export
+  },
+  // Ensure static export includes all pages
+  generateBuildId: async () => 'build',
+};
+
+module.exports = withBundleAnalyzer(withPWA({ ...baseConfig, ...nextConfig }))

@@ -5,6 +5,10 @@
 
 const isDevelopment = process.env.NODE_ENV === 'development';
 const isProduction = process.env.NODE_ENV === 'production';
+const isMobile = typeof window !== 'undefined' && (
+  /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+  (window as any).Capacitor?.isNative
+);
 // Detect Capacitor (native mobile)
 const isNativeMobile = typeof window !== 'undefined' && (window as any).Capacitor;
 // Suppress logs on native mobile even in development to avoid noisy debug console
@@ -79,13 +83,27 @@ export const conditionalLog = {
   }
 };
 
-// Remove console methods in production
-if (isProduction || isNativeMobile) {
+// Remove console methods in production and on mobile
+if (isProduction || isMobile || isNativeMobile) {
   // Override console methods to be no-ops in production
   const noop = () => {};
   
   // Keep error logging for production debugging
-  // console.error = console.error; // Keep errors
+  const originalError = console.error;
+  console.error = (...args: any[]) => {
+    // Only log errors that are actual errors, not warnings or info
+    const hasRealError = args.some(arg => 
+      arg instanceof Error || 
+      (typeof arg === 'string' && 
+       (arg.includes('Error:') || 
+        arg.includes('error') || 
+        arg.includes('failed')))
+    );
+    
+    if (hasRealError) {
+      originalError.apply(console, args);
+    }
+  };
   
   // Remove other console methods
   console.log = noop;

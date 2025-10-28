@@ -384,6 +384,21 @@ export class AuthService {
 
   // Sign in with email and password
   static async signIn(credentials: LoginCredentials): Promise<{ user: AuthUser | null; error: { message: string } | null }> {
+    // Clear any problematic sessions before login (especially important for Android)
+    if (isCapacitorApp()) {
+      try {
+        await supabase.auth.signOut();
+        // Clear any stored tokens
+        if (typeof window !== 'undefined') {
+          ['cubs-auth-token', 'supabase.auth.token', 'sb-access-token', 'sb-refresh-token'].forEach(key => {
+            try { localStorage.removeItem(key); } catch (e) {}
+          });
+        }
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    }
+
     // Check rate limiting
     const identifier = `login:${credentials.email}`;
     if (!authRateLimiter.isAllowed(identifier)) {
@@ -405,12 +420,9 @@ export class AuthService {
       return { user: null, error: { message: 'Authentication service unavailable' } };
     }
     try {
-      // Clear stale auth state on Capacitor to avoid redirect/login loops
-      if (isCapacitorApp()) {
-        try { await supabase.auth.signOut(); } catch (_) {}
-        try { if (typeof window !== 'undefined') localStorage.removeItem('cubs-auth-token'); } catch (_) {}
-      }
-
+      // Add a small delay to ensure any previous session is fully cleared
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const { data, error } = await supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,

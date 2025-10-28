@@ -75,18 +75,18 @@ export const isCapacitorApp = (): boolean => {
   if (typeof window === 'undefined') return false;
 
   try {
-    // Check for Capacitor object and native platform
     const capacitor = (window as any).Capacitor;
     const isNative = !!(capacitor?.isNative || capacitor?.platform);
-
-    // Enhanced Android detection
+    
+    // For Android: Check for WebView or Capacitor native
     const userAgent = navigator.userAgent || '';
     const isAndroid = /Android/.test(userAgent);
-    const isAndroidApp = isAndroid && !/Chrome|Firefox|Safari|Edge/.test(userAgent);
-
-    // Check for WKWebView on iOS (Capacitor uses this)
+    const isAndroidWebView = isAndroid && /; wv\)/.test(userAgent);
+    const isAndroidApp = isAndroid && (isAndroidWebView || isNative);
+    
+    // For iOS: Check for WKWebView
     const isIOSWebView = /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent);
-
+    
     return isNative || isAndroidApp || isIOSWebView;
   } catch (error) {
     return false;

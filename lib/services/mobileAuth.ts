@@ -16,9 +16,27 @@ export class MobileAuthService {
     if (!isCapacitorApp()) {
       return { session: null, error: null };
     }
+    
+    // Clear any existing session data that might be causing issues
+    const clearProblematicSessions = () => {
+      try {
+        // Clear any malformed or problematic session data
+        const keys = Object.keys(localStorage);
+        keys.forEach(key => {
+          if (key.includes('supabase') || key.includes('auth') || key.includes('token')) {
+            localStorage.removeItem(key);
+          }
+        });
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    };
 
     try {
       log.info('MobileAuthService: Starting mobile session restoration...');
+      
+      // Clear any problematic sessions before starting
+      clearProblematicSessions();
 
       // Overall timeout for the entire operation to prevent hanging
       const overallTimeout = new Promise((_, reject) =>
@@ -26,6 +44,12 @@ export class MobileAuthService {
       );
 
       const sessionOperation = async () => {
+        // First, clear any existing Supabase session
+        try {
+          await supabase.auth.signOut();
+        } catch (e) {
+          // Ignore sign out errors
+        }
         // Check for stored session data using safe storage
         const storedSession = safeLocalStorage.getItem('cubs-auth-token');
         if (storedSession) {

@@ -165,10 +165,8 @@ export default function RootLayout({
                   <CapacitorInit />
                   
                   {/* Mobile components */}
-                  <MobileErrorBoundary>
-                    {/* Mobile status indicator disabled for production */}
-                    {/* <MobileStatusIndicator /> */}
-                  </MobileErrorBoundary>
+                  {/* Mobile status indicator disabled for production */}
+                  {/* <MobileStatusIndicator /> */}
                   {/* Debug overlay removed for production */}
                   {/* <MobileDebugOverlay /> */}
                   <HideSplashScreen />
