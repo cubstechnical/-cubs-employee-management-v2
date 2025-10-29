@@ -1,3 +1,5 @@
+// CRITICAL: Import console suppression FIRST before anything else
+import '@/lib/utils/consoleSuppress'
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import './globals.css'

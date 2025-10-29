@@ -384,32 +384,61 @@ export class AuthService {
 
   // Sign in with email and password
   static async signIn(credentials: LoginCredentials): Promise<{ user: AuthUser | null; error: { message: string } | null }> {
-    // Clear any problematic sessions before login (especially important for Android)
+    const useRateLimiting = process.env.NODE_ENV === 'production' || process.env.ENABLE_RATE_LIMITING === 'true';
+    const identifier = `login:${credentials.email}`;
+    // Enhanced session cleanup for Android WebView
     if (isCapacitorApp()) {
       try {
+        // 1. First, sign out from Supabase
         await supabase.auth.signOut();
-        // Clear any stored tokens
-        if (typeof window !== 'undefined') {
-          ['cubs-auth-token', 'supabase.auth.token', 'sb-access-token', 'sb-refresh-token'].forEach(key => {
-            try { localStorage.removeItem(key); } catch (e) {}
+        
+        // 2. Clear all auth-related storage
+        if (typeof window !== 'undefined' && window.localStorage) {
+          // Clear all Supabase-related keys
+          const keysToRemove = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('sb-') || key.includes('auth') || key.includes('supabase'))) {
+              keysToRemove.push(key);
+            }
+          }
+          
+          keysToRemove.forEach(key => {
+            try { 
+              localStorage.removeItem(key);
+              log.info('Removed auth key from storage:', key);
+            } catch (e) {
+              log.warn('Failed to remove key from storage:', key, e);
+            }
           });
+          
+          // Clear session storage as well
+          if (window.sessionStorage) {
+            sessionStorage.clear();
+          }
         }
+        
+        // 3. Add a small delay to ensure cleanup is complete
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
       } catch (e) {
-        // Ignore errors during cleanup
+        log.warn('Error during auth cleanup:', e);
+        // Continue with login even if cleanup fails
       }
     }
 
-    // Check rate limiting
-    const identifier = `login:${credentials.email}`;
-    if (!authRateLimiter.isAllowed(identifier)) {
-      const resetTime = authRateLimiter.getResetTime(identifier);
-      const remainingTime = resetTime ? Math.ceil((resetTime - Date.now()) / 60000) : 15;
-      return { 
-        user: null, 
-        error: { 
-          message: `Too many login attempts. Please try again in ${remainingTime} minutes.` 
-        } 
-      };
+    // Check rate limiting (only in production or if explicitly enabled in dev)
+    if (useRateLimiting) {
+      if (!authRateLimiter.isAllowed(identifier)) {
+        const resetTime = authRateLimiter.getResetTime(identifier);
+        const remainingTime = resetTime ? Math.ceil((resetTime - Date.now()) / 60000) : 15;
+        return { 
+          user: null, 
+          error: { 
+            message: `Too many login attempts. Please try again in ${remainingTime} minutes.` 
+          } 
+        };
+      }
     }
 
     if (!isSupabaseAvailable && process.env.NODE_ENV === 'development') {
@@ -421,27 +450,65 @@ export class AuthService {
     }
     try {
       // Add a small delay to ensure any previous session is fully cleared
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 300));
       
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // For Android WebView, we need to ensure we're not in a redirect loop
+      if (isCapacitorApp()) {
+        // Clear any existing session data that might cause conflicts
+        await supabase.auth.signOut();
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      // Log the login attempt
+      log.info('Attempting login for:', credentials.email);
+      
+      // Set a timeout for the login request
+      const loginPromise = supabase.auth.signInWithPassword({
         email: credentials.email,
         password: credentials.password,
       });
+      
+      // Add a 10-second timeout for the login request
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Login timeout')), 10000)
+      );
+      
+      const { data, error } = await Promise.race([
+        loginPromise,
+        timeoutPromise
+      ]) as any;
 
       if (error) {
-        // Don't increment rate limit for invalid credentials, only for successful attempts
-        return { user: null, error: { message: error.message } };
+        log.error('Login error:', error);
+        // Return a more user-friendly error message
+        let errorMessage = error.message;
+        
+        // Map common error codes to user-friendly messages
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = 'Please verify your email before logging in.';
+        } else if (error.message.includes('too many requests')) {
+          errorMessage = 'Too many login attempts. Please try again later.';
+        }
+        
+        return { 
+          user: null, 
+          error: { 
+            message: errorMessage
+          } 
+        };
       }
 
       if (!data.user) {
         return { user: null, error: { message: 'No user data returned' } };
       }
 
-      // On Capacitor, explicitly persist session and trigger a refresh to stabilize auth state
+      // Let Supabase handle session persistence automatically
+      // Supabase will store the session in localStorage using its default key format
+      // No manual storage needed - this prevents conflicts with Supabase's internal storage
       if (isCapacitorApp() && (data as any).session) {
-        try { if (typeof window !== 'undefined') localStorage.setItem('cubs-auth-token', JSON.stringify((data as any).session)); } catch (_) {}
-        try { await supabase.auth.refreshSession(); } catch (_) {}
-        try { await supabase.auth.getSession(); } catch (_) {}
+        log.info('Capacitor app login successful, session will be persisted by Supabase');
       }
 
       // Get user profile from profiles table
@@ -464,7 +531,9 @@ export class AuthService {
         };
         
         // Clear rate limit on successful login
-        authRateLimiter.clear(identifier);
+        if (useRateLimiting) {
+          authRateLimiter.clear(identifier);
+        }
         return { user: authUser, error: null };
       } else if (profileError) {
         // Log profile fetch error securely
@@ -482,7 +551,9 @@ export class AuthService {
       };
 
       // Clear rate limit on successful login
-      authRateLimiter.clear(identifier);
+      if (useRateLimiting) {
+        authRateLimiter.clear(identifier);
+      }
       return { user: authUser, error: null };
     } catch (error) {
       log.error('Error signing in:', error);

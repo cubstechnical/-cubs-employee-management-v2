@@ -65,32 +65,30 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     }, 3000); // 3 second fallback - reduced for mobile
 
-    // Simple auth state change listener - only if Supabase is available
+    // Simple auth state change listener (always subscribe via imported supabase client)
     let subscription: any = null;
-    if (typeof window !== 'undefined' && (window as any).supabase) {
-      try {
-        const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
-          async (event, session) => {
-            try {
-              if (event === 'SIGNED_IN' && session) {
-                const currentUser = await AuthService.getCurrentUser()
-                if (currentUser) {
-                  setUser(currentUser)
-                }
-              } else if (event === 'SIGNED_OUT') {
-                setUser(null)
+    try {
+      const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(
+        async (event, session) => {
+          try {
+            if (event === 'SIGNED_IN' && session) {
+              const currentUser = await AuthService.getCurrentUser()
+              if (currentUser) {
+                setUser(currentUser)
               }
-            } catch (error) {
-              log.warn('SimpleAuthContext: Auth state change error:', error)
-            } finally {
-              setIsLoading(false)
+            } else if (event === 'SIGNED_OUT') {
+              setUser(null)
             }
+          } catch (error) {
+            log.warn('SimpleAuthContext: Auth state change error:', error)
+          } finally {
+            setIsLoading(false)
           }
-        )
-        subscription = authSubscription;
-      } catch (error) {
-        log.warn('SimpleAuthContext: Failed to set up auth state listener:', error);
-      }
+        }
+      )
+      subscription = authSubscription;
+    } catch (error) {
+      log.warn('SimpleAuthContext: Failed to set up auth state listener:', error);
     }
 
     return () => {

@@ -17,41 +17,21 @@ export class MobileAuthService {
       return { session: null, error: null };
     }
     
-    // Clear any existing session data that might be causing issues
-    const clearProblematicSessions = () => {
-      try {
-        // Clear any malformed or problematic session data
-        const keys = Object.keys(localStorage);
-        keys.forEach(key => {
-          if (key.includes('supabase') || key.includes('auth') || key.includes('token')) {
-            localStorage.removeItem(key);
-          }
-        });
-      } catch (e) {
-        // Ignore errors during cleanup
-      }
-    };
+    // Let Supabase handle session restoration automatically
+    // Don't clear session storage - Supabase manages this
 
     try {
-      log.info('MobileAuthService: Starting mobile session restoration...');
-      
-      // Clear any problematic sessions before starting
-      clearProblematicSessions();
+      log.info('MobileAuthService: Checking for existing Supabase session...');
 
       // Overall timeout for the entire operation to prevent hanging
       const overallTimeout = new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Mobile session restoration timeout')), 8000)
+        setTimeout(() => reject(new Error('Mobile session restoration timeout')), 5000)
       );
 
       const sessionOperation = async () => {
-        // First, clear any existing Supabase session
-        try {
-          await supabase.auth.signOut();
-        } catch (e) {
-          // Ignore sign out errors
-        }
-        // Check for stored session data using safe storage
-        const storedSession = safeLocalStorage.getItem('cubs-auth-token');
+        // Just try to get the current session from Supabase
+        // Supabase will automatically restore from localStorage if session exists
+        const storedSession = null; // Don't check custom storage
         if (storedSession) {
           try {
             const sessionData = JSON.parse(storedSession);
@@ -179,41 +159,13 @@ export class MobileAuthService {
 
   /**
    * Store session data for mobile persistence
+   * NOTE: No longer needed - Supabase handles session persistence automatically
    */
   static storeMobileSession(session: any): void {
     if (!isCapacitorApp() || !session) return;
-
-    try {
-      log.info('MobileAuthService: Storing mobile session...');
-
-      // Validate session data before storing
-      if (!session.access_token && !session.session?.access_token) {
-        log.warn('MobileAuthService: Invalid session data provided');
-        return;
-      }
-
-      // Use safe storage wrapper with comprehensive session data
-      const sessionData = {
-        access_token: session.access_token || session.session?.access_token,
-        refresh_token: session.refresh_token || session.session?.refresh_token,
-        expires_at: session.expires_at || session.session?.expires_at,
-        user: session,
-        timestamp: Date.now()
-      };
-
-      const success = safeLocalStorage.setItem('cubs-auth-token', JSON.stringify(sessionData));
-
-      safeLocalStorage.setItem('cubs_session_persisted', 'true');
-      safeLocalStorage.setItem('cubs_last_login', new Date().toISOString());
-
-      if (success) {
-        log.info('MobileAuthService: Session data stored for mobile persistence');
-      } else {
-        log.warn('MobileAuthService: Failed to store session data due to storage error');
-      }
-    } catch (error) {
-      log.warn('MobileAuthService: Failed to store session data:', error);
-    }
+    // Supabase now handles session persistence automatically
+    // No manual storage needed
+    log.info('MobileAuthService: Session will be persisted by Supabase automatically');
   }
 
   /**

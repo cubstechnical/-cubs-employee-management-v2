@@ -72,7 +72,7 @@ export const addMobileClass = (): void => {
 };
 
 export const isCapacitorApp = (): boolean => {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined' || typeof document === 'undefined') return false;
 
   try {
     const capacitor = (window as any).Capacitor;
@@ -80,14 +80,32 @@ export const isCapacitorApp = (): boolean => {
     
     // For Android: Check for WebView or Capacitor native
     const userAgent = navigator.userAgent || '';
-    const isAndroid = /Android/.test(userAgent);
-    const isAndroidWebView = isAndroid && /; wv\)/.test(userAgent);
+    const isAndroid = /Android/i.test(userAgent);
+    const isAndroidWebView = isAndroid && /; wv\)/i.test(userAgent);
     const isAndroidApp = isAndroid && (isAndroidWebView || isNative);
     
     // For iOS: Check for WKWebView
-    const isIOSWebView = /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent);
+    const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
+    const isIOSWebView = isIOS && /AppleWebKit/i.test(userAgent) && !/Safari/i.test(userAgent);
     
-    return isNative || isAndroidApp || isIOSWebView;
+    // Additional check for Capacitor environment
+    const isCapacitor = !!(window as any).Capacitor || isNative || isAndroidApp || isIOSWebView;
+    
+    // Debug info
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Mobile detection:', {
+        userAgent,
+        isNative,
+        isAndroid,
+        isAndroidWebView,
+        isAndroidApp,
+        isIOS,
+        isIOSWebView,
+        isCapacitor
+      });
+    }
+    
+    return isCapacitor;
   } catch (error) {
     return false;
   }

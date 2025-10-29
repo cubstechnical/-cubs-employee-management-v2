@@ -32,32 +32,15 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      // Add mobile-specific configuration
-      ...(typeof window !== 'undefined' && window.Capacitor && (window.Capacitor.isNative || (window as any).Capacitor.platform) ? {
-        storage: window.localStorage, // Ensure localStorage is used for session persistence
-        storageKey: 'cubs-auth-token', // Custom storage key for mobile app
-      } : {}),
+      // Use default Supabase storage - don't override storageKey to avoid conflicts
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     };
 
     supabase = createClient(supabaseUrl, supabaseAnonKey, {
       auth: authConfig,
     });
 
-    // Add mobile-specific session recovery
-    if (typeof window !== 'undefined' && window.Capacitor && (window.Capacitor.isNative || (window as any).Capacitor.platform)) {
-      log.info('Mobile app detected, initializing mobile-specific auth handling');
-
-      // Ensure session is properly loaded on app start
-      supabase.auth.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_OUT') {
-          log.info('User signed out in mobile app');
-        } else if (event === 'SIGNED_IN' && session) {
-          log.info('User session restored in mobile app', { userId: session.user.id });
-        } else if (event === 'TOKEN_REFRESHED' && session) {
-          log.info('Auth token refreshed in mobile app');
-        }
-      });
-    }
+    // Note: Auth state listener is handled in SimpleAuthContext to avoid multiple listeners
   } catch (error) {
     isSupabaseAvailable = false;
     // Fallback to mock client
