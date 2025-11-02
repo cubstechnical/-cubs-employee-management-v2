@@ -85,8 +85,7 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 /** @type {import('next').NextConfig} */
 const baseConfig = {
-  // Static export configuration for mobile builds
-  output: process.env.BUILD_MOBILE === 'true' ? 'export' : undefined,
+  // Always use static export for Capacitor compatibility
   trailingSlash: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],

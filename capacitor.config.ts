@@ -54,7 +54,7 @@ const config: CapacitorConfig = {
     captureInput: true,
     webContentsDebuggingEnabled: false,
     appendUserAgent: 'CUBS-Employee-Management',
-    overrideUserAgent: 'Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36 CUBS-Employee-Management',
+    // Don't override user agent - it breaks Capacitor's internal file serving
     // Enhanced Android optimizations
     backgroundColor: '#111827',
   }
