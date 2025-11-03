@@ -8,7 +8,8 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',
-    // Remove server.url for production (only for development)
+    // Load production site directly so web deploys auto-update the app UI
+    url: 'https://cubsgroups.com',
   },
   plugins: {
     SplashScreen: {
