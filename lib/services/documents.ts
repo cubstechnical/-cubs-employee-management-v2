@@ -1781,91 +1781,53 @@ export class DocumentService {
     uploadData: UploadDocumentData
   ): Promise<{ document: Document | null; error: string | null }> {
     try {
-      // Import BackblazeService dynamically to avoid SSR issues
-      const { BackblazeService } = await import('./backblaze');
-
-      // Extract company and employee names from file path for better organization
-      const pathParts = uploadData.file_path.split('/');
-      // For AL HANA TOURS, force canonical display name to '&' variant for consistency
-      let companyName = pathParts[0] || 'Unknown';
-      if (companyName === 'AL HANA TOURS and TRAVELS' || companyName === 'AL HANA TOURS AND TRAVELS') {
-        companyName = 'AL HANA TOURS & TRAVELS';
+      // Use API route for server-side upload (Backblaze credentials are server-side only)
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('employee_id', uploadData.employee_id);
+      formData.append('document_type', uploadData.document_type);
+      formData.append('file_name', uploadData.file_name);
+      formData.append('file_size', uploadData.file_size.toString());
+      formData.append('file_path', uploadData.file_path);
+      formData.append('file_type', uploadData.file_type);
+      if (uploadData.notes) {
+        formData.append('notes', uploadData.notes);
       }
-      const employeeName = pathParts[1] || 'Unknown';
 
-      // Upload file to Backblaze B2
-      const uploadResult = await BackblazeService.uploadFile(file, {
+      log.info('📤 Uploading via API route:', {
         fileName: uploadData.file_name,
         fileSize: uploadData.file_size,
-        mimeType: file.type,
-        companyName,
-        employeeName,
-        documentType: uploadData.document_type
+        employeeId: uploadData.employee_id,
+        filePath: uploadData.file_path
       });
 
-      if (!uploadResult.success) {
-        return { document: null, error: uploadResult.error || 'Failed to upload file' };
+      const response = await fetch('/api/documents/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Upload failed' }));
+        log.error('❌ Upload API error:', errorData);
+        return { document: null, error: errorData.error || 'Failed to upload document' };
       }
 
-      // Verify file exists in Backblaze before saving to database
-      try {
-        const fileExists = await BackblazeService.fileExists(uploadData.file_path);
-        if (!fileExists) {
-          log.error('❌ File upload verification failed: File not found in Backblaze');
-          return { document: null, error: 'File upload verification failed' };
-        }
-        log.info('✅ File upload verified in Backblaze');
-      } catch (verifyError) {
-        log.error('❌ File upload verification error:', verifyError);
-        return { document: null, error: 'File upload verification failed' };
-      }
-
-      // Save document metadata to Supabase using the actual fileKey returned by Backblaze
-      const { data: document, error: dbError } = await (supabase as any)
-        .from('employee_documents')
-        .insert({
-          employee_id: uploadData.employee_id,
-          document_type: uploadData.document_type,
-          file_name: uploadData.file_name,
-          file_url: uploadResult.fileUrl || '',
-          file_size: uploadData.file_size,
-          file_path: uploadResult.fileKey || uploadData.file_path,
-          file_type: uploadData.file_type,
-          mime_type: file.type,
-          notes: uploadData.notes,
-          is_active: true
-        })
-        .select()
-        .single();
-
-      if (dbError) {
-        // If database insert fails, try to delete the uploaded file
-        try {
-          await BackblazeService.deleteFile(uploadData.file_path);
-        } catch (deleteError) {
-          log.error('Failed to delete file after database error:', deleteError);
-        }
-        return { document: null, error: dbError.message };
+      const result = await response.json();
+      
+      if (!result.success || !result.document) {
+        log.error('❌ Upload API returned error:', result);
+        return { document: null, error: result.error || 'Upload failed' };
       }
 
       log.info(`✅ Document uploaded successfully: ${uploadData.file_name}`);
       
-      // Intelligent cache invalidation after upload
-      const employeeId = uploadData.employee_id;
+      // Cache invalidation is handled by the upload modal after all files complete
+      // This avoids clearing cache multiple times during parallel uploads
       
-      // Clear relevant caches
-      this.invalidateCache('folders');
-      if (companyName) {
-        this.invalidateCache('company', companyName);
-      }
-      if (employeeId) {
-        this.invalidateCache('employee', undefined, String(employeeId));
-      }
-      
-      return { document: document as unknown as Document, error: null };
+      return { document: result.document as unknown as Document, error: null };
     } catch (error) {
       log.error('❌ Error in uploadDocument:', error);
-      return { document: null, error: 'Failed to upload document' };
+      return { document: null, error: error instanceof Error ? error.message : 'Failed to upload document' };
     }
   }
 

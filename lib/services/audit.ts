@@ -32,7 +32,12 @@ export class AuditService {
         });
 
       if (error) {
-        log.error('❌ Error logging audit:', error);
+        log.error('❌ Error logging audit:', {
+          message: error.message,
+          code: error.code,
+          details: error.details,
+          hint: error.hint
+        });
         // Don't throw error to avoid breaking the main operation
       } else {
         log.info('✅ Audit logged successfully');

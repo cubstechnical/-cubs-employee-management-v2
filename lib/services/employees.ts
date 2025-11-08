@@ -1,4 +1,4 @@
-import { supabase } from '../supabase/client';
+import { supabase, isSupabaseAvailable } from '../supabase/client';
 import { log } from '@/lib/utils/productionLogger';
 
 // Define Employee interface locally since it's not exported from supabase client
@@ -430,6 +430,11 @@ export class EmployeeService {
   // Create new employee
   static async createEmployee(employeeData: CreateEmployeeData): Promise<{ success: boolean; error?: string; employee?: Employee }> {
     try {
+      // Guard: Ensure Supabase is configured
+      if (!isSupabaseAvailable) {
+        return { success: false, error: 'Supabase is not configured. Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.' };
+      }
+
       // Validate required fields
       const requiredFields = ['employee_id', 'name', 'company_name', 'trade', 'nationality'];
       for (const field of requiredFields) {

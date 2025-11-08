@@ -204,52 +204,277 @@ export default function NewEmployee() {
       
       log.info(`🆔 Using employee ID: ${employeeId} for new employee: ${data.name}`);
       
-      // Prepare the data for insertion with all available fields
-      const employeeData = {
+      // Prepare the data for insertion - only include fields that exist in the database
+      // Remove undefined values and ensure proper data types
+      const employeeData: any = {
         employee_id: employeeId,
         name: data.name,
-        email_id: data.email_id || null,
-        mobile_number: data.mobile_number || null,
-        phone: data.phone || null,
-        home_phone_number: data.home_phone_number || null,
-        address: data.address || null,
         trade: data.trade,
         company_name: data.company_name,
         nationality: data.nationality,
-        status: data.status,
+        status: data.status || 'active',
         is_active: data.status === 'active',
-        joining_date: data.joining_date || null,
-        basic_salary: data.basic_salary || null,
-        salary: data.salary || null,
-        dob: data.dob || data.date_of_birth || null,
-        passport_no: data.passport_no || data.passport_number || null,
-        passport_expiry: data.passport_expiry || null,
-        visa_expiry_date: data.visa_expiry_date || null,
-        visa_number: data.visa_number || null,
-        visa_type: data.visa_type || null,
-        visa_status: data.visa_status || null,
-        visastamping_date: data.visastamping_date || null,
-        labourcard_no: data.labourcard_no || null,
-        labourcard_expiry: data.labourcard_expiry || null,
-        eid: data.eid || null,
-        wcc: data.wcc || null,
-        lulu_wps_card: data.lulu_wps_card || null,
-        leave_date: data.leave_date || null,
-        is_temporary: data.is_temporary || false,
         created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       };
 
-      log.info('💾 Creating employee:', employeeData);
+      // Add optional fields only if they have values (match database schema exactly)
+      if (data.email_id && data.email_id.trim()) employeeData.email_id = data.email_id.trim();
+      if (data.mobile_number && data.mobile_number.trim()) {
+        employeeData.mobile_number = data.mobile_number.trim();
+      } else if (data.phone && data.phone.trim()) {
+        // Use phone as mobile_number if mobile_number not provided
+        employeeData.mobile_number = data.phone.trim();
+      }
+      if (data.home_phone_number && data.home_phone_number.trim()) {
+        employeeData.home_phone_number = data.home_phone_number.trim();
+      }
+      // Note: address column may not exist in employee_table, so we skip it for now
+      if (data.joining_date && data.joining_date.trim()) {
+        employeeData.joining_date = data.joining_date.trim();
+      }
+      if (data.basic_salary) {
+        // Convert to number if it's a string, or use the number directly
+        const salaryValue = typeof data.basic_salary === 'string' 
+          ? parseFloat(data.basic_salary) 
+          : data.basic_salary;
+        if (!isNaN(salaryValue) && salaryValue > 0) {
+          employeeData.basic_salary = salaryValue;
+        }
+      }
+      // Use date_of_birth, not dob (database field name)
+      if (data.date_of_birth && data.date_of_birth.trim()) {
+        employeeData.date_of_birth = data.date_of_birth.trim();
+      } else if (data.dob && data.dob.trim()) {
+        employeeData.date_of_birth = data.dob.trim();
+      }
+      if (data.passport_no && data.passport_no.trim()) {
+        employeeData.passport_no = data.passport_no.trim();
+      } else if (data.passport_number && data.passport_number.trim()) {
+        employeeData.passport_no = data.passport_number.trim();
+      }
+      if (data.passport_expiry && data.passport_expiry.trim()) {
+        employeeData.passport_expiry = data.passport_expiry.trim();
+      }
+      if (data.visa_expiry_date && data.visa_expiry_date.trim()) {
+        employeeData.visa_expiry_date = data.visa_expiry_date.trim();
+      }
+      if (data.visa_number && data.visa_number.trim()) employeeData.visa_number = data.visa_number.trim();
+      if (data.visa_type && data.visa_type.trim()) employeeData.visa_type = data.visa_type.trim();
+      if (data.visa_status && data.visa_status.trim()) employeeData.visa_status = data.visa_status.trim();
+      if (data.visastamping_date && data.visastamping_date.trim()) {
+        employeeData.visastamping_date = data.visastamping_date.trim();
+      }
+      if (data.labourcard_no && data.labourcard_no.trim()) {
+        employeeData.labourcard_no = data.labourcard_no.trim();
+      }
+      if (data.labourcard_expiry && data.labourcard_expiry.trim()) {
+        employeeData.labourcard_expiry = data.labourcard_expiry.trim();
+      }
+      if (data.eid && data.eid.trim()) employeeData.eid = data.eid.trim();
+      if (data.wcc && data.wcc.trim()) employeeData.wcc = data.wcc.trim();
+      if (data.lulu_wps_card && data.lulu_wps_card.trim()) {
+        employeeData.lulu_wps_card = data.lulu_wps_card.trim();
+      }
+      if (data.leave_date && data.leave_date.trim()) {
+        employeeData.leave_date = data.leave_date.trim();
+      }
+      // Note: is_temporary column does not exist in employee_table, so we skip it
 
-      const { data: employee, error } = await supabase
+      log.info('💾 Creating employee:', employeeData);
+      
+      // Validate required fields before insert
+      if (!employeeData.employee_id || !employeeData.name || !employeeData.trade || !employeeData.company_name || !employeeData.nationality) {
+        const missingFields = [];
+        if (!employeeData.employee_id) missingFields.push('employee_id');
+        if (!employeeData.name) missingFields.push('name');
+        if (!employeeData.trade) missingFields.push('trade');
+        if (!employeeData.company_name) missingFields.push('company_name');
+        if (!employeeData.nationality) missingFields.push('nationality');
+        
+        log.error('❌ Missing required fields:', missingFields);
+        toast.error(`Missing required fields: ${missingFields.join(', ')}`);
+        return;
+      }
+
+      // First, test if Supabase is accessible
+      log.info('🔍 Testing Supabase connection...');
+      const { data: testData, error: testError } = await supabase
         .from('employee_table')
-        .insert(employeeData as any)
-        .select()
-        .single();
+        .select('id')
+        .limit(1);
+      
+      if (testError) {
+        log.error('❌ Supabase connection test failed:', {
+          message: testError.message,
+          code: testError.code,
+          details: testError.details,
+          hint: testError.hint
+        });
+        toast.error(`Database connection error: ${testError.message || 'Unable to connect to database'}`);
+        return;
+      }
+      
+      log.info('✅ Supabase connection test passed');
+
+      log.info('📤 Attempting Supabase insert...');
+      log.info('📤 Insert data:', JSON.stringify(employeeData, null, 2));
+      log.info('📤 Insert data keys:', Object.keys(employeeData));
+      log.info('📤 Insert data types:', Object.keys(employeeData).reduce((acc, key) => {
+        acc[key] = typeof employeeData[key];
+        return acc;
+      }, {} as Record<string, string>));
+      
+      let employee, error;
+      try {
+        const result = await supabase
+          .from('employee_table')
+          .insert(employeeData)
+          .select()
+          .single();
+        employee = result.data;
+        error = result.error;
+        
+        // If there's an error, try to get more details from the response
+        if (error) {
+          // Try to access the raw error response
+          const errorResponse = (result as any).error;
+          if (errorResponse) {
+            // Try to access all possible error properties
+            const errorInfo: any = {
+              message: errorResponse.message,
+              code: errorResponse.code,
+              details: errorResponse.details,
+              hint: errorResponse.hint,
+              status: errorResponse.status,
+              statusCode: errorResponse.statusCode,
+              error: errorResponse.error,
+              error_description: errorResponse.error_description,
+              errorString: '',
+              errorKeys: Object.keys(errorResponse || {}),
+              errorValues: Object.values(errorResponse || {})
+            };
+            
+            // Try to stringify
+            try {
+              errorInfo.errorString = JSON.stringify(errorResponse, null, 2);
+            } catch (e) {
+              errorInfo.errorString = String(errorResponse);
+            }
+            
+            log.error('❌ Raw error response:', errorInfo);
+            console.error('❌ Full error object:', errorResponse);
+            console.error('❌ Error message:', errorResponse?.message);
+            console.error('❌ Error code:', errorResponse?.code);
+            console.error('❌ Error details:', errorResponse?.details);
+            console.error('❌ Error hint:', errorResponse?.hint);
+          }
+        }
+      } catch (insertError) {
+        log.error('❌ Insert exception:', insertError);
+        error = insertError as any;
+      }
+
+      log.info('📥 Supabase response received:', { 
+        hasData: !!employee, 
+        hasError: !!error,
+        errorType: error ? typeof error : 'none',
+        errorKeys: error ? Object.keys(error || {}) : [],
+        errorString: error ? String(error) : 'none'
+      });
 
       if (error) {
-        log.error('❌ Error creating employee:', error);
-        toast.error(`Failed to create employee: ${error.message}`);
+        // Try multiple ways to extract error information
+        let errorMessage = 'Unknown error';
+        let errorCode = null;
+        let errorDetails = null;
+        let errorHint = null;
+        
+        // Try direct property access with multiple methods
+        try {
+          errorMessage = error.message || (error as any).msg || String(error);
+        } catch (e) {}
+        
+        try {
+          errorCode = error.code || (error as any).statusCode || (error as any).status;
+        } catch (e) {}
+        
+        try {
+          errorDetails = error.details || (error as any).detail || (error as any).error_description;
+        } catch (e) {}
+        
+        try {
+          errorHint = error.hint || (error as any).hint_text;
+        } catch (e) {}
+        
+        // Try to access all enumerable and non-enumerable properties
+        const allProps: any = {};
+        try {
+          for (const key in error) {
+            try {
+              allProps[key] = (error as any)[key];
+            } catch (e) {
+              allProps[key] = '[Unable to access]';
+            }
+          }
+        } catch (e) {}
+        
+        // Try Object.getOwnPropertyNames for non-enumerable properties
+        try {
+          Object.getOwnPropertyNames(error).forEach(key => {
+            if (!allProps[key]) {
+              try {
+                allProps[key] = (error as any)[key];
+              } catch (e) {
+                allProps[key] = '[Unable to access]';
+              }
+            }
+          });
+        } catch (e) {}
+        
+        // Try to stringify with replacer to handle non-serializable properties
+        let errorString = '';
+        try {
+          errorString = JSON.stringify(error, (key, value) => {
+            if (value instanceof Error) {
+              return {
+                name: value.name,
+                message: value.message,
+                stack: value.stack
+              };
+            }
+            return value;
+          }, 2);
+        } catch (e) {
+          errorString = String(error);
+        }
+        
+        // Log all error information
+        const errorInfo = {
+          message: errorMessage,
+          code: errorCode,
+          details: errorDetails,
+          hint: errorHint,
+          stringified: errorString,
+          errorObject: error,
+          errorType: typeof error,
+          errorConstructor: error?.constructor?.name,
+          errorPrototype: Object.getPrototypeOf(error)?.constructor?.name,
+          allKeys: Object.keys(error || {}),
+          allProperties: Object.getOwnPropertyNames(error || {}),
+          allProps: allProps,
+          errorToString: String(error),
+          errorValueOf: error?.valueOf?.()
+        };
+        
+        log.error('❌ Error creating employee:', errorInfo);
+        console.error('Full Supabase error object:', error);
+        console.error('Error details:', errorInfo);
+        console.error('Error stringified:', errorString);
+        
+        // Show user-friendly error message
+        const userMessage = errorMessage || errorDetails || errorHint || 'Failed to create employee. Please check the console for details.';
+        toast.error(`Failed to create employee: ${userMessage}`);
         return;
       }
 
@@ -271,8 +496,15 @@ export default function NewEmployee() {
       toast.success('Employee added successfully!');
       router.push('/employees');
     } catch (error) {
-      log.error('Error creating employee:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      // Log detailed error information
+      const errorDetails = {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        fullError: JSON.stringify(error, Object.getOwnPropertyNames(error), 2)
+      };
+      log.error('Error creating employee (catch block):', errorDetails);
+      console.error('Full error object:', error);
+      toast.error(`An unexpected error occurred: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsSubmitting(false);
     }

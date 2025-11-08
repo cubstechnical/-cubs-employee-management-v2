@@ -135,7 +135,8 @@ export default function UploadModal({ isOpen, onClose, currentPath, onUploadComp
       setUploadProgress(initialProgress);
       setUploadStatus(initialStatus);
 
-      for (const uploadFile of uploadFiles) {
+      // Upload all files in parallel for faster performance
+      const uploadPromises = uploadFiles.map(async (uploadFile) => {
         try {
           // Set status to uploading
           setUploadStatus(prev => ({ ...prev, [uploadFile.id]: 'uploading' }));
@@ -211,18 +212,44 @@ export default function UploadModal({ isOpen, onClose, currentPath, onUploadComp
 
           setUploadProgress(prev => ({ ...prev, [uploadFile.id]: 100 }));
           setUploadStatus(prev => ({ ...prev, [uploadFile.id]: 'success' }));
-          successCount++;
+          return { success: true, fileId: uploadFile.id };
         } catch (error) {
           log.error('Upload error:', error);
           setUploadStatus(prev => ({ ...prev, [uploadFile.id]: 'error' }));
+          return { success: false, fileId: uploadFile.id, error };
+        }
+      });
+
+      // Wait for all uploads to complete (parallel execution)
+      const results = await Promise.all(uploadPromises);
+      
+      // Count successes and errors
+      results.forEach(result => {
+        if (result.success) {
+          successCount++;
+        } else {
           errorCount++;
         }
-      }
+      });
 
       if (successCount > 0) {
         toast.success(`Successfully uploaded ${successCount} file(s)`);
         if (errorCount > 0) {
           toast.error(`Failed to upload ${errorCount} file(s)`);
+        }
+        
+        // Clear cache once after all uploads complete (optimized)
+        if (uploadType === 'employee' && selectedEmployee) {
+          const companyName = selectedEmployee.company_name;
+          DocumentService.invalidateCache('folders');
+          if (companyName) {
+            DocumentService.invalidateCache('company', companyName);
+          }
+          if (selectedEmployee.employee_id) {
+            DocumentService.invalidateCache('employee', undefined, selectedEmployee.employee_id);
+          }
+        } else {
+          DocumentService.invalidateCache('folders');
         }
         
         // Auto-refresh the document list

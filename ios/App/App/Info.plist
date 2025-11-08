@@ -86,5 +86,9 @@
 	<array>
 		<string>remote-notification</string>
 	</array>
+	<key>UIExternalAccessoryProtocols</key>
+	<array/>
+	<key>UISupportsDocumentBrowser</key>
+	<false/>
 </dict>
 </plist>

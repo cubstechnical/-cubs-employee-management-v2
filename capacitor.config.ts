@@ -2,7 +2,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 import { KeyboardResize, KeyboardStyle } from '@capacitor/keyboard';
 
 const config: CapacitorConfig = {
-  appId: 'com.cubstechnical.employee',
+  appId: 'com.cubstechnical.admin',
   appName: 'CUBS Employee Management',
   webDir: 'out', // Use static export output for mobile
   server: {
