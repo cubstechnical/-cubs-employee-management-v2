@@ -29,7 +29,8 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
       setError('');
 
       // Use API route to get document preview URL
-      const response = await fetch('/api/documents/preview', {
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/documents/preview'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

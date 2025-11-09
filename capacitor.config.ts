@@ -9,6 +9,9 @@ const config: CapacitorConfig = {
     androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',
     // Load production site directly so web deploys auto-update the app UI
+    // IMPORTANT: Update this URL if your domain changes
+    // For development, you can set this to undefined or comment it out to use local files
+    // For production, ensure this points to your Vercel deployment
     url: 'https://cubsgroups.com',
   },
   plugins: {

@@ -40,7 +40,8 @@ class AppErrorBoundary extends Component<Props, State> {
 
   reportErrorToBackend = async (error: Error, errorInfo: ErrorInfo) => {
     try {
-      await fetch('/api/error-report', {
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      await fetch(getApiUrl('api/error-report'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

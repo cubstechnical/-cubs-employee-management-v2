@@ -1801,7 +1801,13 @@ export class DocumentService {
         filePath: uploadData.file_path
       });
 
-      const response = await fetch('/api/documents/upload', {
+      // Get API URL - use absolute URL in production, relative in development
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const apiUrl = getApiUrl('api/documents/upload');
+
+      log.info('📤 API URL:', { apiUrl, isProduction: process.env.NODE_ENV === 'production' });
+
+      const response = await fetch(apiUrl, {
         method: 'POST',
         body: formData
       });

@@ -224,7 +224,8 @@ export class BackblazeService {
         formData.append('file', file);
         formData.append('metadata', JSON.stringify(metadata));
         
-        const response = await fetch('/api/upload', {
+        const { getApiUrl } = await import('@/lib/utils/apiClient');
+        const response = await fetch(getApiUrl('api/upload'), {
           method: 'POST',
           body: formData,
         });

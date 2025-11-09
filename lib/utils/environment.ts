@@ -102,6 +102,49 @@ export function getAppUrl(): string {
 }
 
 /**
+ * Get API base URL for making requests
+ * Uses NEXT_PUBLIC_APP_URL in production, relative paths in development
+ * Also checks for Capacitor environment (mobile app)
+ */
+export function getApiBaseUrl(): string {
+  // Check if we're in a browser environment
+  if (typeof window === 'undefined') {
+    // Server-side: use environment variable or default
+    return process.env.NEXT_PUBLIC_APP_URL || 'https://cubsgroups.com';
+  }
+
+  // Client-side: check if we're in Capacitor (mobile app)
+  const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
+  
+  if (isCapacitor) {
+    // In Capacitor, use the configured server URL or current origin
+    const capacitorConfig = (window as any).Capacitor?.getConfig?.();
+    if (capacitorConfig?.server?.url) {
+      return capacitorConfig.server.url;
+    }
+    // Fallback to current origin for Capacitor
+    return window.location.origin;
+  }
+
+  // Web production: use environment variable or current origin
+  if (isProduction()) {
+    const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+    if (envUrl) {
+      try {
+        return new URL(envUrl).origin;
+      } catch {
+        // Invalid URL, use current origin
+      }
+    }
+    // Use current origin as fallback
+    return window.location.origin;
+  }
+
+  // Development: use relative paths (works with Next.js dev server)
+  return '';
+}
+
+/**
  * Log environment configuration (development only)
  */
 export function logEnvironmentConfig(): void {

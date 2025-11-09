@@ -177,7 +177,8 @@ function NotificationsPageContent() {
     try {
       log.info('Sending test email...');
       
-      const response = await fetch('/api/send-email', {
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/send-email'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

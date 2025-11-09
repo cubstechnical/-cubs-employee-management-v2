@@ -72,7 +72,8 @@ export default function Settings() {
     try {
       // Try to load from API first
       try {
-        const response = await fetch('/api/settings/user');
+        const { getApiUrl } = await import('@/lib/utils/apiClient');
+        const response = await fetch(getApiUrl('api/settings/user'));
         const data = await response.json();
 
         if (data.success && data.data) {
@@ -125,7 +126,8 @@ export default function Settings() {
           appearance: settings.appearance
         };
 
-        const response = await fetch('/api/settings/user', {
+        const { getApiUrl } = await import('@/lib/utils/apiClient');
+        const response = await fetch(getApiUrl('api/settings/user'), {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
@@ -216,7 +218,8 @@ export default function Settings() {
           return;
         }
 
-        const response = await fetch('/api/auth/delete-account', {
+        const { getApiUrl } = await import('@/lib/utils/apiClient');
+        const response = await fetch(getApiUrl('api/auth/delete-account'), {
           method: 'DELETE',
           headers: {
             'Content-Type': 'application/json',
