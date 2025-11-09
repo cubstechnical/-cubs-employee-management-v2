@@ -8,11 +8,19 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',
-    // Load production site directly so web deploys auto-update the app UI
-    // IMPORTANT: Update this URL if your domain changes
-    // For development, you can set this to undefined or comment it out to use local files
-    // For production, ensure this points to your Vercel deployment
-    url: 'https://cubsgroups.com',
+    // IMPORTANT: No 'url' property = app uses local files (native app behavior)
+    // Setting 'url' makes the app load from the web, which causes:
+    // 1. Links opening in browser instead of staying in app
+    // 2. Slower performance (requires internet)
+    // 3. API routes won't work (405 errors)
+    // 
+    // For production native apps, use local files (no 'url' property)
+    // The app will be self-contained and work offline
+    // 
+    // For development/testing, you can temporarily add:
+    // url: 'http://localhost:3000' or 'https://cubsgroups.com'
+    // 
+    // To update the app, rebuild and release a new version to App Store
   },
   plugins: {
     SplashScreen: {

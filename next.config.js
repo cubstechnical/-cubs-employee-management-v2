@@ -85,11 +85,12 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 
 /** @type {import('next').NextConfig} */
 const baseConfig = {
-  // Always use static export for Capacitor compatibility
+  // Use trailing slash for consistency
   trailingSlash: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
-    unoptimized: true, // Required for static export
+    // Only unoptimized for static export (mobile builds)
+    unoptimized: process.env.BUILD_MOBILE === 'true',
   },
   // Disable SSR for problematic components in static export
   experimental: {
@@ -324,17 +325,25 @@ const baseConfig = {
 }
 
 // Base configuration for all environments
+// Use static export ONLY for mobile builds (BUILD_MOBILE=true)
+// For web/Vercel deployment, use normal Next.js with API routes support
 const nextConfig = {
-  // Enable static export
-  output: 'export',
-  // Optional: Change the output directory to 'out' to match Capacitor's webDir
-  distDir: 'out',
-  // Add any other static export configurations here
-  images: {
-    unoptimized: true, // Required for static export
-  },
-  // Ensure static export includes all pages
-  generateBuildId: async () => 'build',
+  // Only enable static export for mobile builds
+  // Web builds need API routes to work (for uploads, etc.)
+  ...(process.env.BUILD_MOBILE === 'true' ? {
+    output: 'export',
+    distDir: 'out',
+    images: {
+      unoptimized: true, // Required for static export
+    },
+    generateBuildId: async () => 'build',
+  } : {
+    // For web/Vercel: normal Next.js build with API routes
+    // API routes will be deployed as serverless functions
+    images: {
+      unoptimized: false,
+    },
+  }),
 };
 
 module.exports = withBundleAnalyzer(withPWA({ ...baseConfig, ...nextConfig }))

@@ -90,5 +90,16 @@
 	<array/>
 	<key>UISupportsDocumentBrowser</key>
 	<false/>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.cubstechnical.admin</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>cubs-employee</string>
+			</array>
+		</dict>
+	</array>
 </dict>
 </plist>
