@@ -325,12 +325,15 @@ const baseConfig = {
 }
 
 // Base configuration for all environments
-// Use static export ONLY for mobile builds (BUILD_MOBILE=true)
-// For web/Vercel deployment, use normal Next.js with API routes support
+// IMPORTANT: Static export is ONLY enabled for mobile builds (BUILD_MOBILE=true)
+// For web/Vercel deployment, BUILD_MOBILE is NOT set, so normal Next.js is used
+// This allows API routes to work as serverless functions on Vercel
 const nextConfig = {
   // Only enable static export for mobile builds
-  // Web builds need API routes to work (for uploads, etc.)
+  // When BUILD_MOBILE is not set (default for Vercel), Next.js builds normally
+  // This means API routes work correctly in production
   ...(process.env.BUILD_MOBILE === 'true' ? {
+    // Mobile build: static export (no API routes, files in /out)
     output: 'export',
     distDir: 'out',
     images: {
@@ -338,11 +341,13 @@ const nextConfig = {
     },
     generateBuildId: async () => 'build',
   } : {
-    // For web/Vercel: normal Next.js build with API routes
-    // API routes will be deployed as serverless functions
+    // Web/Vercel build: normal Next.js (API routes as serverless functions)
+    // This is the default when BUILD_MOBILE is not set
+    // Vercel will automatically deploy app/api/** as serverless functions
     images: {
       unoptimized: false,
     },
+    // No output: 'export' = normal Next.js build with API routes support
   }),
 };
 

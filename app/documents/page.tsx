@@ -478,29 +478,17 @@ function DocumentsContent() {
 
       log.info('🔗 Opening document with fresh signed URL:', signedUrl);
 
-      // Open document in new tab/browser
-      const newTab = window.open(signedUrl, '_blank', 'noopener,noreferrer');
-      
-      if (newTab) {
-        newTab.focus();
-        log.info('✅ Document opened successfully');
-      } else {
-        // Fallback for popup blockers
-        const link = document.createElement('a');
-        link.href = signedUrl;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        log.info('✅ Document opened via fallback method');
-      }
+      // Use mobile-aware navigation utility
+      const { openDocument } = await import('@/lib/utils/mobileNavigation');
+      await openDocument(signedUrl);
+      log.info('✅ Document opened successfully');
 
     } catch (error) {
       log.info('⚠️ Error opening document:', error);
       // Try fallback with item URL if available
       if (item.file_url) {
-        window.open(item.file_url, '_blank', 'noopener,noreferrer');
+        const { openDocument } = await import('@/lib/utils/mobileNavigation');
+        await openDocument(item.file_url);
       }
     } finally {
       setLoadingDocumentId(null);
