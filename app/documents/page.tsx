@@ -464,14 +464,10 @@ function DocumentsContent() {
         // Fallback: Use the stored URL if available
         if (item.file_url) {
           log.info('🔗 Using stored URL as fallback:', item.file_url);
-          const newTab = window.open(item.file_url, '_blank', 'noopener,noreferrer');
-          if (newTab) {
-            newTab.focus();
-            log.info('✅ Document opened via fallback method');
+          const { openDocument } = await import('@/lib/utils/mobileNavigation');
+          await openDocument(item.file_url);
+          log.info('✅ Document opened via fallback method');
           return;
-          } else {
-            log.info('⚠️ Popup blocked or failed to open fallback URL');
-          }
         }
         return;
       }

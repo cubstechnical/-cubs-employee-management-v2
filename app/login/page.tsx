@@ -36,8 +36,6 @@ export default function LoginPage() {
   const [logoFailed, setLogoFailed] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [loginAttempted, setLoginAttempted] = useState(false);
-  // TODO: Remove reviewer credentials panel after app review is approved
-  const reviewerCreds = { email: 'info@cubstechnical.com', password: 'Admin@123456' } as const;
 
   // Initialize mobile crash detection
   // useMobileCrashDetection(); // Temporarily disabled to prevent hanging
@@ -349,33 +347,6 @@ export default function LoginPage() {
                   Enter your credentials to access your account
                 </p>
               </div>
-
-              {/* TODO: Remove this reviewer credentials panel after app review is approved */}
-              <div className="mb-6 rounded-lg border border-yellow-300 bg-yellow-50 dark:border-yellow-500/40 dark:bg-yellow-500/10 p-4 text-left">
-                <p className="text-sm font-semibold text-yellow-800 dark:text-yellow-300 mb-2">🔑 Demo Account for Reviewers</p>
-                  <div className="text-sm text-yellow-900 dark:text-yellow-200 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">Email</span>
-                      <code className="text-xs bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded">{reviewerCreds.email}</code>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium">Password</span>
-                      <code className="text-xs bg-black/5 dark:bg-white/10 px-2 py-0.5 rounded">{reviewerCreds.password}</code>
-                    </div>
-                  </div>
-                  <div className="mt-3">
-                    <Button
-                      type="button"
-                      className="w-full"
-                      onClick={() => {
-                        setValue('email', reviewerCreds.email, { shouldValidate: true, shouldDirty: true });
-                        setValue('password', reviewerCreds.password, { shouldValidate: true, shouldDirty: true });
-                      }}
-                    >
-                      Use Reviewer Credentials
-                    </Button>
-                  </div>
-                </div>
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                 <div>
