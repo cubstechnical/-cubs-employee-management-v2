@@ -17,7 +17,7 @@ const PerformanceMonitor = dynamic(() => import('@/components/ui/PerformanceMoni
 })
 import { ClientOnly } from '@/components/common/ClientOnly'
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary'
-import { suppressMobileWarnings } from '@/utils/mobileDetection'
+import { suppressMobileWarnings, isCapacitorApp } from '@/utils/mobileDetection'
 import { initializeEnvironment } from '@/lib/utils/environment'
 import { Suspense } from 'react'
 import { MobileErrorBoundary } from '@/components/ui/MobileErrorBoundary'
@@ -29,6 +29,7 @@ import { ThemeProvider } from '@/lib/theme'
 // import MobileDebugOverlay from '@/components/debug/MobileDebugOverlay'
 import HideSplashScreen from '@/components/capacitor/HideSplashScreen'
 import NetworkErrorHandler from '@/components/ui/NetworkErrorHandler'
+import BlankScreenFix from '@/components/capacitor/BlankScreenFix'
 import { Toaster } from 'react-hot-toast'
 import OfflineIndicator from '@/components/ui/OfflineIndicator'
 
@@ -177,6 +178,10 @@ export default function RootLayout({
                   {/* <MobileDebugOverlay /> */}
                   <HideSplashScreen />
                   <NetworkErrorHandler />
+                  {/* Blank screen fix for iOS */}
+                  {isCapacitorApp() && (
+                    <BlankScreenFix />
+                  )}
                   
                   {/* Performance monitor for development */}
                   {process.env.NODE_ENV === 'development' && (
