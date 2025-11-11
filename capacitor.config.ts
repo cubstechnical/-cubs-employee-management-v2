@@ -8,6 +8,14 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https', // Required for Android
     iosScheme: 'cubs-employee',
+    // Ensure external http(s) navigations stay inside the WebView
+    // Add all domains the app needs to navigate to (docs, storage, API, site)
+    allowNavigation: [
+      'cubsgroups.com',
+      '*.cubsgroups.com',
+      's3.us-east-005.backblazeb2.com',
+      '*.backblazeb2.com'
+    ],
     // IMPORTANT: No 'url' property = app uses local files (native app behavior)
     // Setting 'url' makes the app load from the web, which causes:
     // 1. Links opening in browser instead of staying in app
