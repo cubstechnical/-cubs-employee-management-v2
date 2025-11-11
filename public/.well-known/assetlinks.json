@@ -1,0 +1,16 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls",
+      "delegate_permission/common.get_login_creds"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.cubstechnical.admin",
+      "sha256_cert_fingerprints": [
+        "99:67:92:9A:DE:C7:9F:54:A7:4C:06:85:39:6F:F1:E8:A8:2B:5B:45:7E:1C:35:4D:1A:50:A8:9B:27:FC:BD:A1"
+      ]
+    }
+  }
+]
+

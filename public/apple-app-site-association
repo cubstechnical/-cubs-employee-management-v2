@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "XXXXX12345.com.cubstechnical.admin",
+        "paths": [
+          "*",
+          "/",
+          "/about/*",
+          "/admin/*",
+          "/documents/*",
+          "/employees/*",
+          "/login/*",
+          "/settings/*"
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "XXXXX12345.com.cubstechnical.admin"
+    ]
+  }
+}
+
