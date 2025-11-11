@@ -164,26 +164,43 @@ export default function RootLayout({
                   {(() => {
                     suppressMobileWarnings();
                     initializeEnvironment();
-                    // Intercept anchor clicks on native to keep navigation in-app
+                    // Intercept anchor clicks and override window.open on native to stay in-app
                     if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform()) {
                       try {
+                        // 1) Override window.open to keep navigation in the same WebView
+                        const originalOpen = window.open;
+                        window.open = function(url?: string | URL, target?: string, features?: string) {
+                          try {
+                            if (typeof url === 'string' || url instanceof URL) {
+                              const href = String(url);
+                              // For http(s) links and app routes, navigate in place
+                              if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('/')) {
+                                window.location.href = href;
+                                return window;
+                              }
+                            }
+                          } catch {}
+                          // Fallback to original if anything unexpected
+                          return originalOpen.apply(window, [url as any, target as any, features as any]);
+                        };
+
+                        // 2) Global click capture to normalize anchor behavior
                         const handler = (e: any) => {
                           const anchor = e.target?.closest?.('a');
                           if (!anchor) return;
                           const href = anchor.getAttribute('href');
-                          const target = anchor.getAttribute('target');
                           if (!href) return;
-                          // If it's an absolute or relative URL, navigate inside the WebView
-                          const isHttp = href.startsWith('http://') || href.startsWith('https://');
                           const isHash = href.startsWith('#');
-                          const isMailTo = href.startsWith('mailto:') || href.startsWith('tel:');
-                          if (!isMailTo && !isHash) {
-                            e.preventDefault();
-                            // Remove target to avoid opening external view
-                            if (anchor.removeAttribute) anchor.removeAttribute('target');
-                            // Navigate inside WebView
-                            window.location.href = href;
+                          const isProtocol = /^(mailto:|tel:|sms:|geo:)/i.test(href);
+                          if (isHash || isProtocol) return; // allow native handlers
+                          e.preventDefault();
+                          // Remove attributes that force external contexts
+                          if (anchor.removeAttribute) {
+                            anchor.removeAttribute('target');
+                            anchor.removeAttribute('rel');
                           }
+                          // Navigate inside WebView
+                          window.location.href = href;
                         };
                         window.addEventListener('click', handler, { capture: true });
                       } catch {}
