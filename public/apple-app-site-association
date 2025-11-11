@@ -3,7 +3,7 @@
     "apps": [],
     "details": [
       {
-        "appID": "XXXXX12345.com.cubstechnical.admin",
+        "appID": "GQCYASP5XS.com.cubstechnical.admin",
         "paths": [
           "*",
           "/",
@@ -19,7 +19,7 @@
   },
   "webcredentials": {
     "apps": [
-      "XXXXX12345.com.cubstechnical.admin"
+      "GQCYASP5XS.com.cubstechnical.admin"
     ]
   }
 }
