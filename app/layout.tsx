@@ -164,6 +164,30 @@ export default function RootLayout({
                   {(() => {
                     suppressMobileWarnings();
                     initializeEnvironment();
+                    // Intercept anchor clicks on native to keep navigation in-app
+                    if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform()) {
+                      try {
+                        const handler = (e: any) => {
+                          const anchor = e.target?.closest?.('a');
+                          if (!anchor) return;
+                          const href = anchor.getAttribute('href');
+                          const target = anchor.getAttribute('target');
+                          if (!href) return;
+                          // If it's an absolute or relative URL, navigate inside the WebView
+                          const isHttp = href.startsWith('http://') || href.startsWith('https://');
+                          const isHash = href.startsWith('#');
+                          const isMailTo = href.startsWith('mailto:') || href.startsWith('tel:');
+                          if (!isMailTo && !isHash) {
+                            e.preventDefault();
+                            // Remove target to avoid opening external view
+                            if (anchor.removeAttribute) anchor.removeAttribute('target');
+                            // Navigate inside WebView
+                            window.location.href = href;
+                          }
+                        };
+                        window.addEventListener('click', handler, { capture: true });
+                      } catch {}
+                    }
                     return null;
                   })()}
                   

@@ -18,18 +18,10 @@ export function isNativeApp(): boolean {
  */
 export async function openUrl(url: string, options?: { target?: string }): Promise<void> {
   if (isNativeApp()) {
-    // In mobile app, use Capacitor Browser plugin to open in-app browser
-    try {
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({
-        url: url,
-        windowName: '_blank',
-        presentationStyle: 'fullscreen'
-      });
-    } catch (error) {
-      // Fallback to window.open if Browser plugin fails
-      console.warn('Browser plugin not available, using window.open:', error);
-      window.open(url, '_blank', 'noopener,noreferrer');
+    // In mobile app, keep navigation inside the WebView
+    if (typeof window !== 'undefined') {
+      window.location.href = url;
+      return;
     }
   } else {
     // In web, use standard window.open
@@ -62,21 +54,10 @@ export function navigateTo(path: string, router?: any): void {
  */
 export async function openDocument(url: string): Promise<void> {
   if (isNativeApp()) {
-    // In mobile app, use Capacitor Browser for better experience
-    try {
-      const { Browser } = await import('@capacitor/browser');
-      await Browser.open({
-        url: url,
-        windowName: '_blank',
-        presentationStyle: 'fullscreen',
-        toolbarColor: '#111827'
-      });
-    } catch (error) {
-      // Fallback if Browser plugin not available
-      console.warn('Browser plugin not available:', error);
-      if (typeof window !== 'undefined') {
-        window.location.href = url;
-      }
+    // In mobile app, keep navigation inside the WebView
+    if (typeof window !== 'undefined') {
+      window.location.href = url;
+      return;
     }
   } else {
     // In web, open in new tab
