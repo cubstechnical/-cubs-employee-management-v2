@@ -186,8 +186,9 @@ export default function EmployeeDetailsPage() {
         return;
       }
 
-      // Open document in new tab
-      window.open(signedUrl, '_blank');
+      // Open document using mobile-aware navigation (stays in-app on native)
+      const { openDocument } = await import('@/lib/utils/mobileNavigation');
+      await openDocument(signedUrl);
     } catch (error) {
       log.error('Error opening document:', error);
       toast.error('Failed to open document');

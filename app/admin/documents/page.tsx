@@ -313,7 +313,9 @@ function AdminDocumentsContent() {
         return;
       }
       if (downloadUrl) {
-        window.open(downloadUrl, '_blank');
+        // Use mobile-aware navigation (stays in-app on native)
+        const { openDocument } = await import('@/lib/utils/mobileNavigation');
+        await openDocument(downloadUrl);
         toast.success('Download started');
       } else {
         toast.error('Failed to generate download URL');

@@ -594,19 +594,30 @@ function DocumentsContent() {
                 }
               } else if (url) {
                 log.info('✅ Opening presigned URL:', url);
-                if (target && !target.closed) {
-                  try {
-                    target.location.href = url;
-                  } catch (navErr) {
-                    window.open(url, '_blank');
-                  }
-                } else {
-                  const w = window.open(url, 'docview');
-                  if (!w) {
-                    window.location.href = url;
+                // Use mobile-aware navigation helper
+                try {
+                  const { isNativeApp, openDocument } = await import('@/lib/utils/mobileNavigation');
+                  if (isNativeApp()) {
+                    await openDocument(url);
                   } else {
-                    viewerRef.current = w;
+                    if (target && !target.closed) {
+                      try {
+                        target.location.href = url;
+                      } catch {
+                        window.open(url, '_blank');
+                      }
+                    } else {
+                      const w = window.open(url, 'docview');
+                      if (!w) {
+                        window.location.href = url;
+                      } else {
+                        viewerRef.current = w;
+                      }
+                    }
                   }
+                } catch {
+                  // Fallback
+                  window.location.href = url;
                 }
               } else {
                 log.error('❌ No presigned URL returned');
@@ -631,23 +642,41 @@ function DocumentsContent() {
               // Fallback to stored file_url
               if (item.file_url) {
                 log.info('🔄 Using fallback file_url for download:', item.file_url);
-                const link = document.createElement('a');
-                link.href = item.file_url;
-                link.download = item.name;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                try {
+                  const { isNativeApp } = await import('@/lib/utils/mobileNavigation');
+                  if (isNativeApp()) {
+                    window.location.href = item.file_url;
+                  } else {
+                    const link = document.createElement('a');
+                    link.href = item.file_url;
+                    link.download = item.name;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                } catch {
+                  window.location.href = item.file_url;
+                }
               } else {
                 toast.error('Document URL not available');
               }
             } else if (downloadUrl) {
               log.info('✅ Downloading with URL:', downloadUrl);
-              const link = document.createElement('a');
-              link.href = downloadUrl;
-              link.download = item.name;
-              document.body.appendChild(link);
-              link.click();
-              document.body.removeChild(link);
+              try {
+                const { isNativeApp } = await import('@/lib/utils/mobileNavigation');
+                if (isNativeApp()) {
+                  window.location.href = downloadUrl;
+                } else {
+                  const link = document.createElement('a');
+                  link.href = downloadUrl;
+                  link.download = item.name;
+                  document.body.appendChild(link);
+                  link.click();
+                  document.body.removeChild(link);
+                }
+              } catch {
+                window.location.href = downloadUrl;
+              }
               // Invalidate caches after a download to avoid stale states
               shouldBypassCacheRef.current = true;
             } else {
@@ -655,12 +684,21 @@ function DocumentsContent() {
               // Fallback to stored file_url
               if (item.file_url) {
                 log.info('🔄 Using fallback file_url for download:', item.file_url);
-                const link = document.createElement('a');
-                link.href = item.file_url;
-                link.download = item.name;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
+                try {
+                  const { isNativeApp } = await import('@/lib/utils/mobileNavigation');
+                  if (isNativeApp()) {
+                    window.location.href = item.file_url;
+                  } else {
+                    const link = document.createElement('a');
+                    link.href = item.file_url;
+                    link.download = item.name;
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                  }
+                } catch {
+                  window.location.href = item.file_url;
+                }
               } else {
                 toast.error('Document URL not available');
               }

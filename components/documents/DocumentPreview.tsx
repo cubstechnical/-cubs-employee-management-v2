@@ -183,6 +183,15 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                onClick={async (e) => {
+                  try {
+                    const { isNativeApp, openDocument } = await import('@/lib/utils/mobileNavigation');
+                    if (isNativeApp()) {
+                      e.preventDefault();
+                      await openDocument(previewUrl);
+                    }
+                  } catch {}
+                }}
               >
                 <ExternalLink className="w-4 h-4" />
                 Open
@@ -301,6 +310,15 @@ export default function DocumentPreview({ document, isOpen, onClose }: DocumentP
               rel="noopener noreferrer"
               className="p-2 text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-300 transition-colors"
               title="Open in new tab"
+              onClick={async (e) => {
+                try {
+                  const { isNativeApp, openDocument } = await import('@/lib/utils/mobileNavigation');
+                  if (isNativeApp()) {
+                    e.preventDefault();
+                    await openDocument(previewUrl);
+                  }
+                } catch {}
+              }}
             >
               <ExternalLink className="w-5 h-5" />
             </a>

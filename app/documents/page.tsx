@@ -521,14 +521,23 @@ function DocumentsContent() {
 
       log.info('⬇️ Downloading document with fresh signed URL:', signedUrl);
 
-      // Create download link
-      const link = document.createElement('a');
-      link.href = signedUrl;
-      link.download = item.name;
-      link.target = '_blank';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      // Mobile-aware download handling
+      try {
+        const { isNativeApp } = await import('@/lib/utils/mobileNavigation');
+        if (isNativeApp()) {
+          window.location.href = signedUrl;
+        } else {
+          const link = document.createElement('a');
+          link.href = signedUrl;
+          link.download = item.name;
+          link.target = '_blank';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
+      } catch {
+        window.location.href = signedUrl;
+      }
       
       log.info('✅ Download started successfully');
 
@@ -536,13 +545,22 @@ function DocumentsContent() {
       log.info('⚠️ Error downloading document:', error);
       // Try fallback with item URL if available
       if (item.file_url) {
-        const link = document.createElement('a');
-        link.href = item.file_url;
-        link.download = item.name;
-        link.target = '_blank';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+          try {
+            const { isNativeApp } = await import('@/lib/utils/mobileNavigation');
+            if (isNativeApp()) {
+              window.location.href = item.file_url;
+            } else {
+              const link = document.createElement('a');
+              link.href = item.file_url;
+              link.download = item.name;
+              link.target = '_blank';
+              document.body.appendChild(link);
+              link.click();
+              document.body.removeChild(link);
+            }
+          } catch {
+            window.location.href = item.file_url;
+          }
       }
     } finally {
       setLoadingDocumentId(null);
