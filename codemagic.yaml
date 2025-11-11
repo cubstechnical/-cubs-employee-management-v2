@@ -1,4 +1,45 @@
 workflows:
+  build-and-publish:
+    name: Build and publish
+    environment:
+      node: stable
+      cocoapods: default
+    scripts:
+      - name: Remove Capacitor server.url and sync
+        script: |
+          #!/usr/bin/env bash
+          set -euo pipefail
+          echo "Removing server.url from Capacitor config and syncing native projects..."
+          if [ -f "capacitor.config.json" ]; then
+            node -e "const fs=require('fs');const p='capacitor.config.json';let c=JSON.parse(fs.readFileSync(p));if(c.server&&c.server.url){console.log('Removing server.url ->', c.server.url);delete c.server.url;} if(c.server && Object.keys(c.server).length===0){delete c.server; console.log('Removed empty server block');} fs.writeFileSync(p,JSON.stringify(c,null,2)); console.log('updated capacitor.config.json');"
+            cat capacitor.config.json
+          elif [ -f "capacitor.config.ts" ]; then
+            echo "capacitor.config.ts found, removing any url: '...'"
+            sed -i.bak -E "s/url:\\s*'[^']*'\\s*,?//g" capacitor.config.ts || true
+            sed -i.bak -E "s/url:\\s*\"[^\"]*\"\\s*,?//g" capacitor.config.ts || true
+            sed -i.bak -E "s/server:\\s*\\{\\s*\\}\\s*,?/ /g" capacitor.config.ts || true
+            diff -u capacitor.config.ts.bak capacitor.config.ts || true
+          else
+            echo "No Capacitor config found at repo root; skipping removal."
+          fi
+          npx cap sync android || true
+          npx cap sync ios || true
+
+      - name: Install dependencies
+        script: |
+          npm ci
+          npx cap update
+
+      - name: Build iOS
+        script: |
+          echo "iOS build will be handled by Codemagic Xcode build step."
+
+      - name: Build Android
+        script: |
+          cd android
+          ./gradlew bundleRelease
+
+workflows:
   ios-testflight-release:
     name: iOS TestFlight Release
     max_build_duration: 120
