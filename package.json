@@ -105,6 +105,7 @@
     "@capacitor/keyboard": "^7.0.3",
     "@capacitor/splash-screen": "^7.0.3",
     "@capacitor/status-bar": "^7.0.3",
+    "@capgo/capacitor-native-biometric": "^7.5.1",
     "@hookform/resolvers": "^5.2.1",
     "@supabase/auth-helpers-nextjs": "^0.10.0",
     "@supabase/supabase-js": "^2.38.4",

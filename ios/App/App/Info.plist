@@ -68,6 +68,8 @@
 	<string>This app needs access to microphone for video recording features.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>This app needs access to location to provide location-based features and improve user experience.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Use Face ID to quickly and securely sign in to your account.</string>
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>LSMinimumSystemVersion</key>

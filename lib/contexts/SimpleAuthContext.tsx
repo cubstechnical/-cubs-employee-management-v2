@@ -3,6 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
 import { AuthService, type AuthUser } from '@/lib/services/auth'
 import { MobileAuthService } from '@/lib/services/mobileAuth'
+import { BiometricAuthService } from '@/lib/services/biometricAuth'
 import { supabase } from '@/lib/supabase/client'
 import { log } from '@/lib/utils/logger'
 import { isCapacitorApp, isIPhoneCapacitorApp, isIPhoneDevice } from '@/utils/mobileDetection'
@@ -128,6 +129,14 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
         } catch (mobileError) {
           log.warn('SimpleAuthContext: Failed to store mobile session:', mobileError);
         }
+
+        // Store biometric credentials for native apps to enable biometric login
+        try {
+          await BiometricAuthService.enableBiometricLogin(email, password);
+          log.info('SimpleAuthContext: Biometric credentials stored successfully');
+        } catch (mobileError) {
+          log.warn('SimpleAuthContext: Failed to store biometric credentials:', mobileError);
+        }
       }
 
     } catch (error) {
@@ -141,6 +150,15 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const signOut = async () => {
     setIsLoading(true)
     try {
+      if (isCapacitorApp()) {
+        try {
+          await BiometricAuthService.disableBiometricLogin();
+          log.info('SimpleAuthContext: Biometric credentials cleared on sign out');
+        } catch (error) {
+          log.warn('SimpleAuthContext: Failed to clear biometric credentials on sign out:', error);
+        }
+      }
+
       await AuthService.signOut()
       setUser(null)
     } catch (error) {

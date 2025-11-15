@@ -11,12 +11,13 @@ import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
-import { Mail, Lock, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, AlertCircle, Fingerprint } from 'lucide-react';
 import Logo from '@/components/ui/Logo';
 import toast from 'react-hot-toast';
 import Image from 'next/image';
 import { log } from '@/lib/utils/productionLogger';
 import { isCapacitorApp } from '@/utils/mobileDetection';
+import { BiometricAuthService } from '@/lib/services/biometricAuth';
 // import { useMobileCrashDetection } from '@/hooks/useMobileCrashDetection'; // Temporarily disabled to prevent hanging
 
 const loginSchema = z.object({
@@ -36,6 +37,8 @@ export default function LoginPage() {
   const [logoFailed, setLogoFailed] = useState(false);
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false);
   const [loginAttempted, setLoginAttempted] = useState(false);
+  const [isBiometricAvailable, setIsBiometricAvailable] = useState(false);
+  const [isBiometricLoading, setIsBiometricLoading] = useState(false);
 
   // Initialize mobile crash detection
   // useMobileCrashDetection(); // Temporarily disabled to prevent hanging
@@ -113,6 +116,32 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount, checkAuth is stable
 
+  // Detect biometric availability on native apps
+  useEffect(() => {
+    let isMounted = true;
+
+    const checkBiometric = async () => {
+      try {
+        if (!isCapacitorApp()) {
+          return;
+        }
+
+        const available = await BiometricAuthService.isBiometricAvailable();
+        if (isMounted) {
+          setIsBiometricAvailable(available);
+        }
+      } catch (error) {
+        log.warn('Login page: Biometric availability check failed', error);
+      }
+    };
+
+    checkBiometric();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   // Handle keyboard open/close on mobile to improve UX
   useEffect(() => {
     if (typeof window === 'undefined' || !isCapacitorApp()) return;
@@ -187,6 +216,40 @@ export default function LoginPage() {
       return () => clearTimeout(timeout);
     }
   }, [loginAttempted]);
+
+  const handleBiometricLogin = async () => {
+    setIsBiometricLoading(true);
+
+    try {
+      log.info('Login page: Starting biometric login');
+
+      const { user: biometricUser, error } = await BiometricAuthService.biometricSignIn();
+
+      if (error) {
+        toast.error(error.message);
+        return;
+      }
+
+      if (!biometricUser || !biometricUser.id) {
+        toast.error('Biometric login failed. Please try again.');
+        return;
+      }
+
+      toast.success('Login successful! Redirecting...');
+
+      if (isCapacitorApp()) {
+        log.info('Login page: Using router.replace for Capacitor redirect (biometric)');
+        router.replace('/dashboard');
+      } else {
+        router.push('/dashboard');
+      }
+    } catch (error) {
+      log.error('Login page: Biometric login error:', error);
+      toast.error('Biometric login failed. Please try again.');
+    } finally {
+      setIsBiometricLoading(false);
+    }
+  };
 
   const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
@@ -398,6 +461,20 @@ export default function LoginPage() {
                 >
                   {isLoading ? 'Signing In...' : 'Sign In'}
                 </Button>
+
+                {isCapacitorApp() && isBiometricAvailable && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="w-full mt-2"
+                    loading={isBiometricLoading}
+                    disabled={isBiometricLoading || isLoading}
+                    icon={<Fingerprint className="w-4 h-4" />}
+                    onClick={handleBiometricLogin}
+                  >
+                    {isBiometricLoading ? 'Authenticating...' : 'Sign in with biometrics'}
+                  </Button>
+                )}
               </form>
 
               <div className="mt-6 text-center">

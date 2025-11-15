@@ -5,31 +5,16 @@ const config: CapacitorConfig = {
   appId: 'com.cubstechnical.admin',
   appName: 'CUBS Employee Management',
   webDir: 'out', // Use static export output for mobile
-  server: {
-    androidScheme: 'https', // Required for Android
-    iosScheme: 'cubs-employee',
-    // Ensure external http(s) navigations stay inside the WebView
-    // Add all domains the app needs to navigate to (docs, storage, API, site)
-    allowNavigation: [
-      'cubsgroups.com',
-      '*.cubsgroups.com',
-      's3.us-east-005.backblazeb2.com',
-      '*.backblazeb2.com'
-    ],
-    // IMPORTANT: No 'url' property = app uses local files (native app behavior)
-    // Setting 'url' makes the app load from the web, which causes:
-    // 1. Links opening in browser instead of staying in app
-    // 2. Slower performance (requires internet)
-    // 3. API routes won't work (405 errors)
-    // 
-    // For production native apps, use local files (no 'url' property)
-    // The app will be self-contained and work offline
-    // 
-    // For development/testing, you can temporarily add:
-    // url: 'http://localhost:3000' or 'https://cubsgroups.com'
-    // 
-    // To update the app, rebuild and release a new version to App Store
-  },
+  // Server configuration for development (uncomment for development)
+  // server: {
+  //   androidScheme: 'https',
+  //   allowNavigation: [
+  //     'cubsgroups.com',
+  //     '*.cubsgroups.com',
+  //     's3.us-east-005.backblazeb2.com',
+  //     '*.backblazeb2.com'
+  //   ]
+  // },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0, // No splash screen duration
