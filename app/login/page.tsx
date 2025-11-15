@@ -116,10 +116,9 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount, checkAuth is stable
 
-  // Detect biometric availability and auto-prompt on native apps
+  // Detect biometric availability on native apps (button visibility)
   useEffect(() => {
     let isMounted = true;
-    let autoPromptTimer: NodeJS.Timeout | null = null;
 
     const checkBiometric = async () => {
       try {
@@ -134,65 +133,17 @@ export default function LoginPage() {
         if (isMounted) {
           setIsBiometricAvailable(available);
         }
-
-        // Auto-prompt biometric if available and credentials exist
-        if (available && !user && !isLoading) {
-          try {
-            const hasCredentials = await BiometricAuthService.hasStoredCredentials();
-            log.info('Login page: Has stored credentials:', hasCredentials);
-            
-            if (hasCredentials && isMounted) {
-              // Wait a moment for the page to fully render, then auto-prompt
-              autoPromptTimer = setTimeout(async () => {
-                if (isMounted && !user && !isLoading && !isBiometricLoading) {
-                  log.info('Login page: Auto-prompting biometric login');
-                  setIsBiometricLoading(true);
-                  try {
-                    const { user: biometricUser, error } = await BiometricAuthService.biometricSignIn();
-                    if (error) {
-                      // Silently fail - user can still use manual login
-                      log.warn('Login page: Auto biometric login failed', error);
-                    } else if (biometricUser && biometricUser.id) {
-                      log.info('Login page: Biometric login successful, redirecting...');
-                      toast.success('Login successful! Redirecting...');
-                      if (isCapacitorApp()) {
-                        router.replace('/dashboard');
-                      } else {
-                        router.push('/dashboard');
-                      }
-                    }
-                  } catch (error) {
-                    log.warn('Login page: Auto biometric login error', error);
-                  } finally {
-                    if (isMounted) {
-                      setIsBiometricLoading(false);
-                    }
-                  }
-                }
-              }, 1500); // 1.5 second delay to let page render
-            }
-          } catch (error) {
-            log.warn('Login page: Failed to check stored credentials', error);
-          }
-        }
       } catch (error) {
         log.warn('Login page: Biometric availability check failed', error);
       }
     };
 
-    // Only check if user is not logged in
-    if (!user) {
-      checkBiometric();
-    }
+    checkBiometric();
 
     return () => {
       isMounted = false;
-      if (autoPromptTimer) {
-        clearTimeout(autoPromptTimer);
-      }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, isLoading, isBiometricLoading, router]);
+  }, []);
 
   // Handle keyboard open/close on mobile to improve UX
   useEffect(() => {

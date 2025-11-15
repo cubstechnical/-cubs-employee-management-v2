@@ -142,8 +142,7 @@ export class BiometricAuthService {
         };
       }
 
-      // Get biometric type for better messaging
-      const availability = await NativeBiometric.isAvailable();
+      // Get biometric type for better messaging (reuse availability from above)
       const biometricType = availability.biometryType || 'biometric';
       
       let title = 'Biometric Login';
