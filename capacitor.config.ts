@@ -5,16 +5,17 @@ const config: CapacitorConfig = {
   appId: 'com.cubstechnical.admin',
   appName: 'CUBS Employee Management',
   webDir: 'out', // Use static export output for mobile
-  // Server configuration for development (uncomment for development)
-  // server: {
-  //   androidScheme: 'https',
-  //   allowNavigation: [
-  //     'cubsgroups.com',
-  //     '*.cubsgroups.com',
-  //     's3.us-east-005.backblazeb2.com',
-  //     '*.backblazeb2.com'
-  //   ]
-  // },
+  // Keep using local assets (webDir: 'out'), but allow in-app navigation to these domains
+  server: {
+    androidScheme: 'https',
+    allowNavigation: [
+      'cubsgroups.com',
+      '*.cubsgroups.com',
+      's3.us-east-005.backblazeb2.com',
+      '*.backblazeb2.com',
+      'appassets.androidplatform.net'
+    ]
+  },
   plugins: {
     SplashScreen: {
       launchShowDuration: 0, // No splash screen duration
