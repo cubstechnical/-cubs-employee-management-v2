@@ -30,7 +30,9 @@ export class BiometricAuthService {
   }
 
   /**
-   * Check if biometric credentials are stored (without prompting)
+   * Check if biometric credentials are stored
+   * Since getCredentials requires biometric auth, we use a simpler approach:
+   * Store a flag in localStorage when credentials are saved
    */
   static async hasStoredCredentials(): Promise<boolean> {
     if (!isCapacitorApp()) {
@@ -38,12 +40,25 @@ export class BiometricAuthService {
     }
 
     try {
-      const credentials = await NativeBiometric.getCredentials({
-        server: BIOMETRIC_SERVER_ID
-      });
-      return !!(credentials.username && credentials.password);
-    } catch (error) {
-      // If credentials don't exist, getCredentials will throw
+      // Check if biometric is available first
+      const availability = await NativeBiometric.isAvailable();
+      if (!availability.isAvailable) {
+        return false;
+      }
+
+      // Check localStorage flag (set when credentials are stored)
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const hasStored = localStorage.getItem('cubs_biometric_enabled');
+        if (hasStored === 'true') {
+          return true;
+        }
+      }
+
+      // Fallback: Try to get credentials (this will prompt, so we only do this as last resort)
+      // Actually, let's not do this as it defeats the purpose. Just return false if flag not set.
+      return false;
+    } catch (error: any) {
+      log.warn('BiometricAuthService: Error checking stored credentials', error);
       return false;
     }
   }
@@ -68,6 +83,12 @@ export class BiometricAuthService {
         server: BIOMETRIC_SERVER_ID
       });
 
+      // Set flag in localStorage to indicate credentials are stored
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem('cubs_biometric_enabled', 'true');
+        localStorage.setItem('cubs_biometric_email', email);
+      }
+
       log.info('BiometricAuthService: credentials stored');
     } catch (error) {
       log.warn('BiometricAuthService: failed to store credentials', error);
@@ -83,8 +104,19 @@ export class BiometricAuthService {
       await NativeBiometric.deleteCredentials({
         server: BIOMETRIC_SERVER_ID
       });
+
+      // Clear localStorage flag
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('cubs_biometric_enabled');
+        localStorage.removeItem('cubs_biometric_email');
+      }
     } catch (error) {
       log.warn('BiometricAuthService: failed to delete credentials', error);
+      // Still clear the flag even if delete fails
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.removeItem('cubs_biometric_enabled');
+        localStorage.removeItem('cubs_biometric_email');
+      }
     }
   }
 

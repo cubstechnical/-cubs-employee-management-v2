@@ -134,6 +134,14 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
         try {
           await BiometricAuthService.enableBiometricLogin(email, password);
           log.info('SimpleAuthContext: Biometric credentials stored successfully');
+          // Show success message to user
+          if (typeof window !== 'undefined') {
+            // Use setTimeout to ensure toast is available
+            setTimeout(() => {
+              const { default: toast } = require('react-hot-toast');
+              toast.success('Biometric login enabled! You can use Face ID/Touch ID next time.');
+            }, 500);
+          }
         } catch (mobileError) {
           log.warn('SimpleAuthContext: Failed to store biometric credentials:', mobileError);
         }

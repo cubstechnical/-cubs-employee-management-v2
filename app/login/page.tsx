@@ -127,15 +127,20 @@ export default function LoginPage() {
           return;
         }
 
+        log.info('Login page: Checking biometric availability...');
         const available = await BiometricAuthService.isBiometricAvailable();
+        log.info('Login page: Biometric available:', available);
+        
         if (isMounted) {
           setIsBiometricAvailable(available);
         }
 
         // Auto-prompt biometric if available and credentials exist
-        if (available && !user) {
+        if (available && !user && !isLoading) {
           try {
             const hasCredentials = await BiometricAuthService.hasStoredCredentials();
+            log.info('Login page: Has stored credentials:', hasCredentials);
+            
             if (hasCredentials && isMounted) {
               // Wait a moment for the page to fully render, then auto-prompt
               autoPromptTimer = setTimeout(async () => {
@@ -148,6 +153,7 @@ export default function LoginPage() {
                       // Silently fail - user can still use manual login
                       log.warn('Login page: Auto biometric login failed', error);
                     } else if (biometricUser && biometricUser.id) {
+                      log.info('Login page: Biometric login successful, redirecting...');
                       toast.success('Login successful! Redirecting...');
                       if (isCapacitorApp()) {
                         router.replace('/dashboard');
@@ -163,7 +169,7 @@ export default function LoginPage() {
                     }
                   }
                 }
-              }, 1000); // 1 second delay to let page render
+              }, 1500); // 1.5 second delay to let page render
             }
           } catch (error) {
             log.warn('Login page: Failed to check stored credentials', error);
@@ -174,7 +180,10 @@ export default function LoginPage() {
       }
     };
 
-    checkBiometric();
+    // Only check if user is not logged in
+    if (!user) {
+      checkBiometric();
+    }
 
     return () => {
       isMounted = false;
@@ -529,7 +538,9 @@ export default function LoginPage() {
                       {isBiometricLoading ? 'Authenticating...' : 'Sign in with Biometrics'}
                     </Button>
                     <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                      Use Face ID or Touch ID for quick access
+                      {typeof window !== 'undefined' && window.localStorage?.getItem('cubs_biometric_enabled') === 'true'
+                        ? 'Use Face ID or Touch ID for quick access'
+                        : 'Sign in with email/password first to enable biometric login'}
                     </p>
                   </div>
                 )}
