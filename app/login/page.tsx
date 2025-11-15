@@ -116,9 +116,10 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only run on mount, checkAuth is stable
 
-  // Detect biometric availability on native apps
+  // Detect biometric availability and auto-prompt on native apps
   useEffect(() => {
     let isMounted = true;
+    let autoPromptTimer: NodeJS.Timeout | null = null;
 
     const checkBiometric = async () => {
       try {
@@ -130,6 +131,44 @@ export default function LoginPage() {
         if (isMounted) {
           setIsBiometricAvailable(available);
         }
+
+        // Auto-prompt biometric if available and credentials exist
+        if (available && !user) {
+          try {
+            const hasCredentials = await BiometricAuthService.hasStoredCredentials();
+            if (hasCredentials && isMounted) {
+              // Wait a moment for the page to fully render, then auto-prompt
+              autoPromptTimer = setTimeout(async () => {
+                if (isMounted && !user && !isLoading && !isBiometricLoading) {
+                  log.info('Login page: Auto-prompting biometric login');
+                  setIsBiometricLoading(true);
+                  try {
+                    const { user: biometricUser, error } = await BiometricAuthService.biometricSignIn();
+                    if (error) {
+                      // Silently fail - user can still use manual login
+                      log.warn('Login page: Auto biometric login failed', error);
+                    } else if (biometricUser && biometricUser.id) {
+                      toast.success('Login successful! Redirecting...');
+                      if (isCapacitorApp()) {
+                        router.replace('/dashboard');
+                      } else {
+                        router.push('/dashboard');
+                      }
+                    }
+                  } catch (error) {
+                    log.warn('Login page: Auto biometric login error', error);
+                  } finally {
+                    if (isMounted) {
+                      setIsBiometricLoading(false);
+                    }
+                  }
+                }
+              }, 1000); // 1 second delay to let page render
+            }
+          } catch (error) {
+            log.warn('Login page: Failed to check stored credentials', error);
+          }
+        }
       } catch (error) {
         log.warn('Login page: Biometric availability check failed', error);
       }
@@ -139,8 +178,12 @@ export default function LoginPage() {
 
     return () => {
       isMounted = false;
+      if (autoPromptTimer) {
+        clearTimeout(autoPromptTimer);
+      }
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, isLoading, isBiometricLoading, router]);
 
   // Handle keyboard open/close on mobile to improve UX
   useEffect(() => {
@@ -463,17 +506,32 @@ export default function LoginPage() {
                 </Button>
 
                 {isCapacitorApp() && isBiometricAvailable && (
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    className="w-full mt-2"
-                    loading={isBiometricLoading}
-                    disabled={isBiometricLoading || isLoading}
-                    icon={<Fingerprint className="w-4 h-4" />}
-                    onClick={handleBiometricLogin}
-                  >
-                    {isBiometricLoading ? 'Authenticating...' : 'Sign in with biometrics'}
-                  </Button>
+                  <div className="mt-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                      </div>
+                      <div className="relative flex justify-center text-sm">
+                        <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                          or
+                        </span>
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      className="w-full mt-4 border-2 border-[#d3194f] hover:bg-[#d3194f] hover:text-white transition-colors"
+                      loading={isBiometricLoading}
+                      disabled={isBiometricLoading || isLoading}
+                      icon={<Fingerprint className="w-5 h-5" />}
+                      onClick={handleBiometricLogin}
+                    >
+                      {isBiometricLoading ? 'Authenticating...' : 'Sign in with Biometrics'}
+                    </Button>
+                    <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                      Use Face ID or Touch ID for quick access
+                    </p>
+                  </div>
                 )}
               </form>
 

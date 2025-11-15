@@ -29,6 +29,25 @@ export class BiometricAuthService {
     }
   }
 
+  /**
+   * Check if biometric credentials are stored (without prompting)
+   */
+  static async hasStoredCredentials(): Promise<boolean> {
+    if (!isCapacitorApp()) {
+      return false;
+    }
+
+    try {
+      const credentials = await NativeBiometric.getCredentials({
+        server: BIOMETRIC_SERVER_ID
+      });
+      return !!(credentials.username && credentials.password);
+    } catch (error) {
+      // If credentials don't exist, getCredentials will throw
+      return false;
+    }
+  }
+
   static async enableBiometricLogin(
     email: string,
     password: string
@@ -91,10 +110,29 @@ export class BiometricAuthService {
         };
       }
 
+      // Get biometric type for better messaging
+      const availability = await NativeBiometric.isAvailable();
+      const biometricType = availability.biometryType || 'biometric';
+      
+      let title = 'Biometric Login';
+      let subtitle = 'Use fingerprint or Face ID';
+      let reason = 'Authenticate to access your CUBS account';
+      
+      // Customize messages based on biometric type
+      if (biometricType === 'FaceID' || biometricType === 'face') {
+        title = 'Face ID';
+        subtitle = 'Use Face ID to sign in';
+        reason = 'Use Face ID to authenticate and access your CUBS account';
+      } else if (biometricType === 'TouchID' || biometricType === 'fingerprint') {
+        title = 'Touch ID';
+        subtitle = 'Use fingerprint to sign in';
+        reason = 'Use your fingerprint to authenticate and access your CUBS account';
+      }
+
       await NativeBiometric.verifyIdentity({
-        reason: 'Authenticate to access your CUBS account',
-        title: 'Biometric Login',
-        subtitle: 'Use fingerprint or Face ID',
+        reason,
+        title,
+        subtitle,
         description: ''
       });
 
