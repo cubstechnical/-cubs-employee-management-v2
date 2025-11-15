@@ -14,7 +14,7 @@ android {
         applicationId "com.cubstechnical.admin"
         minSdkVersion 24
         targetSdkVersion 35
-        versionCode 8
+        versionCode 9
         versionName "2.0.3"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
