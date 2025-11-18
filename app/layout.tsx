@@ -31,6 +31,7 @@ import HideSplashScreen from '@/components/capacitor/HideSplashScreen'
 import NetworkErrorHandler from '@/components/ui/NetworkErrorHandler'
 import BlankScreenFix from '@/components/capacitor/BlankScreenFix'
 import BiometricAutoLogin from '@/components/capacitor/BiometricAutoLogin'
+import PushNotificationSetup from '@/components/notifications/PushNotificationSetup'
 import { Toaster } from 'react-hot-toast'
 import OfflineIndicator from '@/components/ui/OfflineIndicator'
 
@@ -213,6 +214,7 @@ export default function RootLayout({
                   <PWARegistration />
                   <CapacitorInit />
                   <BiometricAutoLogin />
+                  <PushNotificationSetup />
                   
                   {/* Mobile components */}
                   {/* Mobile status indicator disabled for production */}

@@ -72,8 +72,9 @@ function NotificationsPageContent() {
     try {
       log.info('Loading notifications from API...');
       
-      // Load notifications from API
-      const response = await fetch('/api/notifications');
+      // Load notifications from API - use getApiUrl for mobile compatibility
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/notifications'));
       const result = await response.json();
 
       if (result.success && result.notifications) {
@@ -139,8 +140,9 @@ function NotificationsPageContent() {
     try {
       log.info('Loading visa statistics from API...');
       
-      // Load visa stats from API
-      const response = await fetch('/api/visa-notifications');
+      // Load visa stats from API - use getApiUrl for mobile compatibility
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/visa-notifications'));
       const result = await response.json();
 
       if (result.success && result.stats) {
@@ -216,7 +218,8 @@ function NotificationsPageContent() {
     try {
       log.info('Checking visa expiries and sending notifications...');
       
-      const response = await fetch('/api/visa-notifications', {
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/visa-notifications'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,8 +231,41 @@ function NotificationsPageContent() {
       if (result.success) {
         const { notifications_sent, expiring_soon, expired, total_employees } = result.results;
         
-        if (notifications_sent > 0) {
-          toast.success(`Visa expiry check completed! ${notifications_sent} notifications sent to info@cubstechnical.com`);
+        if (expiring_soon > 0 || expired > 0) {
+          // Send push notification for visa expiries
+          try {
+            const { PushNotificationService } = await import('@/lib/services/pushNotifications');
+            
+            // Determine urgency based on expiring soon count
+            let urgency: 'critical' | 'urgent' | 'high' | 'medium' | 'low' = 'medium';
+            if (expired > 0) {
+              urgency = 'critical';
+            } else if (expiring_soon > 0) {
+              // Check if any are expiring in 7 days or less
+              const { getApiUrl } = await import('@/lib/utils/apiClient');
+              const statsResponse = await fetch(getApiUrl('api/visa-notifications'));
+              const statsResult = await statsResponse.json();
+              
+              if (statsResult.success && statsResult.stats) {
+                // We'll use a general urgency for now
+                urgency = 'high';
+              }
+            }
+
+            const totalAffected = expiring_soon + expired;
+            const daysRemaining = expired > 0 ? 0 : 7; // Use 7 as default for expiring soon
+            
+            await PushNotificationService.sendVisaExpiryNotification(
+              totalAffected,
+              daysRemaining,
+              urgency
+            );
+          } catch (pushError) {
+            log.warn('Failed to send push notification:', pushError);
+            // Don't fail the whole operation if push fails
+          }
+
+          toast.success(`Visa expiry check completed! ${expiring_soon + expired} employee(s) need attention. Email sent to info@cubstechnical.com`);
         } else {
           toast.success('Visa expiry check completed. No notifications needed at this time.');
         }
@@ -244,7 +280,7 @@ function NotificationsPageContent() {
         // Update visa stats with notification count
         setVisaStats(prev => ({
           ...prev,
-          notificationsSent: notifications_sent
+          notificationsSent: notifications_sent || 0
         }));
         
         // Refresh both notifications and visa stats

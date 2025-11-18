@@ -20,6 +20,8 @@ const REQUIRED_ENV_VARS = {
  */
 const OPTIONAL_ENV_VARS = {
   NEXT_PUBLIC_APP_URL: 'https://cubsgroups.com',
+  NEXT_PUBLIC_VISA_ALERT_EMAIL: 'info@cubstechnical.com',
+  VISA_ALERT_EMAIL: 'info@cubstechnical.com',
   GMAIL_USER: '',
   GMAIL_APP_PASSWORD: '',
   GMAIL_FROM_NAME: 'CUBS Technical',
@@ -117,13 +119,20 @@ export function getApiBaseUrl(): string {
   const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
   
   if (isCapacitor) {
-    // In Capacitor, use the configured server URL or current origin
+    // In Capacitor, use the configured server URL or a remote API host
     const capacitorConfig = (window as any).Capacitor?.getConfig?.();
     if (capacitorConfig?.server?.url) {
       return capacitorConfig.server.url;
     }
-    // Fallback to current origin for Capacitor
-    return window.location.origin;
+    // When running from local assets (capacitor://), fall back to hosted API URL
+    const remoteApi =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      (typeof document !== 'undefined' ? document.baseURI : 'https://cubsgroups.com');
+    try {
+      return new URL(remoteApi).origin;
+    } catch {
+      return 'https://cubsgroups.com';
+    }
   }
 
   // Web production: use environment variable or current origin
@@ -221,4 +230,22 @@ export function initializeEnvironment(): void {
 // Auto-initialize in development
 if (isDevelopment()) {
   initializeEnvironment();
+}
+
+/**
+ * Public email used for visa alerts (safe to expose)
+ */
+export function getVisaAlertEmail(): string {
+  return process.env.NEXT_PUBLIC_VISA_ALERT_EMAIL || 'info@cubstechnical.com';
+}
+
+/**
+ * Server-side fallback for visa alert recipient
+ */
+export function getServerVisaAlertEmail(): string {
+  return (
+    process.env.VISA_ALERT_EMAIL ||
+    process.env.NEXT_PUBLIC_VISA_ALERT_EMAIL ||
+    'info@cubstechnical.com'
+  );
 }

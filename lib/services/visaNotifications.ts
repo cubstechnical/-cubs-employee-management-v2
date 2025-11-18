@@ -1,5 +1,6 @@
 import { supabase } from '../supabase/client';
 import { EmailService } from './email-server';
+import { PushNotificationService } from './pushNotifications';
 import { log } from '@/lib/utils/productionLogger';
 
 export interface VisaExpiryRecord {
@@ -320,17 +321,29 @@ Email Service Details:
 Generated on: ${new Date().toLocaleString()}`;
 
   try {
-    const result = await EmailService.sendEmail({
+    // Send email notification
+    const emailResult = await EmailService.sendEmail({
       to: 'info@cubstechnical.com',
       subject: subject,
       html: html,
       text: text
     });
     
-    if (result.success) {
+    if (emailResult.success) {
       log.info(`✅ Consolidated visa expiry email sent for ${employees.length} employees (${daysUntilExpiry} days)`);
     } else {
-      log.error('❌ Error sending consolidated visa expiry email:', result.error);
+      log.error('❌ Error sending consolidated visa expiry email:', emailResult.error);
+    }
+
+    // Send push notification (client-side only, will be triggered from the API)
+    // We'll handle this in the API route since push notifications need to run in browser context
+    if (typeof window !== 'undefined') {
+      const urgency = getUrgencyLevel(daysUntilExpiry).toLowerCase() as 'critical' | 'urgent' | 'high' | 'medium' | 'low';
+      await PushNotificationService.sendVisaExpiryNotification(
+        employees.length,
+        daysUntilExpiry,
+        urgency
+      );
     }
   } catch (error) {
     log.error('❌ Error sending consolidated visa expiry email:', error);

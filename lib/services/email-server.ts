@@ -1,5 +1,6 @@
 import nodemailer from 'nodemailer';
 import { log } from '@/lib/utils/productionLogger';
+import { getServerVisaAlertEmail } from '@/lib/utils/environment';
 
 export interface EmailData {
   to: string;
@@ -54,7 +55,7 @@ export interface AdminNotificationData {
 export class EmailService {
   private static fromEmail = process.env.GMAIL_USER || 'technicalcubs@gmail.com';
   private static fromName = process.env.GMAIL_FROM_NAME || 'CUBS Technical';
-  private static toEmail = 'info@cubstechnical.com'; // Always send to this email
+  private static toEmail = getServerVisaAlertEmail(); // Always send to designated email
 
   // Create Gmail SMTP transporter
   private static createTransporter() {
