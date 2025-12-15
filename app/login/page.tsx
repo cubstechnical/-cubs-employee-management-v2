@@ -405,6 +405,30 @@ export default function LoginPage() {
         <Card className={`w-full ${isKeyboardOpen ? 'p-4' : 'p-6'} login-card-image transition-all duration-300`}>
           {!isForgotPassword ? (
             <>
+              {/* Supabase Inactivity Warning - Red Danger Alert */}
+              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-600 rounded-lg shadow-md">
+                <div className="flex gap-3">
+                  <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
+                  <div className="flex-1">
+                    <h3 className="font-bold text-red-700 dark:text-red-300 text-base">
+                      ⚠️ PROJECT LOCKED - URGENT
+                    </h3>
+                    <p className="text-red-600 dark:text-red-200 text-sm mt-2 font-semibold">
+                      Your Supabase project has been locked due to inactivity.
+                    </p>
+                    <p className="text-red-600 dark:text-red-200 text-sm mt-1">
+                      • Resume access to your app within 7 days to prevent deletion
+                    </p>
+                    <p className="text-red-600 dark:text-red-200 text-sm mt-1">
+                      • After 7 days, the project will be permanently deleted
+                    </p>
+                    <p className="text-red-600 dark:text-red-200 text-sm mt-1">
+                      • Your data will be available for download before deletion
+                    </p>
+                  </div>
+                </div>
+              </div>
+
               <div className="text-center mb-6">
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   Sign In
