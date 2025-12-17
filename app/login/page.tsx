@@ -417,10 +417,10 @@ export default function LoginPage() {
                       Your Supabase project has been locked due to inactivity.
                     </p>
                     <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                      • Resume access to your app within 6 days to prevent deletion
+                      • Resume access to your app within 5 days to prevent deletion
                     </p>
                     <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                      • After 6 days, the project will be permanently deleted
+                      • After 5 days, the project will be permanently deleted
                     </p>
                     <p className="text-red-600 dark:text-red-200 text-sm mt-1">
                       • Your data will be available for download before deletion
