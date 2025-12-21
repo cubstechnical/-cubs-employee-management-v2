@@ -347,16 +347,8 @@ export default function LoginPage() {
   };
 
   // Show loading state while checking authentication
-  if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
-          <p className="text-gray-600">Checking authentication...</p>
-        </div>
-      </div>
-    );
-  }
+  // Removed early return to keep logo visible
+  // if (isCheckingAuth) { ... }
 
   return (
     <div className="main-login">
@@ -402,186 +394,195 @@ export default function LoginPage() {
             </div>
           )}
 
-          <Card className={`w-full ${isKeyboardOpen ? 'p-4' : 'p-6'} login-card-image transition-all duration-300`}>
-            {!isForgotPassword ? (
-              <>
-                {/* Supabase Inactivity Warning - Red Danger Alert */}
-                <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-600 rounded-lg shadow-md">
-                  <div className="flex gap-3">
-                    <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
-                    <div className="flex-1">
-                      <h3 className="font-bold text-red-700 dark:text-red-300 text-base">
-                        ⚠️ PROJECT LOCKED - URGENT
-                      </h3>
-                      <p className="text-red-600 dark:text-red-200 text-sm mt-2 font-semibold">
-                        Your Supabase project has been locked due to inactivity.
-                      </p>
-                      <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                        • Resume access to your app within 2 days to prevent deletion
-                      </p>
-                      <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                        • After 2 days, the project will be permanently deleted
-                      </p>
-                      <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                        • Your data will be available for download before deletion
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Sign In
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Enter your credentials to access your account
-                  </p>
-                </div>
-
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-                  <div>
-                    <Input
-                      label="Email Address"
-                      type="email"
-                      placeholder="Enter your email"
-                      error={errors.email?.message}
-                      icon={<Mail className="w-4 h-4" />}
-                      {...register('email')}
-                    />
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Password"
-                      type={showPassword ? 'text' : 'password'}
-                      placeholder="Enter your password"
-                      error={errors.password?.message}
-                      icon={<Lock className="w-4 h-4" />}
-                      endIcon={
-                        <button
-                          type="button"
-                          onClick={() => setShowPassword(!showPassword)}
-                          className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                        >
-                          {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                        </button>
-                      }
-                      {...register('password')}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between">
-                    <button
-                      type="button"
-                      onClick={() => setIsForgotPassword(true)}
-                      className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
-                    >
-                      Forgot password?
-                    </button>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    className="w-full"
-                    loading={isLoading}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Signing In...' : 'Sign In'}
-                  </Button>
-
-                  {isCapacitorApp() && isBiometricAvailable && (
-                    <div className="mt-4">
-                      <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                          <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                          <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
-                            or
-                          </span>
-                        </div>
+          {/* Show simplified loading if checking auth */}
+          {isCheckingAuth ? (
+            <div className="bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm p-8 rounded-2xl shadow-xl w-full text-center border border-gray-200 dark:border-gray-700">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f] mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-300">Verifying session...</p>
+            </div>
+          ) : (
+            /* Main Login Card */
+            <Card className="w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl border-gray-200 dark:border-gray-700 login-card-mobile p-4 sm:p-6 md:p-8">
+              {!isForgotPassword ? (
+                <>
+                  {/* Supabase Inactivity Warning - Red Danger Alert */}
+                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-600 rounded-lg shadow-md">
+                    <div className="flex gap-3">
+                      <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
+                      <div className="flex-1">
+                        <h3 className="font-bold text-red-700 dark:text-red-300 text-base">
+                          ⚠️ PROJECT LOCKED - URGENT
+                        </h3>
+                        <p className="text-red-600 dark:text-red-200 text-sm mt-2 font-semibold">
+                          Your Supabase project has been locked due to inactivity.
+                        </p>
+                        <p className="text-red-600 dark:text-red-200 text-sm mt-1">
+                          • Resume access to your app within 1 days to prevent deletion
+                        </p>
+                        <p className="text-red-600 dark:text-red-200 text-sm mt-1">
+                          • After 1 days, the project will be permanently deleted
+                        </p>
+                        <p className="text-red-600 dark:text-red-200 text-sm mt-1">
+                          • Your data will be available for download before deletion
+                        </p>
                       </div>
-                      <Button
-                        type="button"
-                        variant="secondary"
-                        className="w-full mt-4 border-2 border-[#d3194f] hover:bg-[#d3194f] hover:text-white transition-colors"
-                        loading={isBiometricLoading}
-                        disabled={isBiometricLoading || isLoading}
-                        icon={<Fingerprint className="w-5 h-5" />}
-                        onClick={handleBiometricLogin}
-                      >
-                        {isBiometricLoading ? 'Authenticating...' : 'Sign in with Biometrics'}
-                      </Button>
-                      <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
-                        {typeof window !== 'undefined' && window.localStorage?.getItem('cubs_biometric_enabled') === 'true'
-                          ? 'Use Face ID or Touch ID for quick access'
-                          : 'Sign in with email/password first to enable biometric login'}
-                      </p>
                     </div>
-                  )}
-                </form>
-
-                <div className="mt-6 text-center">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    Don&apos;t have an account?{' '}
-                    <a
-                      href="/register"
-                      className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
-                    >
-                      Create one here
-                    </a>
-                  </p>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-center mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    Reset Password
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Enter your email to receive a password reset link
-                  </p>
-                </div>
-
-                <div className="space-y-6">
-                  <div>
-                    <Input
-                      label="Email Address"
-                      type="email"
-                      placeholder="Enter your email"
-                      icon={<Mail className="w-4 h-4" />}
-                      id="reset-email"
-                    />
                   </div>
 
-                  <Button
-                    onClick={() => {
-                      if (typeof document !== 'undefined') {
-                        const email = (document.getElementById('reset-email') as HTMLInputElement)?.value;
-                        handleForgotPassword(email);
-                      }
-                    }}
-                    className="w-full"
-                    loading={isLoading}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? 'Sending...' : 'Send Reset Link'}
-                  </Button>
-
-                  <div className="text-center">
-                    <button
-                      type="button"
-                      onClick={() => setIsForgotPassword(false)}
-                      className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-                    >
-                      Back to Sign In
-                    </button>
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      Sign In
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                      Enter your credentials to access your account
+                    </p>
                   </div>
-                </div>
-              </>
-            )}
-          </Card>
+
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                    <div>
+                      <Input
+                        label="Email Address"
+                        type="email"
+                        placeholder="Enter your email"
+                        error={errors.email?.message}
+                        icon={<Mail className="w-4 h-4" />}
+                        {...register('email')}
+                      />
+                    </div>
+
+                    <div>
+                      <Input
+                        label="Password"
+                        type={showPassword ? 'text' : 'password'}
+                        placeholder="Enter your password"
+                        error={errors.password?.message}
+                        icon={<Lock className="w-4 h-4" />}
+                        endIcon={
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                          >
+                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                          </button>
+                        }
+                        {...register('password')}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(true)}
+                        className="text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+
+                    <Button
+                      type="submit"
+                      className="w-full"
+                      loading={isLoading}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Signing In...' : 'Sign In'}
+                    </Button>
+
+                    {isCapacitorApp() && isBiometricAvailable && (
+                      <div className="mt-4">
+                        <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-gray-300 dark:border-gray-600"></div>
+                          </div>
+                          <div className="relative flex justify-center text-sm">
+                            <span className="px-2 bg-white dark:bg-gray-800 text-gray-500 dark:text-gray-400">
+                              or
+                            </span>
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="w-full mt-4 border-2 border-[#d3194f] hover:bg-[#d3194f] hover:text-white transition-colors"
+                          loading={isBiometricLoading}
+                          disabled={isBiometricLoading || isLoading}
+                          icon={<Fingerprint className="w-5 h-5" />}
+                          onClick={handleBiometricLogin}
+                        >
+                          {isBiometricLoading ? 'Authenticating...' : 'Sign in with Biometrics'}
+                        </Button>
+                        <p className="text-xs text-center text-gray-500 dark:text-gray-400 mt-2">
+                          {typeof window !== 'undefined' && window.localStorage?.getItem('cubs_biometric_enabled') === 'true'
+                            ? 'Use Face ID or Touch ID for quick access'
+                            : 'Sign in with email/password first to enable biometric login'}
+                        </p>
+                      </div>
+                    )}
+                  </form>
+
+                  <div className="mt-6 text-center">
+                    <p className="text-sm text-gray-600 dark:text-gray-400">
+                      Don&apos;t have an account?{' '}
+                      <a
+                        href="/register"
+                        className="text-primary-600 hover:text-primary-500 dark:text-primary-400 dark:hover:text-primary-300 font-medium"
+                      >
+                        Create one here
+                      </a>
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-center mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
+                      Reset Password
+                    </h2>
+                    <p className="text-gray-600 dark:text-gray-400 mt-2">
+                      Enter your email to receive a password reset link
+                    </p>
+                  </div>
+
+                  <div className="space-y-6">
+                    <div>
+                      <Input
+                        label="Email Address"
+                        type="email"
+                        placeholder="Enter your email"
+                        icon={<Mail className="w-4 h-4" />}
+                        id="reset-email"
+                      />
+                    </div>
+
+                    <Button
+                      onClick={() => {
+                        if (typeof document !== 'undefined') {
+                          const email = (document.getElementById('reset-email') as HTMLInputElement)?.value;
+                          handleForgotPassword(email);
+                        }
+                      }}
+                      className="w-full"
+                      loading={isLoading}
+                      disabled={isLoading}
+                    >
+                      {isLoading ? 'Sending...' : 'Send Reset Link'}
+                    </Button>
+
+                    <div className="text-center">
+                      <button
+                        type="button"
+                        onClick={() => setIsForgotPassword(false)}
+                        className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+                      >
+                        Back to Sign In
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </Card>
+          )}
 
           {/* Footer - High Contrast for Dark Background */}
           <div className="text-center mt-8 space-y-2">
