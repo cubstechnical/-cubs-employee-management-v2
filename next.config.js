@@ -87,8 +87,6 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const baseConfig = {
   // Use trailing slash for consistency
   trailingSlash: true,
-  // Enable SWC minification for faster builds
-  swcMinify: true,
   // Enable React Strict Mode for better debugging
   reactStrictMode: true,
   images: {
