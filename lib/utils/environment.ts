@@ -39,15 +39,24 @@ export function validateEnvironmentVariables(): string[] {
   const missing: string[] = [];
   const isClientSide = typeof window !== 'undefined';
 
-  for (const [key, description] of Object.entries(REQUIRED_ENV_VARS)) {
-    // Skip server-only vars when running on client
-    if (isClientSide && !key.startsWith('NEXT_PUBLIC_')) {
-      continue;
-    }
+  // Static checks for client-side variables (required for Next.js bundling)
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    missing.push('NEXT_PUBLIC_SUPABASE_URL (Supabase URL)');
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    missing.push('NEXT_PUBLIC_SUPABASE_ANON_KEY (Supabase Anonymous Key)');
+  }
 
-    const value = process.env[key];
-    if (!value || value.trim() === '') {
-      missing.push(`${key} (${description})`);
+  // Server-side only checks
+  if (!isClientSide) {
+    if (!process.env.B2_APPLICATION_KEY_ID) {
+      missing.push('B2_APPLICATION_KEY_ID (Backblaze B2 Application Key ID)');
+    }
+    if (!process.env.B2_APPLICATION_KEY) {
+      missing.push('B2_APPLICATION_KEY (Backblaze B2 Application Key)');
+    }
+    if (!process.env.B2_BUCKET_NAME) {
+      missing.push('B2_BUCKET_NAME (Backblaze B2 Bucket Name)');
     }
   }
 
