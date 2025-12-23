@@ -25,6 +25,8 @@ const employeeSchema = z.object({
   company_name: z.string().min(1, 'Company is required'),
   nationality: z.string().min(1, 'Nationality is required'),
   visa_expiry_date: z.string().optional(),
+  markAsRenewal: z.boolean().optional(),
+  renewalNotes: z.string().optional(),
 });
 
 type EmployeeFormData = z.infer<typeof employeeSchema>;
@@ -55,11 +57,14 @@ function EmployeeDetailsContent() {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors },
     reset
   } = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
   });
+
+  const markAsRenewal = watch('markAsRenewal');
 
   const fetchEmployeeDetails = useCallback(async () => {
     if (!employeeId) {
@@ -151,7 +156,7 @@ function EmployeeDetailsContent() {
 
     try {
       // Create the correct UpdateEmployeeData structure
-      const updateData = {
+      const updateData: any = {
         employee_id: employee.employee_id, // Use the actual employee_id, not the UUID
         name: data.name,
         email_id: data.email_id,
@@ -162,17 +167,29 @@ function EmployeeDetailsContent() {
         visa_expiry_date: data.visa_expiry_date,
       };
 
+      // Include renewal notes if marked as renewal
+      if (data.markAsRenewal && data.renewalNotes) {
+        updateData.temp_renewal_notes = data.renewalNotes;
+      }
+
       const updatedEmployee = await EmployeeService.updateEmployee(updateData);
 
       if (updatedEmployee) {
         setEmployee(updatedEmployee);
         setEditing(false);
+        if (data.markAsRenewal) {
+          toast.success(`✅ Visa renewal recorded for ${updatedEmployee.name}`);
+        } else {
+          toast.success('Employee updated successfully');
+        }
         log.info('✅ Employee updated successfully');
       } else {
+        toast.error('Failed to update employee');
         log.info('⚠️ Failed to update employee');
       }
     } catch (error) {
       log.info('⚠️ Error updating employee:', error);
+      toast.error('Failed to update employee');
     }
   };
 
@@ -354,6 +371,30 @@ function EmployeeDetailsContent() {
                     {...register('visa_expiry_date')}
                     error={errors.visa_expiry_date?.message}
                   />
+
+                  {/* Visa Renewal Checkbox */}
+                  <div className="mt-4 space-y-3">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        {...register('markAsRenewal')}
+                        className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        Mark as visa renewal (creates audit record)
+                      </span>
+                    </label>
+
+                    {/* Conditional Notes Field */}
+                    {markAsRenewal && (
+                      <Input
+                        label="Renewal Notes (Optional)"
+                        placeholder="e.g., Renewal fee paid, processed by HR..."
+                        {...register('renewalNotes')}
+                        error={errors.renewalNotes?.message}
+                      />
+                    )}
+                  </div>
                   <div className="flex gap-4">
                     <Button type="submit" className="flex-1">
                       Save Changes

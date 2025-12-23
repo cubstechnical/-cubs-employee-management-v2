@@ -8,9 +8,10 @@ interface CardProps {
   shadow?: 'sm' | 'md' | 'lg';
   onClick?: () => void;
   'data-testid'?: string;
+  id?: string;
 }
 
-export default function Card({ children, className, padding = 'md', shadow = 'md', onClick, 'data-testid': dataTestId }: CardProps) {
+export default function Card({ children, className, padding = 'md', shadow = 'md', onClick, 'data-testid': dataTestId, id }: CardProps) {
   const paddingClasses = {
     sm: 'p-4',
     md: 'p-6',
@@ -24,7 +25,7 @@ export default function Card({ children, className, padding = 'md', shadow = 'md
   };
 
   return (
-    <div 
+    <div
       className={cn(
         'bg-white dark:bg-gray-800 rounded-apple border border-gray-200 dark:border-gray-700',
         'transition-all duration-300 ease-in-out hover:shadow-apple-lg dark:hover:shadow-apple-lg-dark',

@@ -63,7 +63,7 @@ export class DocumentService {
   private static employeeDocsInflight: Map<string, Promise<{ documents: Document[]; error: string | null }>> = new Map();
 
   private static readonly SUPABASE_PAGE_SIZE = 100; // Optimized for better performance and memory usage
-  
+
   // Performance monitoring
   private static performanceMetrics: Map<string, number[]> = new Map();
   private static isCurrentlyFetching = false;
@@ -126,7 +126,7 @@ export class DocumentService {
       return null;
     }
   }
-  
+
   // Prevent multiple concurrent fetches
 
 
@@ -170,7 +170,7 @@ export class DocumentService {
       this.performanceMetrics.set(operation, []);
     }
     this.performanceMetrics.get(operation)!.push(duration);
-    
+
     if (duration > 2000) {
       log.warn(`⚠️ Very slow operation: ${operation} took ${duration.toFixed(2)}ms`);
     } else if (duration > 1000) {
@@ -251,7 +251,7 @@ export class DocumentService {
       // Limit to first 1000 documents to prevent infinite loading
       let batchCount = 0;
       const maxBatches = 2; // Only fetch 2 batches (1000 documents max)
-      
+
       while (batchCount < maxBatches) {
         const { data, error } = await supabase
           .from('employee_documents')
@@ -333,42 +333,42 @@ export class DocumentService {
       const run = async () => {
         const startTime = performance.now();
         let batchCount = 0;
-        
+
         while (true) {
           batchCount++;
           const batchStartTime = performance.now();
-          
+
           // Add timeout protection for each batch
-          const timeoutPromise = new Promise((_, reject) => 
+          const timeoutPromise = new Promise((_, reject) =>
             setTimeout(() => reject(new Error('Query timeout')), 10000)
           );
-          
+
           const queryPromise = buildQuery(from, to);
           const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-          
+
           if (error) {
             log.error(`❌ Error fetching documents for ${companyName}:`, error);
             return { documents: [], error: error.message };
           }
-          
+
           const batch = data || [];
           allDocuments.push(...batch);
-          
+
           const batchDuration = performance.now() - batchStartTime;
           if (process.env.NODE_ENV !== 'production') {
             log.info(`  • ${companyName} batch ${from}-${to} → ${batch.length} (${batchDuration.toFixed(2)}ms)`);
           }
-          
+
           if (batch.length < pageSize) break;
           from += pageSize;
           to += pageSize;
-          
+
           // Add small delay between batches to prevent overwhelming the database
           if (batchCount > 1) {
             await new Promise(resolve => setTimeout(resolve, 100));
           }
         }
-        
+
         const totalDuration = performance.now() - startTime;
         if (process.env.NODE_ENV !== 'production') {
           log.info(`✅ Found ${allDocuments.length} documents for ${companyName} in ${totalDuration.toFixed(2)}ms`);
@@ -407,7 +407,7 @@ export class DocumentService {
 
       log.info(`🔍 Fetching documents for employee ID: ${employeeId}...`);
       log.info(`🔍 Employee ID type: ${typeof employeeId}, value: "${employeeId}"`);
-      
+
       // Use paginated approach to handle Supabase's 1000-row limit
       const allDocs: Document[] = [];
       const LIMIT = 1000;
@@ -415,44 +415,44 @@ export class DocumentService {
       let hasMore = true;
 
       while (hasMore) {
-          const { data, error } = await supabase
-            .from('employee_documents')
-            .select('*')
+        const { data, error } = await supabase
+          .from('employee_documents')
+          .select('*')
           .eq('employee_id', employeeId)
-            .order('uploaded_at', { ascending: false })
+          .order('uploaded_at', { ascending: false })
           .range(offset, offset + LIMIT - 1);
 
-          if (error) {
+        if (error) {
           log.error(`❌ Error fetching documents for employee ${employeeId} (offset: ${offset}):`, error);
-            return { documents: [], error: error.message };
-          }
+          return { documents: [], error: error.message };
+        }
 
         if (data && data.length > 0) {
           log.info(`📄 Fetched ${data.length} documents for ${employeeId} (offset: ${offset})`);
           allDocs.push(...(data as unknown as Document[]));
-          
+
           if (data.length < LIMIT) {
             hasMore = false;
           } else {
             offset += LIMIT;
           }
-      } else {
+        } else {
           hasMore = false;
         }
       }
 
       log.info(`✅ Total documents loaded for ${employeeId}: ${allDocs.length}`);
-      
+
       if (allDocs.length > 0) {
-        log.info('📄 Sample documents:', allDocs.slice(0, 3).map(d => ({ 
-          id: d.id, 
-          employee_id: d.employee_id, 
-          file_name: d.file_name 
+        log.info('📄 Sample documents:', allDocs.slice(0, 3).map(d => ({
+          id: d.id,
+          employee_id: d.employee_id,
+          file_name: d.file_name
         })));
       }
 
       this.employeeDocsCache.set(employeeId, { documents: allDocs, timestamp: Date.now() });
-      
+
       return { documents: allDocs, error: null };
     } catch (error) {
       log.error('❌ Exception in getDocumentsForEmployee:', error);
@@ -464,17 +464,17 @@ export class DocumentService {
   static async getDocumentById(documentId: string): Promise<{ data: Document | null; error: string | null }> {
     try {
       log.info(`🔍 Fetching document by ID: ${documentId}...`);
-      
+
       const { data, error } = await supabase
-          .from('employee_documents')
-          .select('*')
+        .from('employee_documents')
+        .select('*')
         .eq('id', documentId)
         .single();
 
-          if (error) {
+      if (error) {
         log.error(`❌ Error fetching document ${documentId}:`, error);
-            return { data: null, error: error.message };
-          }
+        return { data: null, error: error.message };
+      }
 
       if (!data) {
         log.warn(`⚠️ Document not found: ${documentId}`);
@@ -493,7 +493,7 @@ export class DocumentService {
   static async getCompanyDocuments(companyName?: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
       log.info(`🔍 Fetching company documents for: ${companyName}...`);
-      
+
       // Use paginated approach to handle Supabase's 1000-row limit
       const allDocs: Document[] = [];
       const LIMIT = 1000;
@@ -502,21 +502,21 @@ export class DocumentService {
 
       while (hasMore) {
         const { data, error } = await supabase
-            .from('employee_documents')
-            .select('*')
+          .from('employee_documents')
+          .select('*')
           .ilike('file_path', `${companyName}/%`)
-            .order('uploaded_at', { ascending: false })
+          .order('uploaded_at', { ascending: false })
           .range(offset, offset + LIMIT - 1);
 
-          if (error) {
+        if (error) {
           log.error(`❌ Error fetching company documents for ${companyName} (offset: ${offset}):`, error);
-            return { documents: [], error: error.message };
-          }
+          return { documents: [], error: error.message };
+        }
 
         if (data && data.length > 0) {
           log.info(`📄 Fetched ${data.length} company documents for ${companyName} (offset: ${offset})`);
           allDocs.push(...(data as unknown as Document[]));
-          
+
           if (data.length < LIMIT) {
             hasMore = false;
           } else {
@@ -634,448 +634,94 @@ export class DocumentService {
   static async getDocumentFolders(useCache = true): Promise<{ folders: DocumentFolder[]; error: string | null }> {
     const startTime = performance.now();
     const cacheKey = 'docs:company-folders';
-    
+
+    // try { - removed outer try
+    // Check cache first with intelligent validation
+    if (useCache && this.foldersCache && this.isCacheValid(cacheKey, this.CACHE_DURATIONS.companies)) {
+      this.logPerformance('getDocumentFolders-cache-hit', performance.now() - startTime);
+      if (process.env.NODE_ENV !== 'production') log.info('⚡ Using cached company folders');
+      return { folders: this.foldersCache.folders, error: null };
+    }
+
+    // Server-side MV logic removed in favor of RPC
+
+
+    log.info('⚡ Fetching document folders via RPC...');
+
     try {
-      // Check cache first with intelligent validation
-      if (useCache && this.foldersCache && this.isCacheValid(cacheKey, this.CACHE_DURATIONS.companies)) {
-        this.logPerformance('getDocumentFolders-cache-hit', performance.now() - startTime);
-        if (process.env.NODE_ENV !== 'production') log.info('⚡ Using cached company folders');
-        return { folders: this.foldersCache.folders, error: null };
-      }
+      const { data, error } = await supabase.rpc('get_document_folders_overview');
 
-      // Try server-side materialized view first (if enabled and present)
-      const useMV = process.env.NEXT_PUBLIC_USE_DOCS_MV === '1';
-      if (useMV) {
-        try {
-          const { data: mvRows, error: mvError } = await supabase
-            .from(this.COMPANY_FOLDERS_VIEW)
-            .select('company_prefix, display_name, document_count, last_modified');
-          if (!mvError && mvRows && mvRows.length > 0) {
-            // 1) Remove test/special folders we don't want to show
-            const filtered = (mvRows as any[]).filter(r => r.company_prefix && r.display_name && r.company_prefix !== 'FINAL_TEST');
-
-            // 2) Deduplicate entries that map to the same display name (e.g., EMP_COMPANY_DOCS and Company Documents)
-            const groups = new Map<string, any[]>();
-            for (const row of filtered) {
-              const key = (row.display_name as string).trim();
-              if (!groups.has(key)) groups.set(key, []);
-              groups.get(key)!.push(row);
-            }
-
-            const folders: DocumentFolder[] = [];
-            groups.forEach((rows, displayName) => {
-              // Choose a canonical prefix for this display name
-              let canonical = rows[0];
-              // Prefer EMP_COMPANY_DOCS as canonical for Company Documents
-              if (displayName === 'Company Documents') {
-                const preferred = rows.find(r => r.company_prefix === 'EMP_COMPANY_DOCS');
-                if (preferred) canonical = preferred;
-              }
-              // Aggregate document counts and last modified across duplicates
-              const totalCount = rows.reduce((sum, r) => sum + (Number(r.document_count) || 0), 0);
-              const lastModified = rows.reduce((maxTs, r) => {
-                const ts = r.last_modified ? Date.parse(r.last_modified as string) : 0;
-                return Math.max(maxTs, ts);
-              }, 0);
-
-              folders.push({
-                id: `company-${canonical.company_prefix}`,
-                name: displayName,
-                type: 'company',
-                // Use display name as companyName so downstream mapping can normalize to file-path prefixes
-                companyName: displayName,
-                documentCount: totalCount,
-                lastModified: lastModified > 0 ? new Date(lastModified).toISOString() : new Date().toISOString(),
-                // Path uses display name to avoid surfacing raw prefixes like EMP_COMPANY_DOCS
-                path: `/${displayName}`
-              });
-            });
-
-            if (folders.length > 1) {
-              this.foldersCache = { folders, timestamp: Date.now() };
-              if (process.env.NODE_ENV !== 'production') log.info('⚡ Using materialized view for company folders (deduped)');
-              return { folders, error: null };
-            }
-            if (process.env.NODE_ENV !== 'production') log.info('⚠️  MV returned too few folders; falling back to direct scan');
-          }
-        } catch (e) {
-          // View not available or RLS blocked – silently fallback
-        }
-      }
-
-      // Fast alternative: Get unique company prefixes directly
-      log.info('⚡ Using fast company folders query...');
-      
-      try {
-        // Get unique company prefixes with optimized queries
-        log.info('⚡ Using optimized queries for company prefixes...');
-        
-        const companyPrefixes = new Set<string>();
-        
-        // First, get the main companies from a general query
-        const { data: generalData, error: generalError } = await supabase
-          .from('employee_documents')
-          .select('file_path')
-          .not('file_path', 'is', null)
-          .limit(1000);
-
-        if (generalError) {
-          log.error('❌ Error fetching general company data:', generalError);
-          throw generalError;
-        }
-
-        // Extract prefixes from general query
-        generalData?.forEach(doc => {
-          if ((doc as any).file_path && typeof (doc as any).file_path === 'string') {
-            const parts = (doc as any).file_path.split('/');
-            if (parts.length > 0 && parts[0]) {
-              companyPrefixes.add(parts[0]);
-            }
-          }
-        });
-
-        // Then, specifically check for known companies that might be missing
-        const knownCompanies = [
-          'ASHBAL AL KHALEEJ',
-          'Company Documents', 
-          'AL HANA TOURS & TRAVELS'
-        ];
-
-        for (const company of knownCompanies) {
-          const { data: companyData, error: companyError } = await supabase
-            .from('employee_documents')
-            .select('file_path')
-            .ilike('file_path', `${company}%`)
-            .limit(1);
-
-          if (!companyError && companyData && companyData.length > 0) {
-            companyPrefixes.add(company);
-            log.info(`✅ Found missing company: ${company}`);
-          }
-        }
-
-        // Remove unwanted prefixes
-        companyPrefixes.delete('FINAL_TEST');
-
-        log.info(`🏢 Found ${companyPrefixes.size} company prefixes:`, Array.from(companyPrefixes));
-        log.info(`🏢 Company prefixes sorted:`, Array.from(companyPrefixes).sort());
-        
-        // Debug: Check for specific companies
-        const hasAshbal = companyPrefixes.has('ASHBAL AL KHALEEJ');
-        const hasCompanyDocs = companyPrefixes.has('Company Documents');
-        log.info(`🔍 ASHBAL AL KHALEEJ found: ${hasAshbal}`);
-        log.info(`🔍 Company Documents found: ${hasCompanyDocs}`);
-
-        // Create folders from prefixes
-        const folders: DocumentFolder[] = [];
-        const displayNameMapping: { [key: string]: string } = {
-          'AL_ASHBAL_AJMAN': 'AL ASHBAL AJMAN',
-          'AL ASHBAL AJMAN': 'AL ASHBAL AJMAN',
-          'CUBS': 'CUBS',
-          'CUBS_CONTRACTING': 'CUBS CONTRACTING',
-          'CUBS CONTRACTING': 'CUBS CONTRACTING',
-          'CUBS_TECH': 'CUBS',
-          'ASHBAL_AL_KHALEEJ': 'ASHBAL AL KHALEEJ',
-          'ASHBAL AL KHALEEJ': 'ASHBAL AL KHALEEJ',
-          'FLUID_ENGINEERING': 'FLUID ENGINEERING',
-          'RUKIN_AL_ASHBAL': 'RUKIN AL ASHBAL',
-          'RUKIN AL ASHBAL': 'RUKIN AL ASHBAL',
-          'GOLDEN_CUBS': 'GOLDEN CUBS',
-          'GOLDEN CUBS': 'GOLDEN CUBS', // Handle both formats
-          'AL_MACEN': 'AL MACEN',
-          'AL MACEN': 'AL MACEN',
-          'EMP_ALHT': 'AL HANA TOURS & TRAVELS',
-          'EMP_COMPANY_DOCS': 'Company Documents',
-          'AL HANA TOURS and TRAVELS': 'AL HANA TOURS & TRAVELS',
-          'Company Documents': 'Company Documents',
-          // Add more mappings for other companies
-          'AL_ASHBAL': 'AL ASHBAL',
-          'ASHBAL': 'ASHBAL',
-          'RUKIN': 'RUKIN',
-          'MACEN': 'MACEN'
-        };
-
-        // Group by display name with better deduplication
-        const groupedFolders = new Map<string, string[]>();
-        Array.from(companyPrefixes).forEach(prefix => {
-          let displayName = displayNameMapping[prefix];
-          
-          // If no mapping found, create a clean display name
-          if (!displayName) {
-            displayName = prefix.replace(/_/g, ' ').trim();
-          }
-          
-          // Normalize the display name to prevent duplicates
-          const normalizedName = displayName.toUpperCase().trim();
-          
-          if (!groupedFolders.has(normalizedName)) {
-            groupedFolders.set(normalizedName, []);
-          }
-          groupedFolders.get(normalizedName)!.push(prefix);
-        });
-
-        // Create final folders
-        groupedFolders.forEach((prefixes, normalizedName) => {
-          // Get the original display name from the first prefix
-          const firstPrefix = prefixes[0];
-          const originalDisplayName = displayNameMapping[firstPrefix] || firstPrefix.replace(/_/g, ' ').trim();
-          
-          folders.push({
-            id: `company-${firstPrefix}`,
-            name: originalDisplayName,
-            type: 'company',
-            companyName: originalDisplayName,
-            documentCount: 0, // We'll get this later if needed
-            lastModified: new Date().toISOString(),
-            path: `/${originalDisplayName}`
-          });
-        });
-
-        // Cache the result with timestamp
-        this.foldersCache = { folders, timestamp: Date.now() };
-        this.cacheTimestamps.set(cacheKey, Date.now());
-        log.info(`✅ Created ${folders.length} company folders in ${performance.now() - startTime}ms`);
-        log.info(`📁 Final folders:`, folders.map(f => f.name));
-        
-        return { folders, error: null };
-      } catch (error) {
-        log.error('❌ Error in fast company folders query:', error);
+      if (error) {
+        log.error('❌ RPC get_document_folders_overview failed:', error);
         throw error;
       }
-    } catch (error) {
-      this.isCurrentlyFetching = false;
-      this.fetchPromise = null;
-      log.error('❌ Error in getDocumentFolders:', error);
-      
-      // Return fallback data to prevent infinite loading
-      const fallbackFolders: DocumentFolder[] = [
-        {
-          id: 'company-CUBS',
-          name: 'CUBS',
-          type: 'company',
-          companyName: 'CUBS',
-          documentCount: 0,
-          lastModified: new Date().toISOString(),
-          path: '/CUBS'
-        },
-        {
-          id: 'company-GOLDEN_CUBS',
-          name: 'GOLDEN CUBS',
-          type: 'company',
-          companyName: 'GOLDEN CUBS',
-          documentCount: 0,
-          lastModified: new Date().toISOString(),
-          path: '/GOLDEN CUBS'
-        },
-        {
-          id: 'company-EMP_COMPANY_DOCS',
-          name: 'Company Documents',
-          type: 'company',
-          companyName: 'Company Documents',
-          documentCount: 0,
-          lastModified: new Date().toISOString(),
-          path: '/Company Documents'
-        }
-      ];
-      
-      return { folders: fallbackFolders, error: 'Using fallback data due to timeout' };
-    }
-  }
 
-  // Internal method to build folders
-  private static async _buildFolders(): Promise<{ folders: DocumentFolder[]; error: string | null }> {
-    try {
-      // Add timeout protection for document fetching
-      const timeoutPromise = new Promise((_, reject) => 
-        setTimeout(() => reject(new Error('Document fetch timeout')), 15000)
-      );
-
-      // Get document counts for each company - fetch ALL documents using pagination with timeout
-      const fetchPromise = this.fetchAllDocuments();
-      const { documents: allDocuments, error: docsError } = await Promise.race([fetchPromise, timeoutPromise]) as any;
-
-      if (docsError) {
-        log.error('❌ Error fetching documents:', docsError);
-        // Return fallback data instead of empty array
-        return { 
-          folders: [
-            {
-              id: 'company-CUBS',
-              name: 'CUBS',
-              type: 'company',
-              companyName: 'CUBS',
-              documentCount: 0,
-              lastModified: new Date().toISOString(),
-              path: '/CUBS'
-            },
-            {
-              id: 'company-GOLDEN_CUBS',
-              name: 'GOLDEN CUBS',
-              type: 'company',
-              companyName: 'GOLDEN CUBS',
-              documentCount: 0,
-              lastModified: new Date().toISOString(),
-              path: '/GOLDEN CUBS'
-            },
-            {
-              id: 'company-CUBS_CONTRACTING',
-              name: 'CUBS CONTRACTING',
-              type: 'company',
-              companyName: 'CUBS CONTRACTING',
-              documentCount: 0,
-              lastModified: new Date().toISOString(),
-              path: '/CUBS CONTRACTING'
-            }
-          ], 
-          error: null 
-        };
-      }
-
-      if (process.env.NODE_ENV !== 'production') log.info(`📄 Found ${allDocuments?.length || 0} total documents (paginated)`);
-
-      // Extract unique company prefixes from actual file paths
-      const companyPrefixes = new Set<string>();
-      allDocuments?.forEach((doc: any) => {
-        if ((doc as any).file_path && typeof (doc as any).file_path === 'string') {
-          const parts = (doc as any).file_path.split('/');
-          if (parts.length > 0 && parts[0]) {
-            companyPrefixes.add(parts[0]);
-          }
-        }
-      });
-
-      // Remove unwanted folders like FINAL_TEST
-      companyPrefixes.delete('FINAL_TEST');
-
-      if (process.env.NODE_ENV !== 'production') log.info(`🏢 Found ${companyPrefixes.size} unique company prefixes in file paths:`, Array.from(companyPrefixes).sort());
-
-      // Create company folders based on actual file paths
-      const companyFolders: DocumentFolder[] = [];
-      
-      // Create mapping from file path prefixes to display names (including new user-friendly paths)
-      const displayNameMapping: { [key: string]: string } = {
-        // Legacy folder mappings (for existing documents)
+      // Map RPC result to DocumentFolder interface
+      const displayMap: { [key: string]: string | null } = {
         'AL_ASHBAL_AJMAN': 'AL ASHBAL AJMAN',
+        'AL ASHBAL AJMAN': 'AL ASHBAL AJMAN',
         'CUBS': 'CUBS',
+        'CUBS_CONTRACTING': 'CUBS CONTRACTING',
         'CUBS CONTRACTING': 'CUBS CONTRACTING',
-        'CUBS TECH': 'CUBS',
+        'CUBS_TECH': 'CUBS',
         'ASHBAL_AL_KHALEEJ': 'ASHBAL AL KHALEEJ',
-        'FLUID_ENGINEERING': 'FLUID',
-        'RUKIN_AL_ASHBAL': 'RUKIN',
+        'ASHBAL AL KHALEEJ': 'ASHBAL AL KHALEEJ',
+        'FLUID_ENGINEERING': 'FLUID ENGINEERING',
+        'RUKIN_AL_ASHBAL': 'RUKIN AL ASHBAL',
+        'RUKIN AL ASHBAL': 'RUKIN AL ASHBAL',
         'GOLDEN_CUBS': 'GOLDEN CUBS',
+        'GOLDEN CUBS': 'GOLDEN CUBS',
+        'AL_MACEN': 'AL MACEN',
         'AL MACEN': 'AL MACEN',
         'EMP_ALHT': 'AL HANA TOURS & TRAVELS',
         'EMP_COMPANY_DOCS': 'Company Documents',
-        // New user-friendly folder mappings (for new uploads)
         'AL HANA TOURS and TRAVELS': 'AL HANA TOURS & TRAVELS',
-        'Company Documents': 'Company Documents'
-      };
-      
-      // Consolidate duplicate display names
-      const consolidatedFolders = new Map<string, { 
-        displayName: string; 
-        prefixes: string[]; 
-        documents: any[]; 
-        lastModified: number;
-      }>();
-      
-      for (const prefix of Array.from(companyPrefixes).sort()) {
-        if (prefix === 'FINAL_TEST') continue; // skip test folders
-        const displayName = displayNameMapping[prefix] || prefix.replace(/_/g, ' ');
-        const companyDocs = allDocuments?.filter((doc: any) => 
-          (doc as any).file_path && typeof (doc as any).file_path === 'string' && (doc as any).file_path.startsWith(prefix + '/')
-        ) || [];
-        // Safely compute lastModified with fallbacks
-        const times: number[] = [];
-        for (const d of companyDocs) {
-          const t = d && (d as any).uploaded_at ? Date.parse((d as any).uploaded_at as string) : NaN;
-          if (!Number.isNaN(t)) times.push(t);
-        }
-        const lastModified = times.length > 0 ? Math.max(...times) : Date.now();
-        if (consolidatedFolders.has(displayName)) {
-          const existing = consolidatedFolders.get(displayName)!;
-          existing.prefixes.push(prefix);
-          existing.documents.push(...companyDocs);
-          existing.lastModified = Math.max(existing.lastModified, lastModified);
-        } else {
-          consolidatedFolders.set(displayName, {
-            displayName,
-            prefixes: [prefix],
-            documents: companyDocs,
-            lastModified
-          });
-        }
-      }
-      
-      for (const [displayName, data] of Array.from(consolidatedFolders.entries())) {
-        // For Company Documents, force canonical to display name and avoid nested subfolder entry duplication
-        const isCompanyDocs = displayName === 'Company Documents';
-        const primaryPrefix = isCompanyDocs ? 'EMP_COMPANY_DOCS' : data.prefixes[0];
-        companyFolders.push({
-          id: `company-${primaryPrefix}`,
+        'AL HANA TOURS & TRAVELS': 'AL HANA TOURS & TRAVELS',
+        'Company Documents': 'Company Documents',
+        'FINAL_TEST': null, // Hide test folder
+      } as const;
+
+      const folders: DocumentFolder[] = [];
+      const processedNames = new Set<string>();
+
+      (data as any[] || []).forEach(row => {
+        const rawName = row.folder_name;
+        // Skip hidden folders
+        if ((displayMap as any)[rawName] === null) return;
+
+        const displayName = (displayMap as any)[rawName] || rawName;
+
+        // Skip duplicate display names (simple aggregation)
+        if (processedNames.has(displayName)) return;
+        processedNames.add(displayName);
+
+        folders.push({
+          id: `company-${rawName}`,
           name: displayName,
           type: 'company',
-          // Use display name in companyName so downstream routing uses the friendly label
           companyName: displayName,
-          documentCount: data.documents.length,
-          lastModified: new Date(data.lastModified).toISOString(),
-          // Use display name in path for stable, friendly routing
+          documentCount: row.document_count,
+          lastModified: row.last_modified,
           path: `/${displayName}`
         });
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        log.info(`📁 Created ${companyFolders.length} company folders`);
-        log.info('🔍 Company folders:', companyFolders.map(f => `${f.name} (${f.documentCount} docs)`));
-      }
+      });
 
       // Update cache
-      this.foldersCache = {
-        folders: companyFolders,
-        timestamp: Date.now()
-      };
+      this.foldersCache = { folders, timestamp: Date.now() };
+      this.cacheTimestamps.set(cacheKey, Date.now());
 
-      if (process.env.NODE_ENV !== 'production') log.info(`📁 Processed ${companyFolders.length} folders exactly as they appear in Backblaze`);
-      return { folders: companyFolders, error: null };
+      this.logPerformance('getDocumentFolders-rpc', performance.now() - startTime);
+      log.info(`✅ Fetched ${folders.length} document folders via RPC`);
+
+      return { folders, error: null };
     } catch (error) {
-      log.error('❌ Error in _buildFolders:', error);
+      log.error('❌ Error in getDocumentFolders RPC:', error);
       return { folders: [], error: 'Failed to fetch document folders' };
     }
   }
 
 
 
-  private static processCompanyData(companyData: Map<string, { count: number; lastModified: string; employees: Set<string> }>): { folders: DocumentFolder[]; error: string | null } {
-    try {
-      const folders: DocumentFolder[] = [];
-
-      companyData.forEach((data, companyName) => {
-        // Handle special case for Company Documents and AL HANA TOURS & TRAVELS
-        let displayName;
-        if (companyName === 'Company Documents') {
-          displayName = 'Company Documents';
-        } else if (companyName === 'AL HANA TOURS & TRAVELS') {
-          displayName = 'AL HANA TOURS & TRAVELS';
-        } else {
-          displayName = companyName.replace(/_/g, ' ');
-        }
-        
-        folders.push({
-          id: companyName,
-          name: displayName,
-          type: 'company' as const,
-          companyName,
-          documentCount: data.count,
-          lastModified: parseInt(data.lastModified) > 0 ? new Date(parseInt(data.lastModified)).toISOString() : new Date().toISOString(),
-          path: `/company/${companyName}`
-        });
-      });
-
-      return { folders, error: null };
-    } catch (error) {
-      return { folders: [], error: 'Failed to process company data' };
-    }
-  }
 
   // Get documents for a specific employee or company documents - FAST OPTIMIZED
   static async getEmployeeDocuments(companyName: string, employeeId: string): Promise<{ documents: Document[]; error: string | null }> {
@@ -1122,9 +768,9 @@ export class DocumentService {
       }
 
       // Cache the result
-      this.employeeDocsCache.set(cacheKey, { 
-        documents: documents as unknown as Document[], 
-        timestamp: Date.now() 
+      this.employeeDocsCache.set(cacheKey, {
+        documents: documents as unknown as Document[],
+        timestamp: Date.now()
       });
 
       log.info(`✅ Found ${documents.length} documents for employee ${employeeId}`);
@@ -1185,7 +831,7 @@ export class DocumentService {
 
       } catch (rpcError) {
         log.info('🔄 Falling back to manual employee folder search...');
-        
+
         // Fallback: Manual query without RPC
         const { data: employees, error: empError } = await supabase
           .from('employee_table')
@@ -1356,7 +1002,7 @@ export class DocumentService {
       });
 
       // Remove duplicates and limit results
-      const uniqueSuggestions = suggestions.filter((suggestion, index, self) => 
+      const uniqueSuggestions = suggestions.filter((suggestion, index, self) =>
         index === self.findIndex(s => s.displayText === suggestion.displayText)
       ).slice(0, limit);
 
@@ -1378,15 +1024,16 @@ export class DocumentService {
 
       log.info(`🔍 Searching documents for: "${searchTerm}"`);
 
-      // Try RPC function first, fallback to manual query if RPC fails
+      // Use optimized RPC for search
       try {
-        const { data, error } = await (supabase as any).rpc('search_documents_and_employees', {
-          search_term: searchTerm.trim()
+        const { data, error } = await (supabase as any).rpc('search_documents_rpc', {
+          p_search_term: searchTerm.trim(),
+          p_limit: 50 // Increased limit for better results
         });
 
         if (error) {
-          log.warn('⚠️ RPC function failed, falling back to manual query:', error.message);
-          throw error; // This will trigger the fallback
+          log.warn('⚠️ RPC search_documents_rpc failed:', error.message);
+          throw error;
         }
 
         if (!data || !Array.isArray(data) || data.length === 0) {
@@ -1398,37 +1045,8 @@ export class DocumentService {
         return { documents: data, error: null };
 
       } catch (rpcError) {
-        log.info('🔄 Falling back to manual search query...');
-        
-        // Fallback: Manual query without RPC
-        const { data: documents, error: docError } = await supabase
-          .from('employee_documents')
-          .select(`
-            *,
-            employee_table!inner(name, company_name)
-          `)
-          .or(`file_name.ilike.%${searchTerm}%,employee_table.name.ilike.%${searchTerm}%,employee_table.employee_id.ilike.%${searchTerm}%,employee_table.company_name.ilike.%${searchTerm}%`)
-          .order('created_at', { ascending: false });
-
-        if (docError) {
-          log.error('❌ Error in fallback search:', docError);
-          return { documents: [], error: docError.message };
-        }
-
-        if (!documents || documents.length === 0) {
-          log.info('❌ No documents found matching search term');
-          return { documents: [], error: null };
-        }
-
-        // Transform the data to match RPC format
-        const transformedDocuments = documents.map((doc: any) => ({
-          ...doc,
-          employee_name: (doc as any).employee_table?.name,
-          company_name: (doc as any).employee_table?.company_name
-        }));
-
-        log.info(`✅ Found ${transformedDocuments.length} documents matching search via fallback`);
-        return { documents: transformedDocuments, error: null };
+        log.error('❌ Error in searchDocuments RPC:', rpcError);
+        return { documents: [], error: 'Search failed' };
       }
 
     } catch (error) {
@@ -1441,7 +1059,7 @@ export class DocumentService {
   static async getEmployeeFolders(companyName: string, useCache = true): Promise<{ folders: DocumentFolder[]; error: string | null }> {
     try {
       if (process.env.NODE_ENV !== 'production') log.info(`👥 Getting employee folders for company: ${companyName}`);
-      
+
       // Create mapping from display names to file path company names
       const companyNameMapping: { [key: string]: string } = {
         'AL ASHBAL AJMAN': 'AL ASHBAL AJMAN',
@@ -1460,20 +1078,20 @@ export class DocumentService {
         // New user-friendly paths
         'AL HANA TOURS and TRAVELS': 'AL HANA TOURS & TRAVELS'
       };
-      
+
       log.info('🔍 Company name mapping for:', companyName, '→', companyNameMapping[companyName] || companyName);
-      
+
       // Get the corresponding file path company name
       const filePathCompanyName = companyNameMapping[companyName] || companyName;
       if (process.env.NODE_ENV !== 'production') log.info(`🔍 Using file path company name: ${filePathCompanyName} for display name: ${companyName}`);
       log.info('🔍 Company name mapping:', { displayName: companyName, filePathName: filePathCompanyName });
-      
+
       // Special handling for Company Documents - show files directly, not employee folders
       if (companyName === 'Company Documents') {
         if (process.env.NODE_ENV !== 'production') log.info('📁 Company Documents: Returning empty folders array (files should be shown directly)');
         return { folders: [], error: null };
       }
-      
+
       // Check cache - extended duration for better performance
       const cached = this.employeeFoldersCache.get(filePathCompanyName);
       if (useCache && cached && Date.now() - cached.timestamp < this.CACHE_DURATIONS.employees * 2) { // Extended cache duration
@@ -1482,146 +1100,70 @@ export class DocumentService {
       const inflight = this.employeeFoldersInflight.get(filePathCompanyName);
       if (inflight) return inflight;
 
-      // Try server-side materialized view first (if enabled and present)
-      const useMV = process.env.NEXT_PUBLIC_USE_DOCS_MV === '1';
-      if (useMV) {
-        try {
-          const { data: mvRows, error: mvError } = await supabase
-            .from(this.EMPLOYEE_COUNTS_VIEW)
-            .select('employee_id, employee_name, document_count, last_modified')
-            .eq('company_prefix', filePathCompanyName);
-          if (!mvError && mvRows && mvRows.length > 0) {
-            const folders: DocumentFolder[] = (mvRows as any[])
-              .filter(r => r.employee_id)
-              .map(r => ({
-                id: `emp-${r.employee_id}`,
-                name: this.resolveEmployeeDisplayName(r.employee_id as string, r.employee_name as string),
-                type: 'employee' as const,
-                companyName,
-                employeeId: r.employee_id as string,
-                employeeName: this.resolveEmployeeDisplayName(r.employee_id as string, r.employee_name as string),
-                documentCount: Number(r.document_count) || 0,
-                lastModified: r.last_modified ? new Date(r.last_modified as string).toISOString() : new Date().toISOString(),
-                path: `${companyName}/${r.employee_id}`
-              }));
-            this.employeeFoldersCache.set(filePathCompanyName, { folders, timestamp: Date.now() });
-            if (process.env.NODE_ENV !== 'production') log.info('⚡ Using materialized view for employee folders');
-            return { folders, error: null };
-          }
-        } catch (e) {
-          // View not available; fallback below
+
+      // Use efficient RPC call
+      try {
+        log.info(`⚡ Fetching employee folders via RPC for: ${filePathCompanyName}`);
+        const { data, error } = await (supabase as any).rpc('get_employee_folders_for_company', {
+          p_company_prefix: filePathCompanyName
+        });
+
+        if (error) {
+          log.error('❌ RPC get_employee_folders_for_company failed:', error);
+          throw error;
         }
-      }
 
-      // FAST ALTERNATIVE: Direct employee folder query (bypass document fetching)
-      const run = async (): Promise<{ folders: DocumentFolder[]; error: string | null }> => {
-        log.info('⚡ Using FAST employee folder query for:', filePathCompanyName);
-        
-        try {
-          // Direct query to get employee folders with counts - MUCH FASTER
-          const { data: employeeData, error: employeeError } = await supabase
-            .from('employee_documents')
-            .select('employee_id, file_path, uploaded_at')
-            .ilike('file_path', `${filePathCompanyName}/%`)
-            .order('uploaded_at', { ascending: false })
-            .limit(2000); // Reasonable limit for folder creation
-
-          if (employeeError) {
-            log.error('❌ Error in fast employee query:', employeeError);
-            return { folders: [], error: employeeError.message };
-          }
-
-          if (!employeeData || employeeData.length === 0) {
-            log.info('❌ No documents found for company:', filePathCompanyName);
+        if (!data || data.length === 0) {
+          log.info('❌ No employee folders found via RPC');
           this.employeeFoldersCache.set(filePathCompanyName, { folders: [], timestamp: Date.now() });
           return { folders: [], error: null };
         }
 
-          // Extract unique employee IDs and their latest document info
-          const employeeMap = new Map<string, { count: number; lastModified: string; filePath: string }>();
-          
-          employeeData.forEach(doc => {
-            const employeeId = (doc as any).employee_id as string;
-            if (!employeeId) return;
-            
-            const existing = employeeMap.get(employeeId);
-            if (existing) {
-              existing.count++;
-              // Keep the most recent upload date
-              const docDate = new Date((doc as any).uploaded_at || new Date()).getTime();
-              const existingDate = new Date(existing.lastModified).getTime();
-              if (docDate > existingDate) {
-                existing.lastModified = (doc as any).uploaded_at || new Date().toISOString();
-                existing.filePath = (doc as any).file_path || '';
-              }
-            } else {
-              employeeMap.set(employeeId, {
-                count: 1,
-                lastModified: (doc as any).uploaded_at || new Date().toISOString(),
-                filePath: (doc as any).file_path || ''
-              });
-            }
-          });
+        // Get employee names efficiently
+        const employeeIds = data.map((d: any) => d.employee_id);
+        const { data: employeeNames, error: nameError } = await supabase
+          .from('employee_table')
+          .select('employee_id, name')
+          .in('employee_id', employeeIds);
 
-          const employeeIds = Array.from(employeeMap.keys());
-          log.info(`👥 Found ${employeeIds.length} unique employee IDs from fast query`);
-
-        if (employeeIds.length === 0) {
-          this.employeeFoldersCache.set(filePathCompanyName, { folders: [], timestamp: Date.now() });
-          return { folders: [], error: null };
+        if (nameError) {
+          log.error('❌ Error fetching employee names:', nameError);
+          // Continue with IDs if names fail
         }
 
-          // Get employee names efficiently
-          const { data: employeeNames, error: nameError } = await supabase
-             .from('employee_table')
-             .select('employee_id, name')
-            .in('employee_id', employeeIds);
+        // Create name lookup map
+        const nameMap = new Map<string, string>();
+        (employeeNames || []).forEach(emp => {
+          nameMap.set((emp as any).employee_id as string, (emp as any).name as string);
+        });
 
-          if (nameError) {
-            log.error('❌ Error fetching employee names:', nameError);
-            return { folders: [], error: nameError.message };
-          }
+        const folders: DocumentFolder[] = data.map((item: any) => {
+          const dbName = nameMap.get(item.employee_id) || '';
+          const displayName = this.resolveEmployeeDisplayName(item.employee_id, dbName);
 
-          // Create name lookup map
-          const nameMap = new Map<string, string>();
-          (employeeNames || []).forEach(emp => {
-            nameMap.set((emp as any).employee_id as string, (emp as any).name as string);
-          });
+          return {
+            id: `emp-${item.employee_id}`,
+            name: displayName,
+            type: 'employee',
+            companyName,
+            employeeId: item.employee_id,
+            employeeName: displayName,
+            documentCount: item.document_count,
+            lastModified: item.last_modified,
+            path: `${companyName}/${item.employee_id}`
+          };
+        });
 
-          // Create folders
-          const folders: DocumentFolder[] = [];
-          employeeMap.forEach((info, employeeId) => {
-            const dbName = nameMap.get(employeeId) || '';
-            const displayName = this.resolveEmployeeDisplayName(employeeId, dbName);
-            
-            folders.push({
-          id: `emp-${employeeId}`,
-              name: displayName,
-          type: 'employee' as const,
-              companyName,
-              employeeId,
-              employeeName: displayName,
-              documentCount: info.count,
-              lastModified: info.lastModified,
-          path: `${companyName}/${employeeId}`
-            });
-          });
-        
-          log.info(`✅ Created ${folders.length} employee folders in fast query`);
         this.employeeFoldersCache.set(filePathCompanyName, { folders, timestamp: Date.now() });
+        log.info(`✅ Fetched ${folders.length} employee folders via RPC`);
         return { folders, error: null };
-        } catch (error) {
-          log.error('❌ Error in fast employee folder creation:', error);
-          return { folders: [], error: 'Failed to create employee folders' };
-        }
-      };
-      const promise = run().finally(() => {
-        this.employeeFoldersInflight.delete(filePathCompanyName);
-      });
-      this.employeeFoldersInflight.set(filePathCompanyName, promise);
-      return promise;
+
+      } catch (error) {
+        log.error('❌ Error in getEmployeeFolders RPC:', error);
+        return { folders: [], error: 'Failed to fetch employee folders' };
+      }
     } catch (error) {
-      log.error('❌ Exception in getEmployeeFolders:', error);
+      log.error('❌ Critical error in getEmployeeFolders:', error);
       return { folders: [], error: 'Failed to fetch employee folders' };
     }
   }
@@ -1721,7 +1263,7 @@ export class DocumentService {
         '062': 'BAKTA BAHADUR',
         '063': 'BENESHA'
       };
-      
+
       if (employeeMap[number]) {
         return employeeMap[number];
       }
@@ -1766,7 +1308,7 @@ export class DocumentService {
       // Split by common separators and capitalize
       const parts = employeeId.split(/[ _-]/);
       if (parts.length > 1) {
-        return parts.map(part => 
+        return parts.map(part =>
           part.charAt(0).toUpperCase() + part.slice(1).toLowerCase()
         ).join(' ');
       }
@@ -1819,17 +1361,17 @@ export class DocumentService {
       }
 
       const result = await response.json();
-      
+
       if (!result.success || !result.document) {
         log.error('❌ Upload API returned error:', result);
         return { document: null, error: result.error || 'Upload failed' };
       }
 
       log.info(`✅ Document uploaded successfully: ${uploadData.file_name}`);
-      
+
       // Cache invalidation is handled by the upload modal after all files complete
       // This avoids clearing cache multiple times during parallel uploads
-      
+
       return { document: result.document as unknown as Document, error: null };
     } catch (error) {
       log.error('❌ Error in uploadDocument:', error);
@@ -1880,7 +1422,7 @@ export class DocumentService {
         const pathParts = (document as any).file_path?.split?.('/') || [];
         const companyName = pathParts[0];
         const employeeId = (document as any).employee_id;
-        
+
         // Clear relevant caches
         this.invalidateCache('folders');
         if (companyName) {
@@ -1969,7 +1511,7 @@ export class DocumentService {
   static async getDocumentPreview(documentId: string): Promise<{ previewUrl: string | null; error: string | null }> {
     try {
       log.info('👁️ Getting document preview:', documentId);
-      
+
       // Get document info first
       const { data: document, error: fetchError } = await supabase
         .from('employee_documents')
@@ -2005,7 +1547,7 @@ export class DocumentService {
       }
 
       const result = await response.json();
-      
+
       if (!result.success) {
         log.error('❌ API route returned error:', result);
         return { previewUrl: null, error: result.error || 'Failed to generate preview URL' };
@@ -2015,7 +1557,7 @@ export class DocumentService {
       return { previewUrl: result.data.previewUrl, error: null };
     } catch (error) {
       log.error('❌ Exception in getDocumentPreview:', error);
-      
+
       // Fallbacks removed for brevity
       return { previewUrl: null, error: 'Failed to get document preview' };
     }
@@ -2058,7 +1600,7 @@ export class DocumentService {
   static async debugAllDocuments(): Promise<{ documents: Document[]; error: string | null }> {
     try {
       log.info('🔍 DEBUG: Fetching ALL documents from database...');
-      
+
       const { data, error } = await supabase
         .from('employee_documents')
         .select('*')
@@ -2071,7 +1613,7 @@ export class DocumentService {
 
       const documents = data as unknown as Document[];
       log.info(`📄 DEBUG: Found ${documents.length} total documents`);
-      
+
       // Group by company for analysis
       const companyGroups = new Map<string, Document[]>();
       documents.forEach(doc => {
@@ -2103,9 +1645,9 @@ export class DocumentService {
   static async debugFolderStructure(): Promise<{ folders: DocumentFolder[]; error: string | null }> {
     try {
       log.info('🔍 DEBUG: Fetching folder structure...');
-      
+
       const { folders, error } = await DocumentService.getDocumentFolders();
-      
+
       if (error) {
         log.error('❌ DEBUG Folder Error:', error);
         return { folders: [], error: error };
@@ -2127,7 +1669,7 @@ export class DocumentService {
   static async debugCompanyDocuments(companyName: string): Promise<{ documents: Document[]; error: string | null }> {
     try {
       log.info(`🔍 DEBUG: Checking documents for company: ${companyName}`);
-      
+
       // Get all documents to see what's available
       const { data: allDocs, error: allError } = await supabase
         .from('employee_documents')
@@ -2146,7 +1688,7 @@ export class DocumentService {
 
       // Now get company-specific documents
       const { documents, error } = await this.getCompanyDocuments(companyName);
-      
+
       log.info(`📄 DEBUG: Company documents for "${companyName}": ${documents.length}`);
       documents.forEach((doc, index) => {
         log.info(`  ${index + 1}. ${(doc as any).file_path} - ${(doc as any).file_name}`);
@@ -2164,9 +1706,9 @@ export class DocumentService {
   static async getSignedUrl(filePath: string): Promise<string> {
     try {
       const { data: edgeResult, error } = await supabase.functions.invoke('doc-manager', {
-        body: { 
-          action: 'getSignedUrl', 
-          filePath: filePath 
+        body: {
+          action: 'getSignedUrl',
+          filePath: filePath
         }
       });
 
@@ -2311,7 +1853,7 @@ export class DocumentService {
   }> {
     try {
       log.info('🚀 DocumentService: Fetching all documents with employees...');
-      
+
       // Fetch all documents first
       const { data: documents, error: docError } = await supabase
         .from('employee_documents')
@@ -2325,7 +1867,7 @@ export class DocumentService {
 
       // Get unique employee IDs from documents
       const employeeIds = [...new Set(documents?.map(doc => (doc as any).employee_id) || [])];
-      
+
       // Fetch employees separately to avoid relation issues
       const { data: employees, error: empError } = await supabase
         .from('employee_table')
@@ -2338,7 +1880,7 @@ export class DocumentService {
       }
 
       log.info(`✅ DocumentService: Fetched ${documents?.length || 0} documents and ${employees?.length || 0} employees`);
-      
+
       return {
         documents: documents || [],
         employees: employees || []

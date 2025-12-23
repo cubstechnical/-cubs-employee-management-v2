@@ -16,6 +16,9 @@ dist/
 .env.development.local
 .env.test.local
 .env.production.local
+.env.production
+AuthKey_*.p8
+cubs-management-app-*.json
 
 # IDE
 .vscode/
@@ -38,9 +41,6 @@ pids/
 *.pid.lock
 
 # Coverage directory used by tools like istanbul
-coverage/
-test-results/
-playwright-report/
 
 # Build artifacts
 *.zip
@@ -76,10 +76,6 @@ ios/App/App/public/
 .env.test.local
 .env.production.local
 
-# Test files (if any remain)
-__tests__/
-e2e/
-tests/
 
 # Old build scripts
 *_OLD.bat

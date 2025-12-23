@@ -3,34 +3,9 @@ import { log } from '@/lib/utils/productionLogger';
 
 // Define Employee interface locally since it's not exported from supabase client
 // This interface includes the most commonly used fields across the application
-export interface Employee {
-  id: string;
-  employee_id: string;
-  name: string;
-  email_id?: string;
-  mobile_number?: string;
-  trade: string;
-  company_name: string;
-  visa_expiry_date: string;
-  is_active: boolean;
-  created_at: string;
-  nationality: string;
-  status: string;
-  // Additional fields that might be used in admin pages
-  dob?: string;
-  joining_date?: string;
-  passport_no?: string;
-  passport_expiry?: string;
-  labourcard_no?: string;
-  labourcard_expiry?: string;
-  visastamping_date?: string;
-  eid?: string;
-  wcc?: string;
-  lulu_wps_card?: string;
-  basic_salary?: string;
-  visa_status?: string;
-  updated_at?: string;
-}
+import type { Employee } from '@/lib/types/database';
+
+export type { Employee };
 
 // Extended Employee interface for the optimized view
 export interface EmployeeWithDocuments extends Employee {
@@ -147,7 +122,41 @@ export class EmployeeService {
   private static employeesCache: Map<string, { data: PaginatedEmployeesResponse; timestamp: number }> = new Map();
   private static employeesInflight: Map<string, Promise<PaginatedEmployeesResponse>> = new Map();
   private static readonly CACHE_DURATION_MS = 5 * 60 * 1000; // Optimized to 5 minutes for fresh data
-  
+
+  // Optimized method to get unique companies using RPC
+  static async getUniqueCompanies(): Promise<{ data: string[]; error: string | null }> {
+    try {
+      log.info('🏢 Fetching unique companies via RPC...');
+      const { data, error } = await (supabase as any).rpc('get_unique_companies');
+
+      if (error) {
+        log.error('❌ RPC get_unique_companies failed:', error);
+        throw error;
+      }
+
+      log.info(`✅ Fetched ${(data as any[])?.length || 0} unique companies via RPC`);
+      return { data: (data as string[]) || [], error: null };
+    } catch (error) {
+      log.error('❌ Error fetching unique companies, falling back to query:', error);
+
+      // Fallback: Manually fetch and filter (slower but reliable)
+      try {
+        const { data, error } = await supabase
+          .from('employee_table')
+          .select('company_name')
+          .not('company_name', 'is', null)
+          .order('company_name');
+
+        if (error) throw error;
+
+        const uniqueCompanies = [...new Set((data as any[])?.map((item: any) => item.company_name) || [])] as string[];
+        return { data: uniqueCompanies, error: null };
+      } catch (fallbackError) {
+        return { data: [], error: 'Failed to fetch companies' };
+      }
+    }
+  }
+
   // Individual employee cache for better performance
   private static employeeCache: Map<string, { data: Employee; timestamp: number }> = new Map();
   private static employeeInflight: Map<string, Promise<{ employee: Employee | null; error: string | null }>> = new Map();
@@ -170,7 +179,7 @@ export class EmployeeService {
       this.performanceMetrics.set(operation, []);
     }
     this.performanceMetrics.get(operation)!.push(duration);
-    
+
     if (duration > 1000) {
       log.warn(`⚠️ Slow operation: ${operation} took ${duration.toFixed(2)}ms`);
     } else if (duration > 500) {
@@ -192,11 +201,11 @@ export class EmployeeService {
   // Helper function to calculate visa status based on expiry dates
   static calculateVisaStatus(employee: any): string {
     if (!employee.visa_expiry_date) return 'unknown';
-    
+
     const today = new Date();
     const expiryDate = new Date(employee.visa_expiry_date);
     const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    
+
     if (daysUntilExpiry < 0) return 'expired';
     if (daysUntilExpiry <= 30) return 'expiring_soon';
     if (daysUntilExpiry <= 90) return 'expiring_soon';
@@ -209,11 +218,11 @@ export class EmployeeService {
     if (employee.status && employee.status !== 'null' && employee.status !== '') {
       return employee.status.toLowerCase();
     }
-    
+
     // Otherwise derive from is_active and other fields
     if (employee.is_active === false) return 'inactive';
     if (employee.is_active === true) return 'active';
-    
+
     // Default to pending if no clear status
     return 'pending';
   }
@@ -221,14 +230,14 @@ export class EmployeeService {
   // Optimized helper function to enhance employees with calculated fields
   static enhanceEmployeeData(employees: any[]): any[] {
     const today = new Date(); // Cache current date for performance
-    
+
     return employees.map(employee => {
       // Pre-calculate visa status to avoid repeated date calculations
       let visaStatus = 'unknown';
       if (employee.visa_expiry_date) {
         const expiryDate = new Date(employee.visa_expiry_date);
         const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-        
+
         if (daysUntilExpiry < 0) visaStatus = 'expired';
         else if (daysUntilExpiry <= 30) visaStatus = 'expiring_soon';
         else if (daysUntilExpiry <= 90) visaStatus = 'expiring_soon';
@@ -302,7 +311,7 @@ export class EmployeeService {
         // Choose the prefix that matches the company or the most frequent one
         const expectedPrefix = this.generateCompanyPrefix(companyName);
         let chosen: PrefixStats | null = null;
-        
+
         // First, try to find a prefix that matches the expected company prefix
         for (const s of statsByPrefix.values()) {
           if (s.prefix === expectedPrefix) {
@@ -310,7 +319,7 @@ export class EmployeeService {
             break;
           }
         }
-        
+
         // If no matching prefix found, use the one with the highest number (most recent)
         if (!chosen) {
           let maxNum = -1;
@@ -321,7 +330,7 @@ export class EmployeeService {
             }
           }
         }
-        
+
         // Fallback to expected prefix if still no match
         const dynamicPrefix = chosen?.prefix ?? expectedPrefix;
         const nextNumber = (chosen?.maxNum ?? 0) + 1;
@@ -376,7 +385,7 @@ export class EmployeeService {
 
       const nextNumber = maxNumber + 1;
       const paddedNumber = nextNumber.toString().padStart(3, '0');
-      
+
       return `AL ASHBAL ${paddedNumber}`;
     } catch (error) {
       log.error('Error generating AL ASHBAL employee ID:', error);
@@ -446,7 +455,7 @@ export class EmployeeService {
       // Check if employee ID already exists and generate a new one if needed
       let attempts = 0;
       const maxAttempts = 5;
-      
+
       while (attempts < maxAttempts) {
         const { data: existingEmployee } = await supabase
           .from('employee_table')
@@ -519,11 +528,11 @@ export class EmployeeService {
     filters?: EmployeeFilters
   ): Promise<PaginatedEmployeesResponse> {
     const startTime = performance.now();
-    
+
     // Apply pagination with validation and defaults
     const page = pagination.page || 1;
     const pageSize = pagination.pageSize || 20;
-    
+
     try {
       const cacheKey = JSON.stringify({ p: pagination, f: filters || {} });
       const cached = this.employeesCache.get(cacheKey);
@@ -539,18 +548,18 @@ export class EmployeeService {
 
       const run = async (): Promise<PaginatedEmployeesResponse> => {
         const queryStartTime = performance.now();
-        
+
         // Add timeout protection for the entire query
-        const timeoutPromise = new Promise<PaginatedEmployeesResponse>((_, reject) => 
+        const timeoutPromise = new Promise<PaginatedEmployeesResponse>((_, reject) =>
           setTimeout(() => reject(new Error('Employee query timeout')), 30000)
         );
-        
+
         // Apply pagination with validation and defaults
         const page = pagination.page || 1;
         const pageSize = pagination.pageSize || 20;
         const from = (page - 1) * pageSize;
         const to = from + pageSize - 1;
-        
+
         // Build query with filters and search
         let query = supabase
           .from('employee_table')
@@ -654,7 +663,7 @@ export class EmployeeService {
         }
 
         const { count } = await countQuery;
-        
+
         log.info(`📊 Total employees matching filters: ${count || 0}`);
         const total = count || 0;
         const totalPages = Math.ceil(total / pageSize);
@@ -667,14 +676,14 @@ export class EmployeeService {
           totalPages,
           error: null
         };
-        
+
         this.employeesCache.set(cacheKey, { data: response, timestamp: Date.now() });
         this.logPerformance('getEmployees-query', performance.now() - queryStartTime);
         this.logPerformance('getEmployees-total', performance.now() - startTime);
-        
+
         return response;
       };
-      
+
       const promise = run().finally(() => {
         this.employeesInflight.delete(cacheKey);
       });
@@ -682,20 +691,20 @@ export class EmployeeService {
       return promise;
     } catch (error) {
       log.error('Error fetching employees:', error);
-      
+
       // If it's a timeout error, provide more specific message
       if (error instanceof Error && error.message.includes('timeout')) {
         log.info('⚠️ Employee query timed out, database might be slow');
-              return {
-        data: [],
-        total: 0,
-        page: page || 1,
-        pageSize: pageSize || 20,
-        totalPages: 0,
-        error: 'Database query timed out. Please try again or contact support if the issue persists.'
-      };
+        return {
+          data: [],
+          total: 0,
+          page: page || 1,
+          pageSize: pageSize || 20,
+          totalPages: 0,
+          error: 'Database query timed out. Please try again or contact support if the issue persists.'
+        };
       }
-      
+
       return {
         data: [],
         total: 0,
@@ -758,7 +767,7 @@ export class EmployeeService {
       const promise = run().finally(() => {
         this.employeeInflight.delete(employeeId);
       });
-      
+
       this.employeeInflight.set(employeeId, promise);
       return promise;
     } catch (error) {
@@ -771,7 +780,7 @@ export class EmployeeService {
   static async getEmployeeByIdOptimized(employeeId: string): Promise<{ employee: EmployeeWithDocuments | null; error: string | null }> {
     try {
       log.info(`🔍 Fetching employee with optimized query: ${employeeId}`);
-      
+
       // First try to get employee from employee_table by employee_id
       let { data: employeeData, error: empError } = await supabase
         .from('employee_table')
@@ -818,7 +827,7 @@ export class EmployeeService {
       } as unknown as EmployeeWithDocuments;
 
       log.info(`✅ Found employee: ${employee.name} with ${employee.document_count || 0} documents`);
-      
+
       return { employee, error: null };
     } catch (error) {
       log.error('❌ Exception in getEmployeeByIdOptimized:', error);
@@ -855,7 +864,7 @@ export class EmployeeService {
   static async deleteEmployee(employeeId: string): Promise<{ success: boolean; error?: string; deletedDocuments?: number }> {
     try {
       log.info(`🗑️ Starting deletion of employee: ${employeeId}`);
-      
+
       // Step 1: Find all documents for this employee
       const { data: documents, error: docError } = await supabase
         .from('employee_documents')
@@ -872,10 +881,10 @@ export class EmployeeService {
       // Step 2: Delete documents from Backblaze (if any)
       if (documents && documents.length > 0) {
         log.info(`🗂️ Deleting ${documents.length} documents for employee ${employeeId}`);
-        
+
         // Import BackblazeService dynamically
         const { BackblazeService } = await import('./backblaze');
-        
+
         for (const doc of documents) {
           try {
             if ((doc as any).file_path && typeof (doc as any).file_path === 'string' && (doc as any).file_path.trim() !== '') {
@@ -989,25 +998,25 @@ export class EmployeeService {
       // Get all companies and clean them up
       const allCompanies = Array.from(companies).sort();
       log.info('🏢 All companies found in database:', allCompanies);
-      
+
       // Filter out only unwanted companies, keep all active companies
       const cleanCompanies = allCompanies.filter(company => {
         // Remove Company Documents (not a real company)
         if (company === 'Company Documents') return false;
-        
+
         // Remove duplicate Fluid Engineering variations (keep only FLUID ENGINEERING)
         if (company === 'FLUID ENGINEERING SERVICES') return false;
         if (company === 'FLUID') return false;
-        
+
         // Keep all other companies including:
         // - CUBS, GOLDEN CUBS, CUBS CONTRACTING (as you confirmed)
         // - FLUID ENGINEERING (after consolidation)
         // - All other active companies
         return true;
       });
-      
+
       log.info('🏢 Clean companies after filtering:', cleanCompanies);
-      
+
       const result: FilterOptions = {
         companies: cleanCompanies as string[],
         trades: Array.from(trades).sort(),
@@ -1019,22 +1028,22 @@ export class EmployeeService {
       // Cache the result
       this.filterOptionsCache = { data: result, timestamp: Date.now() };
       this.logPerformance('getFilterOptions-query', performance.now() - startTime);
-      
+
       return result;
     } catch (error) {
       log.error('Error getting filter options:', error);
-      
+
       // If it's a timeout error, return basic data
       if (error instanceof Error && error.message.includes('timeout')) {
         log.info('⚠️ Filter options query timed out, returning basic data');
       }
-      
+
       // Return fallback data to prevent UI from breaking
       return {
         companies: [
-          'CUBS', 
-          'GOLDEN CUBS', 
-          'CUBS CONTRACTING', 
+          'CUBS',
+          'GOLDEN CUBS',
+          'CUBS CONTRACTING',
           'FLUID ENGINEERING',
           'AL ASHBAL AJMAN',
           'AL MACEN',
@@ -1114,7 +1123,7 @@ export class EmployeeService {
   private static async getAdminDashboardStatsFallback(filters?: DashboardFilters): Promise<DashboardStats> {
     try {
       const dateFilter = this.getDateFilter(filters?.dateRange);
-      
+
       // Get total employees
       const { count: totalEmployees, error: employeesError } = await supabase
         .from('employee_table')
@@ -1177,7 +1186,7 @@ export class EmployeeService {
   static async getEmployeeDistributionByDepartment(filters?: DashboardFilters): Promise<DepartmentDistribution[]> {
     try {
       const dateFilter = this.getDateFilter(filters?.dateRange);
-      
+
       const { data, error } = await supabase
         .from('employee_table')
         .select('trade, created_at')
@@ -1191,22 +1200,22 @@ export class EmployeeService {
 
       // Group by department and calculate statistics
       const departmentMap = new Map<string, { count: number; recentCount: number }>();
-      
+
       data?.forEach(employee => {
         const trade = ((employee as any).trade as string) || 'Unknown';
         const isRecent = new Date((employee as any).created_at as string) > new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        
+
         if (!departmentMap.has(trade)) {
           departmentMap.set(trade, { count: 0, recentCount: 0 });
         }
-        
+
         const dept = departmentMap.get(trade)!;
         dept.count++;
         if (isRecent) dept.recentCount++;
       });
 
       const totalEmployees = Array.from(departmentMap.values()).reduce((sum, dept) => sum + dept.count, 0);
-      
+
       return Array.from(departmentMap.entries()).map(([name, stats]) => ({
         name,
         employees: stats.count,
@@ -1262,7 +1271,7 @@ export class EmployeeService {
     try {
       const dateFilter = this.getDateFilter(filters?.dateRange);
       const months = this.getLast6Months();
-      
+
       const trendData: GrowthTrendData[] = [];
 
       for (const month of months) {
@@ -1316,7 +1325,7 @@ export class EmployeeService {
 
       return data?.map(employee => {
         const daysLeft = Math.ceil((new Date((employee as any).visa_expiry_date as string).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-        
+
         let urgency: 'critical' | 'high' | 'medium' | 'low' = 'low';
         if (daysLeft <= 7) urgency = 'critical';
         else if (daysLeft <= 30) urgency = 'high';
@@ -1386,18 +1395,18 @@ export class EmployeeService {
   private static getLast6Months(): Array<{ label: string; start: string; end: string }> {
     const months = [];
     const now = new Date();
-    
+
     for (let i = 5; i >= 0; i--) {
       const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const endDate = new Date(date.getFullYear(), date.getMonth() + 1, 0);
-      
+
       months.push({
         label: date.toLocaleDateString('en-US', { month: 'short' }),
         start: date.toISOString(),
         end: endDate.toISOString()
       });
     }
-    
+
     return months;
   }
 }

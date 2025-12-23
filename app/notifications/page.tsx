@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AuthenticatedLayout from '@/components/layout/AuthenticatedLayout';
 import { Bell, Mail, Clock, CheckCircle, XCircle, Users, Calendar, Settings, Send, RefreshCw, Eye, Search } from 'lucide-react';
 import Card from '@/components/ui/Card';
@@ -37,6 +37,8 @@ interface VisaStats {
   notificationsSent: number;
 }
 
+import VisaRenewalModal from '@/components/notifications/VisaRenewalModal';
+
 function NotificationsPageContent() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [stats, setStats] = useState<NotificationStats>({
@@ -54,27 +56,86 @@ function NotificationsPageContent() {
     notificationsSent: 0
   });
   const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState('');
-  const [filterStatus, setFilterStatus] = useState('');
-  const [filterCategory, setFilterCategory] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [limit] = useState(10);
+  const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isCheckingVisa, setIsCheckingVisa] = useState(false);
+  const [selectedEmployeeForRenewal, setSelectedEmployeeForRenewal] = useState<any>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const fetchExpiringEmployees = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
 
   // Load notifications and stats
   useEffect(() => {
     loadNotifications();
+  }, [currentPage, searchTerm, refreshTrigger]);
+
+  useEffect(() => {
+    loadStats(); // Use dedicated stats endpoint
     loadVisaStats();
+  }, [refreshTrigger]);
+
+  const loadStats = useCallback(async () => {
+    try {
+      log.info('Loading notification stats from API...');
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/notifications/stats'));
+      const result = await response.json();
+
+      if (result.success && result.stats) {
+        const newStats: NotificationStats = {
+          total: result.stats.total_count || 0,
+          sent: result.stats.sent_count || 0,
+          pending: result.stats.pending_count || 0,
+          failed: result.stats.failed_count || 0,
+          today: result.stats.today_count || 0,
+          thisWeek: result.stats.week_count || 0
+        };
+        setStats(newStats);
+        log.info('Notification stats loaded successfully:', newStats);
+      } else {
+        log.warn('No stats found or API error:', result.error);
+        setStats({
+          total: 0,
+          sent: 0,
+          pending: 0,
+          failed: 0,
+          today: 0,
+          thisWeek: 0
+        });
+      }
+    } catch (error) {
+      log.error('Error loading notification stats:', error);
+      setStats({
+        total: 0,
+        sent: 0,
+        pending: 0,
+        failed: 0,
+        today: 0,
+        thisWeek: 0
+      });
+    }
   }, []);
 
-  const loadNotifications = async () => {
+  const loadNotifications = useCallback(async () => {
     setIsLoading(true);
     try {
       log.info('Loading notifications from API...');
-      
+
       // Load notifications from API - use getApiUrl for mobile compatibility
       const { getApiUrl } = await import('@/lib/utils/apiClient');
-      const response = await fetch(getApiUrl('api/notifications'));
+      const offset = (currentPage - 1) * limit;
+      const queryParams = new URLSearchParams({
+        search: searchTerm,
+        limit: String(limit),
+        offset: String(offset)
+      });
+
+      const response = await fetch(getApiUrl(`api/notifications?${queryParams.toString()}`));
       const result = await response.json();
 
       if (result.success && result.notifications) {
@@ -91,33 +152,16 @@ function NotificationsPageContent() {
         }));
 
         setNotifications(transformedNotifications);
+        // Assuming the API might return total count in the future, for now we just show what we have
+        // If your API returned a total count, you'd set it here.
+        // For now, let's assume if we got a full page, there might be more
+        setTotalCount(result.notifications.length === limit ? (currentPage * limit) + 1 : (currentPage - 1) * limit + result.notifications.length);
 
-        // Calculate stats from real data
-        const today = new Date().toDateString();
-        const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-
-        const newStats: NotificationStats = {
-          total: transformedNotifications.length,
-          sent: transformedNotifications.filter(n => n.status === 'sent').length,
-          pending: transformedNotifications.filter(n => n.status === 'pending').length,
-          failed: transformedNotifications.filter(n => n.status === 'failed').length,
-          today: transformedNotifications.filter(n => new Date(n.createdAt).toDateString() === today).length,
-          thisWeek: transformedNotifications.filter(n => new Date(n.createdAt) >= weekAgo).length
-        };
-
-        setStats(newStats);
         log.info('Notifications loaded successfully:', { count: transformedNotifications.length });
       } else {
         log.warn('No notifications found or API error:', result.error);
         setNotifications([]);
-        setStats({
-          total: 0,
-          sent: 0,
-          pending: 0,
-          failed: 0,
-          today: 0,
-          thisWeek: 0
-        });
+        setTotalCount(0);
       }
     } catch (error) {
       log.error('Error loading notifications:', error);
@@ -134,12 +178,12 @@ function NotificationsPageContent() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [currentPage, searchTerm, limit]);
 
-  const loadVisaStats = async () => {
+  const loadVisaStats = useCallback(async () => {
     try {
       log.info('Loading visa statistics from API...');
-      
+
       // Load visa stats from API - use getApiUrl for mobile compatibility
       const { getApiUrl } = await import('@/lib/utils/apiClient');
       const response = await fetch(getApiUrl('api/visa-notifications'));
@@ -172,13 +216,13 @@ function NotificationsPageContent() {
         notificationsSent: 0
       });
     }
-  };
+  }, []);
 
   const sendTestEmail = async () => {
     setIsSendingTest(true);
     try {
       log.info('Sending test email...');
-      
+
       const { getApiUrl } = await import('@/lib/utils/apiClient');
       const response = await fetch(getApiUrl('api/send-email'), {
         method: 'POST',
@@ -198,7 +242,7 @@ function NotificationsPageContent() {
       if (result.success) {
         toast.success('Test email sent successfully to info@cubstechnical.com');
         log.info('Test email sent successfully:', result.messageId);
-        
+
         // Refresh notifications to show the new test email
         loadNotifications();
       } else {
@@ -217,7 +261,7 @@ function NotificationsPageContent() {
     setIsCheckingVisa(true);
     try {
       log.info('Checking visa expiries and sending notifications...');
-      
+
       const { getApiUrl } = await import('@/lib/utils/apiClient');
       const response = await fetch(getApiUrl('api/visa-notifications'), {
         method: 'POST',
@@ -230,12 +274,12 @@ function NotificationsPageContent() {
 
       if (result.success) {
         const { notifications_sent, expiring_soon, expired, total_employees } = result.results;
-        
+
         if (expiring_soon > 0 || expired > 0) {
           // Send push notification for visa expiries
           try {
             const { PushNotificationService } = await import('@/lib/services/pushNotifications');
-            
+
             // Determine urgency based on expiring soon count
             let urgency: 'critical' | 'urgent' | 'high' | 'medium' | 'low' = 'medium';
             if (expired > 0) {
@@ -245,7 +289,7 @@ function NotificationsPageContent() {
               const { getApiUrl } = await import('@/lib/utils/apiClient');
               const statsResponse = await fetch(getApiUrl('api/visa-notifications'));
               const statsResult = await statsResponse.json();
-              
+
               if (statsResult.success && statsResult.stats) {
                 // We'll use a general urgency for now
                 urgency = 'high';
@@ -254,7 +298,7 @@ function NotificationsPageContent() {
 
             const totalAffected = expiring_soon + expired;
             const daysRemaining = expired > 0 ? 0 : 7; // Use 7 as default for expiring soon
-            
+
             await PushNotificationService.sendVisaExpiryNotification(
               totalAffected,
               daysRemaining,
@@ -269,20 +313,20 @@ function NotificationsPageContent() {
         } else {
           toast.success('Visa expiry check completed. No notifications needed at this time.');
         }
-        
+
         log.info('Visa expiry check completed:', {
           notifications_sent,
           expiring_soon,
           expired,
           total_employees
         });
-        
+
         // Update visa stats with notification count
         setVisaStats(prev => ({
           ...prev,
           notificationsSent: notifications_sent || 0
         }));
-        
+
         // Refresh both notifications and visa stats
         loadNotifications();
         loadVisaStats();
@@ -298,15 +342,7 @@ function NotificationsPageContent() {
     }
   };
 
-  const filteredNotifications = notifications.filter(notification => {
-    const matchesSearch = notification.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         notification.message.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         notification.recipient.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = !filterType || notification.type === filterType;
-    const matchesStatus = !filterStatus || notification.status === filterStatus;
-    const matchesCategory = !filterCategory || notification.category === filterCategory;
-    return matchesSearch && matchesType && matchesStatus && matchesCategory;
-  });
+
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -394,7 +430,7 @@ function NotificationsPageContent() {
             <Bell className="w-8 h-8 text-blue-600" />
           </div>
         </Card>
-        
+
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -404,7 +440,7 @@ function NotificationsPageContent() {
             <CheckCircle className="w-8 h-8 text-green-600" />
           </div>
         </Card>
-        
+
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -414,7 +450,7 @@ function NotificationsPageContent() {
             <Clock className="w-8 h-8 text-yellow-600" />
           </div>
         </Card>
-        
+
         <Card className="p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -504,6 +540,12 @@ function NotificationsPageContent() {
         </div>
       </Card>
 
+      {/* Action Required: Visa Renewals */}
+      <ActionRequiredSection
+        key={refreshTrigger}
+        onRenew={(employee) => setSelectedEmployeeForRenewal(employee)}
+      />
+
       {/* Filters */}
       <Card className="p-6 mb-6">
         <div className="flex flex-col lg:flex-row gap-4">
@@ -519,73 +561,35 @@ function NotificationsPageContent() {
               />
             </div>
           </div>
-          <div className="flex gap-4">
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="">All Types</option>
-              <option value="success">Success</option>
-              <option value="warning">Warning</option>
-              <option value="error">Error</option>
-              <option value="info">Info</option>
-            </select>
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="">All Status</option>
-              <option value="sent">Sent</option>
-              <option value="pending">Pending</option>
-              <option value="failed">Failed</option>
-            </select>
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
-            >
-              <option value="">All Categories</option>
-              <option value="visa">Visa</option>
-              <option value="document">Document</option>
-              <option value="system">System</option>
-              <option value="approval">Approval</option>
-            </select>
-          </div>
         </div>
       </Card>
 
       {/* Notifications List */}
       <Card>
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Notifications</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Notifications</h2>
+            <span className="text-sm text-gray-500">Page {currentPage}</span>
+          </div>
+
           {isLoading ? (
             <div className="text-center py-8">
               <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-gray-400" />
               <p className="text-gray-600 dark:text-gray-400">Loading notifications...</p>
             </div>
-          ) : filteredNotifications.length === 0 ? (
+          ) : notifications.length === 0 ? (
             <div className="text-center py-8">
               <Bell className="w-12 h-12 mx-auto mb-4 text-gray-400" />
               <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No notifications found</h3>
               <p className="text-gray-600 dark:text-gray-400 mb-4">
-                {notifications.length === 0 
-                  ? "No notifications have been created yet. The notifications table may not exist in the database."
-                  : "No notifications match your current filters."
-                }
+                {searchTerm
+                  ? "No results match your search."
+                  : "You don't have any notifications yet."}
               </p>
-              {notifications.length === 0 && (
-                <div className="bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 max-w-md mx-auto">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
-                    No notifications found. Notifications will appear here when they are generated.
-                  </p>
-                </div>
-              )}
             </div>
           ) : (
             <div className="space-y-4">
-              {filteredNotifications.map((notification) => (
+              {notifications.map((notification) => (
                 <div
                   key={notification.id}
                   className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
@@ -615,7 +619,26 @@ function NotificationsPageContent() {
                         )}
                       </div>
                     </div>
+                    {/* Action Buttons */}
                     <div className="flex items-center gap-2">
+                      {/* Show Renew button if it's a visa expiry notification */}
+                      {notification.category === 'visa' && (notification.type === 'error' || notification.type === 'warning') && (
+                        <Button
+                          size="sm"
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          onClick={() => {
+                            // Try to parse employee name from message to find them
+                            // This is a bit of a hack, ideally notification should carry metadata
+                            // For now, let's open a generic employee search or redirect
+                            // Better yet, let's look at the Action Required Section below
+                            document.getElementById('action-required-section')?.scrollIntoView({ behavior: 'smooth' });
+                          }}
+                        >
+                          <RefreshCw className="w-4 h-4 mr-1" />
+                          Resolve
+                        </Button>
+                      )}
+
                       <Button variant="outline" size="sm">
                         <Eye className="w-4 h-4 mr-1" />
                         View
@@ -624,11 +647,175 @@ function NotificationsPageContent() {
                   </div>
                 </div>
               ))}
+
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                  disabled={currentPage === 1 || isLoading}
+                >
+                  Previous
+                </Button>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Page {currentPage}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(prev => prev + 1)}
+                  disabled={notifications.length < limit || isLoading}
+                >
+                  Next
+                </Button>
+              </div>
             </div>
           )}
         </div>
       </Card>
+
+      {/* Visa Renewal Modal */}
+      {selectedEmployeeForRenewal && (
+        <VisaRenewalModal
+          isOpen={!!selectedEmployeeForRenewal}
+          onClose={() => setSelectedEmployeeForRenewal(null)}
+          employee={selectedEmployeeForRenewal}
+          onSuccess={() => {
+            loadVisaStats(); // Refresh stats
+            toast.success('Stats updated');
+            // Refresh list if we had one
+            fetchExpiringEmployees();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// Helper component for the Action Required Section
+function ActionRequiredSection({
+  onRenew
+}: {
+  onRenew: (employee: any) => void
+}) {
+  const [employees, setEmployees] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expanded, setExpanded] = useState(true);
+
+  const fetchExpiring = async () => {
+    try {
+      setLoading(true);
+
+      // Use supabase client directly here for simplicity and speed
+      const { supabase } = await import('@/lib/supabase/client');
+      const now = new Date();
+      const thirtyDays = new Date();
+      thirtyDays.setDate(now.getDate() + 30);
+
+      const { data, error } = await supabase
+        .from('employee_table')
+        .select('employee_id, name, visa_expiry_date, company_name')
+        .lte('visa_expiry_date', thirtyDays.toISOString())
+        .eq('is_active', true)
+        .order('visa_expiry_date', { ascending: true });
+
+      if (data) {
+        setEmployees((data as any[]).map((e: any) => ({
+          id: e.employee_id,
+          name: e.name,
+          visa_expiry_date: e.visa_expiry_date,
+          company_name: e.company_name
+        })));
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchExpiring();
+  }, []);
+
+  if (loading) return null;
+  if (employees.length === 0) return null;
+
+  return (
+    <Card className="mb-8 border-l-4 border-l-orange-500" id="action-required-section">
+      <div className="p-4 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-orange-50/50 dark:bg-orange-900/10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-orange-100 dark:bg-orange-800 rounded-full text-orange-600 dark:text-orange-200">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-white">Action Required: Visa Renewals</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              {employees.length} employees have expired or expiring visas
+            </p>
+          </div>
+        </div>
+        <Button variant="ghost" size="sm" onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Collapse' : 'Expand'}
+        </Button>
+      </div>
+
+      {expanded && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-50 dark:bg-gray-800 text-gray-500 dark:text-gray-400 uppercase text-xs">
+              <tr>
+                <th className="px-6 py-3">Employee</th>
+                <th className="px-6 py-3">Company</th>
+                <th className="px-6 py-3">Expiry Date</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3 text-right">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
+              {employees.map((emp) => {
+                const days = Math.ceil((new Date(emp.visa_expiry_date).getTime() - new Date().getTime()) / (86400000));
+                const isExpired = days < 0;
+
+                return (
+                  <tr key={emp.id} className="bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800">
+                    <td className="px-6 py-4 font-medium text-gray-900 dark:text-white">
+                      {emp.name}
+                      <span className="block text-xs text-gray-500">{emp.id}</span>
+                    </td>
+                    <td className="px-6 py-4">{emp.company_name}</td>
+                    <td className="px-6 py-4 font-mono">
+                      {new Date(emp.visa_expiry_date).toLocaleDateString()}
+                    </td>
+                    <td className="px-6 py-4">
+                      {isExpired ? (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          Expired {Math.abs(days)} days ago
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                          Expires in {days} days
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <Button
+                        size="sm"
+                        className="bg-green-600 hover:bg-green-700 text-white shadow-sm"
+                        onClick={() => onRenew(emp)}
+                      >
+                        Renew
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </Card>
   );
 }
 

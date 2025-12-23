@@ -4,6 +4,7 @@ import { ReactNode, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import OptimizedLayout from './OptimizedLayout';
+import { usePushNotifications } from '@/lib/hooks/usePushNotifications';
 
 interface AuthenticatedLayoutProps {
   children: ReactNode;
@@ -15,14 +16,17 @@ interface AuthenticatedLayoutProps {
  * Wrapper for pages that require authentication
  * Handles auth checks and redirects
  */
-export default function AuthenticatedLayout({ 
-  children, 
+export default function AuthenticatedLayout({
+  children,
   requireAuth = true,
-  requireAdmin = false 
+  requireAdmin = false
 }: AuthenticatedLayoutProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { user, isLoading } = useAuth();
+
+  // Initialize push notifications for mobile devices
+  usePushNotifications();
 
   useEffect(() => {
     if (!isLoading && requireAuth) {

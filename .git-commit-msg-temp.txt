@@ -1,1 +1,0 @@
-chore: configure Capacitor to load https://cubsgroups.com via server.url for instant web updates on Android

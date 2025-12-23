@@ -188,7 +188,11 @@ export default function LoginPage() {
   useEffect(() => {
     if (loginAttempted && user && user.id) {
       log.info('Login page: User detected after login attempt, redirecting...');
-      toast.success('Login successful!', { duration: 2000 }); // Auto-dismiss after 2 seconds
+      // Use unique ID to prevent duplicate toasts
+      toast.success('Login successful!', { id: 'login-success', duration: 2000 });
+
+      // Reset loginAttempted immediately to prevent re-runs
+      setLoginAttempted(false);
 
       // Android Capacitor fix: Use router.replace for in-app navigation
       if (isCapacitorApp()) {
@@ -199,8 +203,6 @@ export default function LoginPage() {
       } else {
         router.push('/dashboard');
       }
-
-      setLoginAttempted(false);
     }
   }, [user, loginAttempted, router]);
 
@@ -362,37 +364,34 @@ export default function LoginPage() {
         }}
       >
         <div className="w-full max-w-sm mobile-optimized flex flex-col items-center space-y-2 my-auto">
-          {/* Logo removed for mobile */}
-          {!isCapacitorApp() && (
-            <div className="login-logo-container-image text-center">
-              <div className="flex justify-center mb-4">
-                <div className="relative">
-                  {!logoFailed ? (
-                    <Image
-                      src="/assets/cubs.webp"
-                      alt="CUBS Logo"
-                      width={120}
-                      height={120}
-                      className="login-logo-image"
-                      priority
-                      style={{ width: '120px', height: '120px' }}
-                      onError={() => {
-                        log.info('Logo failed to load, using fallback');
-                        setLogoFailed(true);
-                      }}
-                    />
-                  ) : (
-                    <div className="w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
-                      CUBS
-                    </div>
-                  )}
-                </div>
+          <div className="login-logo-container-image text-center">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                {!logoFailed ? (
+                  <Image
+                    src="/assets/cubs.webp"
+                    alt="CUBS Logo"
+                    width={120}
+                    height={120}
+                    className="login-logo-image"
+                    priority
+                    style={{ width: '120px', height: '120px' }}
+                    onError={() => {
+                      log.info('Logo failed to load, using fallback');
+                      setLogoFailed(true);
+                    }}
+                  />
+                ) : (
+                  <div className="w-[120px] h-[120px] bg-[#d3194f] rounded-full flex items-center justify-center text-white font-bold text-2xl">
+                    CUBS
+                  </div>
+                )}
               </div>
-              <p className="text-gray-700 dark:text-gray-300 mt-1 font-semibold text-sm text-center px-3 py-1 rounded-lg whitespace-nowrap">
-                Employee Management Portal
-              </p>
             </div>
-          )}
+            <p className="text-gray-700 dark:text-gray-300 mt-1 font-semibold text-sm text-center px-3 py-1 rounded-lg whitespace-nowrap">
+              Employee Management Portal
+            </p>
+          </div>
 
           {/* Show simplified loading if checking auth */}
           {isCheckingAuth ? (
@@ -405,29 +404,7 @@ export default function LoginPage() {
             <Card className="w-full bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm shadow-xl border-gray-200 dark:border-gray-700 login-card-mobile p-4 sm:p-6 md:p-8">
               {!isForgotPassword ? (
                 <>
-                  {/* Supabase Inactivity Warning - Red Danger Alert */}
-                  <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/30 border-2 border-red-500 dark:border-red-600 rounded-lg shadow-md">
-                    <div className="flex gap-3">
-                      <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5 animate-pulse" />
-                      <div className="flex-1">
-                        <h3 className="font-bold text-red-700 dark:text-red-300 text-base">
-                          ⚠️ PROJECT LOCKED - URGENT
-                        </h3>
-                        <p className="text-red-600 dark:text-red-200 text-sm mt-2 font-semibold">
-                          Your Supabase project has been locked due to inactivity.
-                        </p>
-                        <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                          • Resume access to your app within today to prevent deletion
-                        </p>
-                        <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                          • After today, the project will be permanently deleted
-                        </p>
-                        <p className="text-red-600 dark:text-red-200 text-sm mt-1">
-                          • Your data will be available for download before deletion
-                        </p>
-                      </div>
-                    </div>
-                  </div>
+
 
                   <div className="text-center mb-6">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -438,7 +415,15 @@ export default function LoginPage() {
                     </p>
                   </div>
 
-                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+                  <form
+                    method="post"
+                    action="#"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      handleSubmit(onSubmit)(e);
+                    }}
+                    className="space-y-6"
+                  >
                     <div>
                       <Input
                         label="Email Address"

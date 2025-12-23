@@ -1,7 +1,7 @@
 // CRITICAL: Import console suppression FIRST before anything else
 import '@/lib/utils/consoleSuppress'
 import type { Metadata } from 'next'
-import { Inter } from 'next/font/google'
+import { Outfit } from 'next/font/google'
 import './globals.css'
 import '../styles/mobile-optimizations.css'
 import '../styles/mobile-pwa.css'
@@ -34,14 +34,23 @@ import BiometricAutoLogin from '@/components/capacitor/BiometricAutoLogin'
 import PushNotificationSetup from '@/components/notifications/PushNotificationSetup'
 import { Toaster } from 'react-hot-toast'
 import OfflineIndicator from '@/components/ui/OfflineIndicator'
+import MobileNavigationHandler from '@/components/capacitor/MobileNavigationHandler'
 
-const inter = Inter({ 
+const outfit = Outfit({
   subsets: ['latin'],
   display: 'swap',
-  fallback: ['system-ui', 'arial'],
-  preload: true, // Enable preload for faster font loading
-  variable: '--font-inter', // CSS variable for better performance
+  variable: '--font-inter',
 })
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#d3194f',
+  interactiveWidget: 'resizes-content', // CRITICAL: Fixes iOS keyboard covering inputs
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL || 'https://cubsgroups.com'),
@@ -65,10 +74,7 @@ export const metadata: Metadata = {
       'max-snippet': -1,
     },
   },
-  themeColor: [
-    { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-    { media: '(prefers-color-scheme: dark)', color: '#111827' },
-  ],
+  // themeColor is now in viewport export (line 50)
   manifest: '/manifest.json',
   icons: {
     icon: [
@@ -152,7 +158,7 @@ export default function RootLayout({
         <link rel="apple-touch-icon" href="/assets/cubs.webp" />
         <link rel="apple-touch-icon" href="/assets/cubs.webp" sizes="180x180" />
       </head>
-      <body className={`${inter.variable} font-sans`} suppressHydrationWarning={true}>
+      <body className={`${outfit.variable} antialiased bg-gray-50 dark:bg-gray-900`}>
         <ErrorBoundary>
           <ThemeProvider>
             <SimpleAuthProvider>
@@ -160,62 +166,17 @@ export default function RootLayout({
                 <Toaster position="top-right" />
                 {/* Offline indicator disabled for production - causes confusion */}
                 {/* <OfflineIndicator /> */}
-                
+
                 {/* Client-side initialization */}
                 <ClientOnly fallback={null}>
-                  {(() => {
-                    suppressMobileWarnings();
-                    initializeEnvironment();
-                    // Intercept anchor clicks and override window.open on native to stay in-app
-                    if (typeof window !== 'undefined' && (window as any).Capacitor && (window as any).Capacitor.isNativePlatform && (window as any).Capacitor.isNativePlatform()) {
-                      try {
-                        // 1) Override window.open to keep navigation in the same WebView
-                        const originalOpen = window.open;
-                        window.open = function(url?: string | URL, target?: string, features?: string) {
-                          try {
-                            if (typeof url === 'string' || url instanceof URL) {
-                              const href = String(url);
-                              // For http(s) links and app routes, navigate in place
-                              if (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('/')) {
-                                window.location.href = href;
-                                return window;
-                              }
-                            }
-                          } catch {}
-                          // Fallback to original if anything unexpected
-                          return originalOpen.apply(window, [url as any, target as any, features as any]);
-                        };
+                  <MobileNavigationHandler />
 
-                        // 2) Global click capture to normalize anchor behavior
-                        const handler = (e: any) => {
-                          const anchor = e.target?.closest?.('a');
-                          if (!anchor) return;
-                          const href = anchor.getAttribute('href');
-                          if (!href) return;
-                          const isHash = href.startsWith('#');
-                          const isProtocol = /^(mailto:|tel:|sms:|geo:)/i.test(href);
-                          if (isHash || isProtocol) return; // allow native handlers
-                          e.preventDefault();
-                          // Remove attributes that force external contexts
-                          if (anchor.removeAttribute) {
-                            anchor.removeAttribute('target');
-                            anchor.removeAttribute('rel');
-                          }
-                          // Navigate inside WebView
-                          window.location.href = href;
-                        };
-                        window.addEventListener('click', handler, { capture: true });
-                      } catch {}
-                    }
-                    return null;
-                  })()}
-                  
                   {/* PWA and Capacitor initialization */}
                   <PWARegistration />
                   <CapacitorInit />
                   <BiometricAutoLogin />
                   <PushNotificationSetup />
-                  
+
                   {/* Mobile components */}
                   {/* Mobile status indicator disabled for production */}
                   {/* <MobileStatusIndicator /> */}
@@ -227,7 +188,7 @@ export default function RootLayout({
                   {isCapacitorApp() && (
                     <BlankScreenFix />
                   )}
-                  
+
                   {/* Performance monitor for development */}
                   {process.env.NODE_ENV === 'development' && (
                     <div style={{ display: 'none' }}>

@@ -63,7 +63,33 @@ export default function CapacitorInit() {
       }
     };
 
+    // Handle Hardware Back Button (Android)
+    const setupBackButton = async () => {
+      try {
+        if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNative) {
+          const { App } = await import('@capacitor/app');
+          App.addListener('backButton', ({ canGoBack }) => {
+            if (canGoBack) {
+              window.history.back();
+            } else {
+              const pathname = window.location.pathname;
+              // Only exit if on main pages
+              if (pathname === '/dashboard' || pathname === '/login' || pathname === '/') {
+                App.exitApp();
+              } else {
+                // If on a sub-page but no history (rare), go to dashboard
+                window.location.href = '/dashboard';
+              }
+            }
+          });
+        }
+      } catch (error) {
+        log.error('CapacitorInit: Error setting up back button:', error);
+      }
+    };
+
     initializeMobileAuth();
+    setupBackButton();
   }, []);
 
   return null; // This component doesn't render anything

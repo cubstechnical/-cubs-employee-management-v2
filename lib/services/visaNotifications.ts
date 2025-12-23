@@ -25,33 +25,33 @@ const EMAIL_BATCH_SIZE = 10; // Send emails in batches to avoid rate limiting
 export async function checkAndSendVisaExpiryNotifications(): Promise<void> {
   try {
     log.info('🔄 Checking for visa expiry notifications...');
-    
+
     const today = new Date();
     const records = await getVisaExpiryRecords();
-    
+
     // Group employees by notification intervals
     const notificationsByInterval = groupNotificationsByInterval(records);
-    
+
     // Send consolidated emails for each interval
     let totalEmailsSent = 0;
-    
+
     for (const [interval, employees] of Object.entries(notificationsByInterval)) {
       if (employees.length > 0) {
         await sendConsolidatedVisaExpiryEmail(employees, parseInt(interval));
         totalEmailsSent++;
-        
+
         // Update notification flags for all employees in this interval
         await updateNotificationFlagsForBatch(employees, parseInt(interval));
-        
+
         log.info(`📧 Consolidated visa expiry notification sent for ${employees.length} employees (${interval} days)`);
-        
+
         // Respect Gmail rate limits - wait between batches
         if (totalEmailsSent < Object.keys(notificationsByInterval).length) {
           await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second between emails
         }
       }
     }
-    
+
     log.info(`✅ Visa expiry notification check completed. Sent ${totalEmailsSent} consolidated emails.`);
   } catch (error) {
     log.error('❌ Error checking visa expiry notifications:', error);
@@ -60,10 +60,10 @@ export async function checkAndSendVisaExpiryNotifications(): Promise<void> {
 
 function groupNotificationsByInterval(records: VisaExpiryRecord[]): Record<number, VisaExpiryRecord[]> {
   const grouped: Record<number, VisaExpiryRecord[]> = {};
-  
+
   for (const record of records) {
     const daysUntilExpiry = calculateDaysUntilExpiry(record.visa_expiry_date);
-    
+
     if (shouldSendNotification(record, daysUntilExpiry)) {
       if (!grouped[daysUntilExpiry]) {
         grouped[daysUntilExpiry] = [];
@@ -71,7 +71,7 @@ function groupNotificationsByInterval(records: VisaExpiryRecord[]): Record<numbe
       grouped[daysUntilExpiry].push(record);
     }
   }
-  
+
   return grouped;
 }
 
@@ -85,7 +85,7 @@ async function getVisaExpiryRecords(): Promise<VisaExpiryRecord[]> {
 
     if (testError && testError.code === '42703') {
       log.info('⚠️ Notification tracking columns do not exist yet. Using basic employee data.');
-      
+
       // Fallback: get basic employee data without notification tracking
       const { data, error } = await supabase
         .from('employee_table')
@@ -201,9 +201,9 @@ async function sendConsolidatedVisaExpiryEmail(employees: VisaExpiryRecord[], da
   const urgency = getUrgencyLevel(daysUntilExpiry);
   const urgencyColor = getUrgencyColor(daysUntilExpiry);
   const urgencyBg = getUrgencyBackground(daysUntilExpiry);
-  
+
   const subject = `🚨 VISA EXPIRY ${urgency}: ${employees.length} Employee${employees.length > 1 ? 's' : ''} - ${daysUntilExpiry} Day${daysUntilExpiry === 1 ? '' : 's'} Remaining`;
-  
+
   const employeeRows = employees.map(employee => `
     <tr style="border-bottom: 1px solid #e5e7eb;">
       <td style="padding: 12px; text-align: left;">${employee.employee_name}</td>
@@ -321,30 +321,88 @@ Email Service Details:
 Generated on: ${new Date().toLocaleString()}`;
 
   try {
-    // Send email notification
+    // 🛡️ SAFETY: Block all emails in development mode
+    if (process.env.DISABLE_EMAILS === 'true') {
+      log.warn(`📧 VISA EMAIL BLOCKED (DISABLE_EMAILS=true): Would send to info@cubstechnical.com for ${employees.length} employees (${daysUntilExpiry} days)`);
+      log.info(`✅ Mock: Consolidated visa expiry email blocked for ${employees.length} employees (${daysUntilExpiry} days)`);
+      return; // Exit early, don't send email
+    }
+
+    // Send email notification (if not blocked)
     const emailResult = await EmailService.sendEmail({
       to: 'info@cubstechnical.com',
       subject: subject,
       html: html,
       text: text
     });
-    
+
     if (emailResult.success) {
       log.info(`✅ Consolidated visa expiry email sent for ${employees.length} employees (${daysUntilExpiry} days)`);
     } else {
       log.error('❌ Error sending consolidated visa expiry email:', emailResult.error);
     }
 
-    // Send push notification (client-side only, will be triggered from the API)
-    // We'll handle this in the API route since push notifications need to run in browser context
-    if (typeof window !== 'undefined') {
-      const urgency = getUrgencyLevel(daysUntilExpiry).toLowerCase() as 'critical' | 'urgent' | 'high' | 'medium' | 'low';
-      await PushNotificationService.sendVisaExpiryNotification(
-        employees.length,
-        daysUntilExpiry,
-        urgency
+    // 🚀 AUTOMATED PUSH NOTIFICATION
+    try {
+      // 1. Fetch all registered push tokens (admin devices)
+      // In a real app, you might filter by role. Here we assume all registered tokens are admins.
+      const { createClient } = require('@supabase/supabase-js');
+      const supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
       );
+
+      const { data: tokens, error: tokenError } = await supabase
+        .from('push_tokens')
+        .select('token');
+
+      if (tokenError) {
+        if (tokenError.code === '42P01') {
+          log.warn('⚠️ Push tokens table missing. Skipping push notification.');
+        } else {
+          log.error('Error fetching push tokens:', tokenError);
+        }
+      } else if (tokens && tokens.length > 0) {
+        const tokenList = (tokens as any[]).map((t: any) => t.token);
+        const urgency = getUrgencyLevel(daysUntilExpiry); // 'Critical', 'Urgent' etc.
+        const emoji = urgency === 'Critical' ? '🚨' : urgency === 'Urgent' ? '⚠️' : 'ℹ️';
+
+        // Import dynamically to avoid circle deps or server interactions in client files (though this file seems shared)
+        const { sendPushNotification } = require('@/lib/services/firebasePush');
+
+        await sendPushNotification(
+          tokenList,
+          `${emoji} ${urgency}: ${employees.length} Visa${employees.length > 1 ? 's' : ''} Expiring in ${daysUntilExpiry} Days`,
+          `Action Required: Check email for details.`,
+          {
+            type: 'visa_expiry',
+            count: employees.length,
+            days: daysUntilExpiry
+          }
+        );
+        log.info(`📲 Automated push notification trigger for ${tokenList.length} devices`);
+      }
+    } catch (pushError) {
+      log.error('Failed to trigger automated push:', pushError);
     }
+
+    // ✈️ AUTOMATED TELEGRAM ALERT
+    try {
+      const { TelegramBotService } = require('@/lib/services/telegramBot');
+      const urgency = getUrgencyLevel(daysUntilExpiry);
+
+      // Only send for High/Urgent/Critical to reduce spam
+      if (['Critical', 'Urgent', 'High'].includes(urgency)) {
+        const emoji = urgency === 'Critical' ? '🚨' : urgency === 'Urgent' ? '⚠️' : '🔴';
+        // Markdown formatting for Telegram
+        const telegramMessage = `${emoji} *CUBS Alert*\n${employees.length} Visa${employees.length > 1 ? 's' : ''} Expiring in ${daysUntilExpiry} Days\n\nUrgency: ${urgency}\nPlease check [Admin Dashboard](https://cubstechnical.com).`;
+
+        await TelegramBotService.sendAlert(telegramMessage);
+      }
+    } catch (tgError) {
+      log.error('Failed to trigger Telegram alert:', tgError);
+    }
+
   } catch (error) {
     log.error('❌ Error sending consolidated visa expiry email:', error);
   }
@@ -389,7 +447,7 @@ async function updateNotificationFlagsForBatch(employees: VisaExpiryRecord[], da
 
     const employeeIds = employees.map(emp => emp.id);
     const updateData: any = {};
-    
+
     switch (daysUntilExpiry) {
       case 60:
         updateData.notification_sent_60 = true;
@@ -448,14 +506,14 @@ export async function getVisaExpiryStats(): Promise<{
 
     if (testError && testError.code === '42703') {
       log.info('⚠️ Notification tracking columns do not exist yet. Using basic stats.');
-      
+
       // Fallback: get basic employee data without notification tracking
       const result = await supabase
         .from('employee_table')
         .select('visa_expiry_date')
         .not('visa_expiry_date', 'is', null)
         .eq('is_active', true);
-      
+
       employees = result.data;
       error = result.error;
     } else {
@@ -465,7 +523,7 @@ export async function getVisaExpiryStats(): Promise<{
         .select('visa_expiry_date, notification_sent_60, notification_sent_30, notification_sent_15, notification_sent_7, notification_sent_1')
         .not('visa_expiry_date', 'is', null)
         .eq('is_active', true);
-      
+
       employees = result.data;
       error = result.error;
     }
@@ -483,7 +541,7 @@ export async function getVisaExpiryStats(): Promise<{
     employees?.forEach(employee => {
       if ((employee as any).visa_expiry_date && typeof (employee as any).visa_expiry_date === 'string') {
         const daysUntilExpiry = calculateDaysUntilExpiry((employee as any).visa_expiry_date);
-        
+
         if (daysUntilExpiry < 0) {
           expired++;
         } else if (daysUntilExpiry <= 30) {

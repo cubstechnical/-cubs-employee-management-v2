@@ -19,7 +19,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function SimpleAuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
-  const [isLoading, setIsLoading] = useState(false) // Start with false to prevent loading screens
+  const [isLoading, setIsLoading] = useState(true) // Start with true to check session first
 
   useEffect(() => {
     // Simplified session loading to prevent white page issues
@@ -35,7 +35,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
         try {
           const userData = await Promise.race([
             AuthService.getCurrentUser(),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 2000))
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Auth timeout')), 10000))
           ]) as any;
 
           if (userData && userData.id) {
@@ -51,10 +51,11 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
         log.warn('SimpleAuthContext: Session loading failed (non-critical):', error);
       } finally {
         // Always set loading to false after a short delay
+        // This ensures the UI has processed any user state updates
         setTimeout(() => {
           setIsLoading(false);
           log.info('SimpleAuthContext: Loading state set to false');
-        }, 500);
+        }, 100);
       }
     }
 
@@ -139,7 +140,7 @@ export function SimpleAuthProvider({ children }: { children: ReactNode }) {
             // Use setTimeout to ensure toast is available
             setTimeout(() => {
               const { default: toast } = require('react-hot-toast');
-              toast.success('Biometric login enabled! You can use Face ID/Touch ID next time.');
+              // Toast is shown in login page, no need to duplicate here
             }, 500);
           }
         } catch (mobileError) {

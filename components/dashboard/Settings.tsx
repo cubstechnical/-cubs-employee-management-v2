@@ -6,11 +6,11 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Select from '@/components/ui/Select';
 import ThemeToggle from '@/components/ui/ThemeToggle';
-import { 
-  User, 
-  Mail, 
-  Bell, 
-  Shield, 
+import {
+  User,
+  Mail,
+  Bell,
+  Shield,
   Globe,
   Save,
   Eye,
@@ -19,13 +19,15 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  Info
+  Info,
+  Smartphone // Added import
 } from 'lucide-react';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import { AuthService } from '@/lib/services/auth';
 import toast from 'react-hot-toast';
 import Link from 'next/link';
 import { log } from '@/lib/utils/productionLogger';
+import PushNotificationForm from './PushNotificationForm'; // Added import
 
 export default function Settings() {
   const { user, signOut } = useAuth();
@@ -490,6 +492,42 @@ export default function Settings() {
           </div>
         </Card>
 
+        {/* Push Notification Center (Admin) */}
+        <Card className="p-6">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center justify-between">
+            <div className="flex items-center">
+              <Smartphone className="w-5 h-5 mr-2" />
+              Push Notification Center
+            </div>
+            <span className="text-xs bg-[#d3194f]/10 text-[#d3194f] px-2 py-1 rounded border border-[#d3194f]/20">Admin</span>
+          </h2>
+
+          <div className="space-y-6">
+            {/* Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                <div className="text-sm text-gray-500 dark:text-gray-400">Registered Devices</div>
+                <div className="text-2xl font-bold flex items-center gap-2 mt-1">
+                  <Smartphone className="w-5 h-5 text-[#d3194f]" />
+                  <span>--</span> <span className="text-xs font-normal text-muted-foreground">(Requires Migration)</span>
+                </div>
+              </div>
+              <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-100 dark:border-gray-700">
+                <div className="text-sm text-gray-500 dark:text-gray-400">Automated Alerts</div>
+                <div className="text-lg font-medium mt-1 text-green-600 dark:text-green-400 flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500"></div> Active
+                </div>
+              </div>
+            </div>
+
+            {/* Manual Send Form */}
+            <div className="border-t border-gray-100 dark:border-gray-700 pt-6">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-4 uppercase tracking-wider">Send Manual Notification</h3>
+              <PushNotificationForm />
+            </div>
+          </div>
+        </Card>
+
         {/* Preferences */}
         <Card className="p-6">
           <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 flex items-center">
@@ -611,7 +649,7 @@ export default function Settings() {
                 </Button>
               </Link>
             </div>
-            
+
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div>
                 <h3 className="font-medium text-gray-900 dark:text-white">Privacy Policy</h3>
@@ -625,7 +663,7 @@ export default function Settings() {
                 </Button>
               </Link>
             </div>
-            
+
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div>
                 <h3 className="font-medium text-gray-900 dark:text-white">Terms of Service</h3>
@@ -639,7 +677,7 @@ export default function Settings() {
                 </Button>
               </Link>
             </div>
-            
+
             <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div>
                 <h3 className="font-medium text-gray-900 dark:text-white">Contact Support</h3>
@@ -670,7 +708,7 @@ export default function Settings() {
                     Delete Account
                   </h3>
                   <p className="text-sm text-red-700 dark:text-red-300 mb-4">
-                    Once you delete your account, there is no going back. This will permanently remove your account, 
+                    Once you delete your account, there is no going back. This will permanently remove your account,
                     all your data, and all associated information. This action cannot be undone.
                   </p>
                   <div className="text-sm text-red-600 dark:text-red-400 mb-4">
@@ -697,65 +735,67 @@ export default function Settings() {
             </div>
           </div>
         </Card>
-      </div>
+      </div >
 
       {/* Delete Account Confirmation Modal */}
-      {showDeleteModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center">
-                <AlertTriangle className="w-5 h-5 mr-2" />
-                Delete Account
-              </h3>
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                disabled={isDeleting}
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            
-            <div className="mb-6">
-              <p className="text-gray-700 dark:text-gray-300 mb-4">
-                Are you absolutely sure you want to delete your account? This action cannot be undone.
-              </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                To confirm, please type <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">DELETE</span> in the box below:
-              </p>
-              <Input
-                value={deleteConfirmation}
-                onChange={(e) => setDeleteConfirmation(e.target.value)}
-                placeholder="Type DELETE to confirm"
-                disabled={isDeleting}
-                className="font-mono"
-              />
-            </div>
-            
-            <div className="flex items-center justify-end space-x-3">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setDeleteConfirmation('');
-                }}
-                disabled={isDeleting}
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="danger"
-                onClick={handleDeleteAccount}
-                disabled={isDeleting || deleteConfirmation !== 'DELETE'}
-                icon={<Trash2 className="w-4 h-4" />}
-              >
-                {isDeleting ? 'Deleting...' : 'Delete Account'}
-              </Button>
+      {
+        showDeleteModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-red-600 dark:text-red-400 flex items-center">
+                  <AlertTriangle className="w-5 h-5 mr-2" />
+                  Delete Account
+                </h3>
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                  disabled={isDeleting}
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mb-6">
+                <p className="text-gray-700 dark:text-gray-300 mb-4">
+                  Are you absolutely sure you want to delete your account? This action cannot be undone.
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  To confirm, please type <span className="font-mono bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">DELETE</span> in the box below:
+                </p>
+                <Input
+                  value={deleteConfirmation}
+                  onChange={(e) => setDeleteConfirmation(e.target.value)}
+                  placeholder="Type DELETE to confirm"
+                  disabled={isDeleting}
+                  className="font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end space-x-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDeleteModal(false);
+                    setDeleteConfirmation('');
+                  }}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={handleDeleteAccount}
+                  disabled={isDeleting || deleteConfirmation !== 'DELETE'}
+                  icon={<Trash2 className="w-4 h-4" />}
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete Account'}
+                </Button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 }

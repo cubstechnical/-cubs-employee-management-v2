@@ -25,7 +25,7 @@ const employeeSchema = z.object({
   phone: z.string().optional(),
   home_phone_number: z.string().optional(),
   address: z.string().optional(),
-  
+
   // Employment Details
   trade: z.string().min(1, 'Trade/Position is required'),
   company_name: z.string().min(1, 'Company is required'),
@@ -34,30 +34,30 @@ const employeeSchema = z.object({
   joining_date: z.string().optional(),
   basic_salary: z.string().optional(),
   salary: z.number().optional(),
-  
+
   // Personal Information
   dob: z.string().optional(),
   date_of_birth: z.string().optional(),
-  
+
   // Passport Information
   passport_no: z.string().optional(),
   passport_number: z.string().optional(),
   passport_expiry: z.string().optional(),
-  
+
   // Visa Information
   visa_expiry_date: z.string().optional(),
   visa_number: z.string().optional(),
   visa_type: z.string().optional(),
   visa_status: z.string().optional(),
   visastamping_date: z.string().optional(),
-  
+
   // Work Permits
   labourcard_no: z.string().optional(),
   labourcard_expiry: z.string().optional(),
   eid: z.string().optional(),
   wcc: z.string().optional(),
   lulu_wps_card: z.string().optional(),
-  
+
   // Additional Information
   leave_date: z.string().optional(),
   is_temporary: z.boolean().optional(),
@@ -80,6 +80,7 @@ export default function NewEmployee() {
   const [loadingCompanies, setLoadingCompanies] = useState(true);
   const [previewEmployeeId, setPreviewEmployeeId] = useState<string>('');
   const [generatingId, setGeneratingId] = useState(false);
+  const [isNewCompany, setIsNewCompany] = useState(false);
 
   const {
     register,
@@ -116,13 +117,13 @@ export default function NewEmployee() {
 
         // Get unique company names
         const uniqueCompanies = [...new Set(data.map((item: any) => item.company_name))];
-        
+
         // Convert to select options format
         const companyOptions = uniqueCompanies.map((company: any) => ({
           value: company as string,
           label: company as string
         }));
-        
+
         setCompanies(companyOptions);
         setLoadingCompanies(false);
       } catch (error) {
@@ -171,7 +172,7 @@ export default function NewEmployee() {
         log.info(`✅ Generated employee ID: ${employeeId} for company: ${companyName}`);
         return employeeId;
       }
-      
+
       // Fallback to old method if new generator fails
       log.warn('Falling back to old employee ID generation method');
       if (employeeName) {
@@ -192,18 +193,18 @@ export default function NewEmployee() {
 
   const onSubmit = async (data: EmployeeFormData) => {
     setIsSubmitting(true);
-    
+
     try {
       // Generate a unique employee ID based on company
       const employeeId = await generateEmployeeId(data.company_name, data.name);
-      
+
       if (!employeeId) {
         toast.error('Failed to generate employee ID. Please try again.');
         return;
       }
-      
+
       log.info(`🆔 Using employee ID: ${employeeId} for new employee: ${data.name}`);
-      
+
       // Prepare the data for insertion - only include fields that exist in the database
       // Remove undefined values and ensure proper data types
       const employeeData: any = {
@@ -235,8 +236,8 @@ export default function NewEmployee() {
       }
       if (data.basic_salary) {
         // Convert to number if it's a string, or use the number directly
-        const salaryValue = typeof data.basic_salary === 'string' 
-          ? parseFloat(data.basic_salary) 
+        const salaryValue = typeof data.basic_salary === 'string'
+          ? parseFloat(data.basic_salary)
           : data.basic_salary;
         if (!isNaN(salaryValue) && salaryValue > 0) {
           employeeData.basic_salary = salaryValue;
@@ -282,7 +283,7 @@ export default function NewEmployee() {
       // Note: is_temporary column does not exist in employee_table, so we skip it
 
       log.info('💾 Creating employee:', employeeData);
-      
+
       // Validate required fields before insert
       if (!employeeData.employee_id || !employeeData.name || !employeeData.trade || !employeeData.company_name || !employeeData.nationality) {
         const missingFields = [];
@@ -291,7 +292,7 @@ export default function NewEmployee() {
         if (!employeeData.trade) missingFields.push('trade');
         if (!employeeData.company_name) missingFields.push('company_name');
         if (!employeeData.nationality) missingFields.push('nationality');
-        
+
         log.error('❌ Missing required fields:', missingFields);
         toast.error(`Missing required fields: ${missingFields.join(', ')}`);
         return;
@@ -303,7 +304,7 @@ export default function NewEmployee() {
         .from('employee_table')
         .select('id')
         .limit(1);
-      
+
       if (testError) {
         log.error('❌ Supabase connection test failed:', {
           message: testError.message,
@@ -314,7 +315,7 @@ export default function NewEmployee() {
         toast.error(`Database connection error: ${testError.message || 'Unable to connect to database'}`);
         return;
       }
-      
+
       log.info('✅ Supabase connection test passed');
 
       log.info('📤 Attempting Supabase insert...');
@@ -324,7 +325,7 @@ export default function NewEmployee() {
         acc[key] = typeof employeeData[key];
         return acc;
       }, {} as Record<string, string>));
-      
+
       let employee, error;
       try {
         const result = await supabase
@@ -334,7 +335,7 @@ export default function NewEmployee() {
           .single();
         employee = result.data;
         error = result.error;
-        
+
         // If there's an error, try to get more details from the response
         if (error) {
           // Try to access the raw error response
@@ -354,14 +355,14 @@ export default function NewEmployee() {
               errorKeys: Object.keys(errorResponse || {}),
               errorValues: Object.values(errorResponse || {})
             };
-            
+
             // Try to stringify
             try {
               errorInfo.errorString = JSON.stringify(errorResponse, null, 2);
             } catch (e) {
               errorInfo.errorString = String(errorResponse);
             }
-            
+
             log.error('❌ Raw error response:', errorInfo);
             console.error('❌ Full error object:', errorResponse);
             console.error('❌ Error message:', errorResponse?.message);
@@ -375,8 +376,8 @@ export default function NewEmployee() {
         error = insertError as any;
       }
 
-      log.info('📥 Supabase response received:', { 
-        hasData: !!employee, 
+      log.info('📥 Supabase response received:', {
+        hasData: !!employee,
         hasError: !!error,
         errorType: error ? typeof error : 'none',
         errorKeys: error ? Object.keys(error || {}) : [],
@@ -389,24 +390,24 @@ export default function NewEmployee() {
         let errorCode = null;
         let errorDetails = null;
         let errorHint = null;
-        
+
         // Try direct property access with multiple methods
         try {
           errorMessage = error.message || (error as any).msg || String(error);
-        } catch (e) {}
-        
+        } catch (e) { }
+
         try {
           errorCode = error.code || (error as any).statusCode || (error as any).status;
-        } catch (e) {}
-        
+        } catch (e) { }
+
         try {
           errorDetails = error.details || (error as any).detail || (error as any).error_description;
-        } catch (e) {}
-        
+        } catch (e) { }
+
         try {
           errorHint = error.hint || (error as any).hint_text;
-        } catch (e) {}
-        
+        } catch (e) { }
+
         // Try to access all enumerable and non-enumerable properties
         const allProps: any = {};
         try {
@@ -417,8 +418,8 @@ export default function NewEmployee() {
               allProps[key] = '[Unable to access]';
             }
           }
-        } catch (e) {}
-        
+        } catch (e) { }
+
         // Try Object.getOwnPropertyNames for non-enumerable properties
         try {
           Object.getOwnPropertyNames(error).forEach(key => {
@@ -430,8 +431,8 @@ export default function NewEmployee() {
               }
             }
           });
-        } catch (e) {}
-        
+        } catch (e) { }
+
         // Try to stringify with replacer to handle non-serializable properties
         let errorString = '';
         try {
@@ -448,7 +449,7 @@ export default function NewEmployee() {
         } catch (e) {
           errorString = String(error);
         }
-        
+
         // Log all error information
         const errorInfo = {
           message: errorMessage,
@@ -466,12 +467,12 @@ export default function NewEmployee() {
           errorToString: String(error),
           errorValueOf: error?.valueOf?.()
         };
-        
+
         log.error('❌ Error creating employee:', errorInfo);
         console.error('Full Supabase error object:', error);
         console.error('Error details:', errorInfo);
         console.error('Error stringified:', errorString);
-        
+
         // Show user-friendly error message
         const userMessage = errorMessage || errorDetails || errorHint || 'Failed to create employee. Please check the console for details.';
         toast.error(`Failed to create employee: ${userMessage}`);
@@ -515,9 +516,9 @@ export default function NewEmployee() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
-          <Button 
-            variant="outline" 
-            onClick={() => router.push('/employees')} 
+          <Button
+            variant="outline"
+            onClick={() => router.push('/employees')}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
@@ -636,27 +637,53 @@ export default function NewEmployee() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Company *
-                </label>
-                <select
-                  {...register('company_name')}
-                  className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#d3194f] focus:border-transparent ${errors.company_name ? 'border-red-500' : ''}`}
-                  disabled={loadingCompanies}
-                >
-                  <option value="">
-                    {loadingCompanies ? "Loading companies..." : "Select company"}
-                  </option>
-                  {companies.map((company) => (
-                    <option key={company.value} value={company.value}>
-                      {company.label}
+                <div className="flex justify-between items-center mb-1">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Company *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const isNew = !isNewCompany;
+                      setIsNewCompany(isNew);
+                      setValue('company_name', ''); // Clear value on toggle
+                      setPreviewEmployeeId(''); // Clear preview
+                    }}
+                    className="text-xs text-[#d3194f] hover:text-[#b0173a] font-medium"
+                  >
+                    {isNewCompany ? 'Select Existing' : 'Add New Company'}
+                  </button>
+                </div>
+
+                {isNewCompany ? (
+                  <Input
+                    placeholder="Enter new company name"
+                    className={errors.company_name ? 'border-red-500' : ''}
+                    {...register('company_name')}
+                    onChange={(e) => {
+                      setValue('company_name', e.target.value);
+                    }}
+                  />
+                ) : (
+                  <select
+                    {...register('company_name')}
+                    className={`w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#d3194f] focus:border-transparent ${errors.company_name ? 'border-red-500' : ''}`}
+                    disabled={loadingCompanies}
+                  >
+                    <option value="">
+                      {loadingCompanies ? "Loading companies..." : "Select company"}
                     </option>
-                  ))}
-                </select>
+                    {companies.map((company) => (
+                      <option key={company.value} value={company.value}>
+                        {company.label}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {errors.company_name && <p className="text-red-500 text-sm mt-1">{errors.company_name.message}</p>}
-                
+
                 {/* Employee ID Preview */}
-                {selectedCompany && (
+                {(selectedCompany || isNewCompany) && (
                   <div className="mt-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                     <div className="flex items-center justify-between">
                       <div>
@@ -681,7 +708,7 @@ export default function NewEmployee() {
                       </div>
                     </div>
                     <p className="text-xs text-blue-600 dark:text-blue-400 mt-2">
-                      {previewEmployeeId 
+                      {previewEmployeeId
                         ? 'This ID will be automatically assigned when you save the employee.'
                         : 'ID will be generated based on company selection.'
                       }

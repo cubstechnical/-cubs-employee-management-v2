@@ -6,6 +6,7 @@ import { log } from '@/lib/utils/productionLogger';
 
 /**
  * Required environment variables for the application
+ * NEXT_PUBLIC_ vars are available on client, others are server-only
  */
 const REQUIRED_ENV_VARS = {
   NEXT_PUBLIC_SUPABASE_URL: 'Supabase URL',
@@ -31,12 +32,19 @@ const OPTIONAL_ENV_VARS = {
 
 /**
  * Validate that all required environment variables are present
+ * On client-side, only check NEXT_PUBLIC_ vars (server-only vars won't be available)
  * @returns Array of missing environment variable names
  */
 export function validateEnvironmentVariables(): string[] {
   const missing: string[] = [];
+  const isClientSide = typeof window !== 'undefined';
 
   for (const [key, description] of Object.entries(REQUIRED_ENV_VARS)) {
+    // Skip server-only vars when running on client
+    if (isClientSide && !key.startsWith('NEXT_PUBLIC_')) {
+      continue;
+    }
+
     const value = process.env[key];
     if (!value || value.trim() === '') {
       missing.push(`${key} (${description})`);
@@ -117,7 +125,7 @@ export function getApiBaseUrl(): string {
 
   // Client-side: check if we're in Capacitor (mobile app)
   const isCapacitor = typeof (window as any).Capacitor !== 'undefined';
-  
+
   if (isCapacitor) {
     // In Capacitor, use the configured server URL or a remote API host
     const capacitorConfig = (window as any).Capacitor?.getConfig?.();
@@ -159,6 +167,8 @@ export function getApiBaseUrl(): string {
 export function logEnvironmentConfig(): void {
   if (!isDevelopment()) return;
 
+  const isClientSide = typeof window !== 'undefined';
+
   log.group('🔧 Environment Configuration');
   log.info('Environment:', process.env.NODE_ENV);
   log.info('App URL:', getAppUrl());
@@ -166,6 +176,8 @@ export function logEnvironmentConfig(): void {
   // Log required variables (without sensitive data)
   log.info('Required Variables:');
   Object.keys(REQUIRED_ENV_VARS).forEach(key => {
+    // Skip server-only vars on client
+    if (isClientSide && !key.startsWith('NEXT_PUBLIC_')) return;
     const value = process.env[key];
     log.info(`  ${key}: ${value ? '✅ Set' : '❌ Missing'}`);
   });
@@ -173,6 +185,8 @@ export function logEnvironmentConfig(): void {
   // Log optional variables
   log.info('Optional Variables:');
   Object.keys(OPTIONAL_ENV_VARS).forEach(key => {
+    // Skip server-only vars on client
+    if (isClientSide && !key.startsWith('NEXT_PUBLIC_')) return;
     const value = process.env[key];
     log.info(`  ${key}: ${value ? '✅ Set' : '⚠️ Not set'}`);
   });

@@ -42,14 +42,34 @@ export default function DeleteAccountPage() {
         return;
       }
 
-      // For mobile app, show that server-side implementation is needed
-      log.info('Account deletion request (client-side):', { email, reason, confirmation });
+      // Call the delete account API
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const response = await fetch(getApiUrl('api/delete-account'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email,
+          confirmation,
+          reason
+        }),
+      });
 
-      // For demo purposes, just sign out
-      toast('Account deletion requires server-side implementation', { icon: 'ℹ️' });
-      await supabase.auth.signOut();
-      toast.success('Signed out successfully');
-      router.push('/login');
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        toast.error(result.error || 'Failed to delete account');
+        setIsDeleting(false);
+        return;
+      }
+
+      // Success - user is automatically signed out by the API
+      toast.success('Account deleted successfully');
+      log.info('Account deleted successfully for:', email);
+
+      // Redirect to home page
+      router.push('/');
     } catch (error) {
       log.error('Error deleting account:', error);
       toast.error('An unexpected error occurred. Please try again.');
@@ -75,10 +95,10 @@ export default function DeleteAccountPage() {
               <span className="text-red-600">⚠️</span>
               Important Information
             </h2>
-            
+
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
               <p className="text-red-800">
-                <strong>This action is permanent and cannot be undone.</strong> 
+                <strong>This action is permanent and cannot be undone.</strong>
                 All your data will be permanently deleted from our systems.
               </p>
             </div>
@@ -108,7 +128,7 @@ export default function DeleteAccountPage() {
               <div>
                 <h3 className="font-semibold text-gray-900 mb-2">Data retention period:</h3>
                 <p className="text-sm text-gray-700">
-                  After account deletion, any retained data will be automatically deleted within 90 days. 
+                  After account deletion, any retained data will be automatically deleted within 90 days.
                   Legal compliance records may be retained for up to 7 years as required by applicable laws.
                 </p>
               </div>
@@ -119,7 +139,7 @@ export default function DeleteAccountPage() {
         <Card>
           <div className="mb-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Account Deletion Request</h2>
-            
+
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">

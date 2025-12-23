@@ -2,81 +2,81 @@
 const withPWA = process.env.BUILD_MOBILE === 'true'
   ? (config) => config // No-op for mobile builds
   : require('next-pwa')({
-      dest: 'public',
-      disable: process.env.DISABLE_PWA === 'true',
-      register: true,
-      skipWaiting: true,
-      buildExcludes: [/middleware-manifest\.json$/],
-  runtimeCaching: [
-    // Cache Backblaze public endpoints with Range support
-    {
-      urlPattern: /^https:\/\/f005\.backblazeb2\.com\/file\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'b2-public',
-        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
-        rangeRequests: true,
-      },
-    },
-    {
-      urlPattern: /^https:\/\/s3\.us-east-005\.backblazeb2\.com\/.*/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'b2-s3',
-        expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
-        rangeRequests: true,
-      },
-    },
-    // Cache Supabase API calls with StaleWhileRevalidate for better performance
-    {
-      urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'supabase-api',
-        expiration: { 
-          maxEntries: 100, 
-          maxAgeSeconds: 5 * 60 // 5 minutes for API data
+    dest: 'public',
+    disable: process.env.DISABLE_PWA === 'true' || process.env.NODE_ENV === 'development',
+    register: true,
+    skipWaiting: true,
+    buildExcludes: [/middleware-manifest\.json$/],
+    runtimeCaching: [
+      // Cache Backblaze public endpoints with Range support
+      {
+        urlPattern: /^https:\/\/f005\.backblazeb2\.com\/file\/.*/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'b2-public',
+          expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
+          rangeRequests: true,
         },
       },
-    },
-    // Cache static assets with CacheFirst
-    {
-      urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'static-images',
-        expiration: { 
-          maxEntries: 100, 
-          maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+      {
+        urlPattern: /^https:\/\/s3\.us-east-005\.backblazeb2\.com\/.*/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'b2-s3',
+          expiration: { maxEntries: 200, maxAgeSeconds: 7 * 24 * 60 * 60 },
+          rangeRequests: true,
         },
       },
-    },
-    // Cache fonts with CacheFirst
-    {
-      urlPattern: /\.(?:woff|woff2|ttf|eot)$/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'static-fonts',
-        expiration: { 
-          maxEntries: 20, 
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+      // Cache Supabase API calls with StaleWhileRevalidate for better performance
+      {
+        urlPattern: /^https:\/\/.*\.supabase\.co\/rest\/v1\/.*/i,
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: 'supabase-api',
+          expiration: {
+            maxEntries: 100,
+            maxAgeSeconds: 5 * 60 // 5 minutes for API data
+          },
         },
       },
-    },
-    // Cache CSS and JS with StaleWhileRevalidate
-    {
-      urlPattern: /\.(?:css|js)$/i,
-      handler: 'StaleWhileRevalidate',
-      options: {
-        cacheName: 'static-resources',
-        expiration: { 
-          maxEntries: 50, 
-          maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
+      // Cache static assets with CacheFirst
+      {
+        urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|ico)$/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'static-images',
+          expiration: {
+            maxEntries: 100,
+            maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
+          },
         },
       },
-    },
-  ],
-});
+      // Cache fonts with CacheFirst
+      {
+        urlPattern: /\.(?:woff|woff2|ttf|eot)$/i,
+        handler: 'CacheFirst',
+        options: {
+          cacheName: 'static-fonts',
+          expiration: {
+            maxEntries: 20,
+            maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+          },
+        },
+      },
+      // Cache CSS and JS with StaleWhileRevalidate
+      {
+        urlPattern: /\.(?:css|js)$/i,
+        handler: 'StaleWhileRevalidate',
+        options: {
+          cacheName: 'static-resources',
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 7 * 24 * 60 * 60 // 7 days
+          },
+        },
+      },
+    ],
+  });
 
 // Bundle analyzer configuration
 const withBundleAnalyzer = require('@next/bundle-analyzer')({
@@ -87,6 +87,10 @@ const withBundleAnalyzer = require('@next/bundle-analyzer')({
 const baseConfig = {
   // Use trailing slash for consistency
   trailingSlash: true,
+  // Enable SWC minification for faster builds
+  swcMinify: true,
+  // Enable React Strict Mode for better debugging
+  reactStrictMode: true,
   images: {
     domains: ['s3.us-east-005.backblazeb2.com', 'cubsgroups.com'],
     // Only unoptimized for static export (mobile builds)
@@ -266,7 +270,7 @@ const baseConfig = {
 
     // Ignore optional native deps used by ws in Node, not needed for Next builds
     config.externals = config.externals || [];
-    
+
     // Handle Supabase realtime dependency warnings
     config.ignoreWarnings = [
       // Ignore the dynamic require warning from Supabase realtime
@@ -275,7 +279,7 @@ const baseConfig = {
       /Module not found: Can't resolve 'bufferutil'/,
       /Module not found: Can't resolve 'utf-8-validate'/,
     ];
-    
+
     // For server builds, mark as externals false via fallback so bundler won't try to resolve
     config.resolve.fallback = {
       ...(config.resolve.fallback || {}),
