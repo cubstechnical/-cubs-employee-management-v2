@@ -96,7 +96,7 @@ const baseConfig = {
   },
   // Disable SSR for problematic components in static export
   experimental: {
-    optimizeCss: true,
+    optimizeCss: false,
     optimizePackageImports: ['lucide-react', 'react-apexcharts', '@tanstack/react-query'],
   },
   // Force client-side rendering for Capacitor packages
