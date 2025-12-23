@@ -181,18 +181,8 @@ const baseConfig = {
       },
     },
   },
-  env: {
-    NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
-    GMAIL_USER: process.env.GMAIL_USER || '',
-    GMAIL_APP_PASSWORD: process.env.GMAIL_APP_PASSWORD || '',
-    GMAIL_FROM_NAME: process.env.GMAIL_FROM_NAME || 'CUBS Technical',
-    B2_APPLICATION_KEY_ID: process.env.B2_APPLICATION_KEY_ID || '',
-    B2_APPLICATION_KEY: process.env.B2_APPLICATION_KEY || '',
-    B2_BUCKET_NAME: process.env.B2_BUCKET_NAME || '',
-    B2_ENDPOINT: process.env.B2_ENDPOINT || '',
-    B2_BUCKET_ID: process.env.B2_BUCKET_ID || '',
-  },
+  // env block removed to let Next.js handle environment variables automatically
+  // This prevents baking empty strings if vars are missing at build time
   webpack: (config, { isServer, dev }) => {
     // Optimize bundle splitting and chunk loading
     if (!isServer && !dev) {
