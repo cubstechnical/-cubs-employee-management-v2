@@ -69,16 +69,7 @@ function NotificationsPageContent() {
     setRefreshTrigger(prev => prev + 1);
   };
 
-  // Load notifications and stats
-  useEffect(() => {
-    loadNotifications();
-  }, [currentPage, searchTerm, refreshTrigger]);
-
-  useEffect(() => {
-    loadStats(); // Use dedicated stats endpoint
-    loadVisaStats();
-  }, [refreshTrigger]);
-
+  // Define callbacks first (before useEffect)
   const loadStats = useCallback(async () => {
     try {
       log.info('Loading notification stats from API...');
@@ -217,6 +208,16 @@ function NotificationsPageContent() {
       });
     }
   }, []);
+
+  // Load notifications and stats - useEffect AFTER callbacks
+  useEffect(() => {
+    loadNotifications();
+  }, [loadNotifications]);
+
+  useEffect(() => {
+    loadStats(); // Use dedicated stats endpoint
+    loadVisaStats();
+  }, [loadStats, loadVisaStats]);
 
   const sendTestEmail = async () => {
     setIsSendingTest(true);
