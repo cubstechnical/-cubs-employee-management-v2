@@ -155,6 +155,13 @@ export function getApiBaseUrl(): string {
   // Web production: use environment variable or current origin
   if (isProduction()) {
     const envUrl = process.env.NEXT_PUBLIC_APP_URL;
+
+    // SAFETY CHECK: If env var is the placeholder or missing, use real domain
+    if (!envUrl || envUrl.includes('your-production-domain') || envUrl === 'undefined') {
+      log.warn('⚠️ Invalid/Placeholder NEXT_PUBLIC_APP_URL detected. Forcing correct domain.');
+      return 'https://www.cubsgroups.com';
+    }
+
     if (envUrl) {
       try {
         return new URL(envUrl).origin;
