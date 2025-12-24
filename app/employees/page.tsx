@@ -121,14 +121,49 @@ function EmployeesPage() {
           baseQuery = baseQuery.eq('company_name', filterCompany);
         }
 
-        // Get all count
-        const { count: allCount } = await baseQuery;
-
-        // Get active count
-        const { count: activeCount } = await baseQuery.eq('is_active', true);
-
-        // Get inactive count
-        const { count: inactiveCount } = await baseQuery.eq('is_active', false);
+        // Execute all count queries in PARALLEL for better performance
+        const [
+          { count: allCount },
+          { count: activeCount },
+          { count: inactiveCount }
+        ] = await Promise.all([
+          // Query 1: All employees matching filters
+          (async () => {
+            let q = supabase.from('employee_table').select('is_active', { count: 'exact' });
+            if (debouncedSearchTerm.trim()) {
+              const searchPattern = `%${debouncedSearchTerm.trim()}%`;
+              q = q.or(`name.ilike.${searchPattern},email_id.ilike.${searchPattern},company_name.ilike.${searchPattern},trade.ilike.${searchPattern},employee_id.ilike.${searchPattern}`);
+            }
+            if (filterCompany !== 'all') {
+              q = q.eq('company_name', filterCompany);
+            }
+            return await q;
+          })(),
+          // Query 2: Active employees matching filters
+          (async () => {
+            let q = supabase.from('employee_table').select('is_active', { count: 'exact' }).eq('is_active', true);
+            if (debouncedSearchTerm.trim()) {
+              const searchPattern = `%${debouncedSearchTerm.trim()}%`;
+              q = q.or(`name.ilike.${searchPattern},email_id.ilike.${searchPattern},company_name.ilike.${searchPattern},trade.ilike.${searchPattern},employee_id.ilike.${searchPattern}`);
+            }
+            if (filterCompany !== 'all') {
+              q = q.eq('company_name', filterCompany);
+            }
+            return await q;
+          })(),
+          // Query 3: Inactive employees matching filters
+          (async () => {
+            let q = supabase.from('employee_table').select('is_active', { count: 'exact' }).eq('is_active', false);
+            if (debouncedSearchTerm.trim()) {
+              const searchPattern = `%${debouncedSearchTerm.trim()}%`;
+              q = q.or(`name.ilike.${searchPattern},email_id.ilike.${searchPattern},company_name.ilike.${searchPattern},trade.ilike.${searchPattern},employee_id.ilike.${searchPattern}`);
+            }
+            if (filterCompany !== 'all') {
+              q = q.eq('company_name', filterCompany);
+            }
+            return await q;
+          })()
+        ]);
 
         return {
           all: allCount || 0,
