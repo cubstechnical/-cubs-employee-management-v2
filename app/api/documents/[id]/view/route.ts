@@ -30,31 +30,12 @@ export async function GET(
 
     log.info('Document view requested', { documentId });
 
-    // Get document metadata from database - try both tables
-    let data = null;
-    let error = null;
-
-    // First try employee_documents table (primary storage)
-    const { data: empDocData, error: empDocError } = await supabase
+    // Get document metadata from database
+    const { data, error } = await supabase
       .from('employee_documents')
       .select('file_url, file_name, mime_type, file_path, employee_id')
       .eq('id', documentId)
       .single();
-
-    if (empDocData && !empDocError) {
-      data = empDocData;
-      error = null;
-    } else {
-      // Fallback to documents table (legacy storage)
-      const { data: docData, error: docError } = await supabase
-        .from('documents')
-        .select('file_url, file_name, mime_type, file_path, employee_id')
-        .eq('id', documentId)
-        .single();
-
-      data = docData;
-      error = docError;
-    }
 
     if (error || !data) {
       log.error('Document not found or database error', { documentId, error: error?.message });
@@ -99,19 +80,19 @@ export async function GET(
       const isIOSDevice = isIPhone || isIPad || isIPod;
       const isAndroid = /Android/.test(userAgent);
       const isMobile = /Mobile/i.test(userAgent);
-      
+
       // Check for Capacitor app
       const isCapacitor = userAgent.includes('Capacitor');
-      
+
       // Check for iOS app (not Safari browser)
       const isIOSApp = isIOSDevice && !/Safari/.test(userAgent) && !/Chrome/.test(userAgent);
-      
+
       // Check for WKWebView (Capacitor uses this)
       const isWKWebView = /AppleWebKit/.test(userAgent) && !/Safari/.test(userAgent) && isIOSDevice;
-      
+
       // Check for iOS app indicators
       const hasIOSAppIndicators = /Mobile\/[A-Z0-9]+/.test(userAgent) && isIOSDevice;
-      
+
       // Final mobile detection
       const isMobileApp = isIPhone || isIPad || isIPod || isAndroid || isMobile || isCapacitor || isIOSApp || isWKWebView || hasIOSAppIndicators;
 

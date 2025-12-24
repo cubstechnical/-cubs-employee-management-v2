@@ -97,19 +97,74 @@ export class AuditService {
   }
 
   /**
+   * Get all audit logs with pagination and filtering
+   */
+  static async getAllAuditLogs(
+    page: number = 1,
+    pageSize: number = 20,
+    filters?: {
+      table_name?: string;
+      action?: string;
+      user_id?: string;
+      startDate?: string;
+      endDate?: string;
+    }
+  ): Promise<{ data: AuditLog[]; total: number; totalPages: number; error: string | null }> {
+    try {
+      const from = (page - 1) * pageSize;
+      const to = from + pageSize - 1;
+
+      let query = supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact' })
+        .order('created_at', { ascending: false });
+
+      // Apply filters
+      if (filters?.table_name) query = query.eq('table_name', filters.table_name);
+      if (filters?.action) query = query.eq('action', filters.action);
+      if (filters?.user_id) query = query.eq('user_id', filters.user_id);
+      if (filters?.startDate) query = query.gte('created_at', filters.startDate);
+      if (filters?.endDate) query = query.lte('created_at', filters.endDate);
+
+      // Apply pagination
+      query = query.range(from, to);
+
+      const { data, count, error } = await query;
+
+      if (error) {
+        log.error('❌ Error fetching audit logs:', error);
+        return { data: [], total: 0, totalPages: 0, error: error.message };
+      }
+
+      const total = count || 0;
+      const totalPages = Math.ceil(total / pageSize);
+
+      return {
+        data: (data as unknown as AuditLog[]) || [],
+        total,
+        totalPages,
+        error: null
+      };
+    } catch (err) {
+      log.error('❌ Error in getAllAuditLogs:', err);
+      return { data: [], total: 0, totalPages: 0, error: 'Failed to fetch audit logs' };
+    }
+  }
+
+  /**
    * Get current user info for audit logging
    */
   static async getCurrentUserInfo(): Promise<{ id?: string; email?: string }> {
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      
+
       if (user) {
         return {
           id: user.id,
           email: user.email || undefined
         };
       }
-      
+
       return {};
     } catch (err) {
       log.error('❌ Error getting current user info:', err);

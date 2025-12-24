@@ -108,6 +108,11 @@ const baseConfig = {
   // Mobile-specific optimizations
   poweredByHeader: false,
   generateEtags: false,
+  // For mobile builds (static export), we only include UI pages/layouts (tsx)
+  // This effectively ignores API routes (ts) and prevents build errors
+  pageExtensions: process.env.BUILD_MOBILE === 'true'
+    ? ['page.tsx', 'layout.tsx', 'loading.tsx', 'error.tsx', 'not-found.tsx', 'template.tsx', 'default.tsx', 'head.tsx']
+    : ['tsx', 'ts', 'jsx', 'js'],
   // Headers configuration for static export
   async headers() {
     return [

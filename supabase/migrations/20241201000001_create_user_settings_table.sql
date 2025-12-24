@@ -54,7 +54,7 @@ CREATE POLICY "Users can delete own settings" ON public.user_settings
 CREATE POLICY "Admins can view all admin settings" ON public.admin_settings
   FOR SELECT TO authenticated
   USING (
-    EXISTS (SELECT 1 FROM public.user_profiles WHERE user_id = auth.uid() AND user_role = 'admin')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 CREATE POLICY "Users can view public admin settings" ON public.admin_settings
@@ -65,19 +65,19 @@ CREATE POLICY "Users can view public admin settings" ON public.admin_settings
 CREATE POLICY "Admins can insert admin settings" ON public.admin_settings
   FOR INSERT TO authenticated
   WITH CHECK (
-    EXISTS (SELECT 1 FROM public.user_profiles WHERE user_id = auth.uid() AND user_role = 'admin')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 CREATE POLICY "Admins can update admin settings" ON public.admin_settings
   FOR UPDATE TO authenticated
   USING (
-    EXISTS (SELECT 1 FROM public.user_profiles WHERE user_id = auth.uid() AND user_role = 'admin')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 CREATE POLICY "Admins can delete admin settings" ON public.admin_settings
   FOR DELETE TO authenticated
   USING (
-    EXISTS (SELECT 1 FROM public.user_profiles WHERE user_id = auth.uid() AND user_role = 'admin')
+    EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
   );
 
 -- Insert default admin settings

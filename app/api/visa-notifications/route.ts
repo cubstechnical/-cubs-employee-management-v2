@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     // Get employees with visa expiry dates for stats
     const { data: employees, error } = await supabase
       .from('employee_table')
-      .select('id, name, email_id, visa_expiry_date, company_name, passport_number')
+      .select('id, name, email_id, visa_expiry_date, company_name, passport_no')
       .not('visa_expiry_date', 'is', null)
       .eq('is_active', true);
 
@@ -47,11 +47,13 @@ export async function POST(request: NextRequest) {
     thirtyDaysFromNow.setDate(now.getDate() + 30);
 
     const expiringSoon = employees.filter(emp => {
+      if (!emp.visa_expiry_date) return false;
       const expiryDate = new Date(emp.visa_expiry_date);
       return expiryDate > now && expiryDate <= thirtyDaysFromNow;
     });
 
     const expired = employees.filter(emp => {
+      if (!emp.visa_expiry_date) return false;
       const expiryDate = new Date(emp.visa_expiry_date);
       return expiryDate < now;
     });
@@ -120,6 +122,7 @@ export async function GET(request: NextRequest) {
     const totalTracked = employees?.length || 0;
 
     employees?.forEach(employee => {
+      if (!employee.visa_expiry_date) return;
       const expiryDate = new Date(employee.visa_expiry_date);
 
       if (expiryDate < now) {

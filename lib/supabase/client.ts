@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { log } from '@/lib/utils/productionLogger';
+import type { Database } from '@/types/database.types';
 
 // Use the correct Supabase URL from environment variables
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -10,7 +11,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 // Environment variables check (production optimized)
 
 // Create Supabase client with robust fallback
-let supabase: ReturnType<typeof createClient>;
+let supabase: ReturnType<typeof createClient<Database>>;
 let isSupabaseAvailable = true;
 
 if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey === '') {
@@ -18,7 +19,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
   log.warn('Supabase credentials not configured. Using mock client for development.');
 
   // Create a more robust mock client for mobile/PWA compatibility
-  supabase = createClient('https://mock.supabase.co', 'mock-key', {
+  supabase = createClient<Database>('https://mock.supabase.co', 'mock-key', {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
@@ -36,7 +37,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
       storage: typeof window !== 'undefined' ? window.localStorage : undefined,
     };
 
-    supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
       auth: authConfig,
     });
 
@@ -44,7 +45,7 @@ if (!supabaseUrl || !supabaseAnonKey || supabaseUrl === '' || supabaseAnonKey ==
   } catch (error) {
     isSupabaseAvailable = false;
     // Fallback to mock client
-    supabase = createClient('https://mock.supabase.co', 'mock-key');
+    supabase = createClient<Database>('https://mock.supabase.co', 'mock-key');
   }
 }
 
@@ -66,7 +67,7 @@ let authPromise: Promise<any> | null = null; // Prevent multiple simultaneous ca
 // OPTIMIZED: Enhanced auth state management with faster timeout and better caching
 export const getAuthState = async () => {
   const now = Date.now();
-  
+
   log.info('🔍 Supabase: getAuthState called, isSupabaseAvailable:', isSupabaseAvailable);
 
   // If Supabase is not available, return empty state immediately
@@ -102,16 +103,16 @@ export const getAuthState = async () => {
       );
 
       const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]) as any;
-      
-      log.info('🔍 Supabase: Session result:', { 
-        hasSession: !!session, 
+
+      log.info('🔍 Supabase: Session result:', {
+        hasSession: !!session,
         hasError: !!error,
-        errorMessage: error?.message 
+        errorMessage: error?.message
       });
 
       if (error) {
         log.error('❌ Supabase: Auth state error:', error);
-        
+
         // Handle refresh token errors specifically
         if (error.message?.includes('Refresh Token') || error.message?.includes('refresh_token')) {
           log.warn('🔄 Supabase: Refresh token error detected, clearing session');
@@ -121,7 +122,7 @@ export const getAuthState = async () => {
             log.error('Error during sign out:', signOutError);
           }
         }
-        
+
         return { user: null, session: null, timestamp: now };
       }
 

@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ success: true, message: 'No devices registered', count: 0 });
         }
 
-        const tokenList = tokens.map(t => t.token);
+        const tokenList = tokens.map((t: any) => t.token);
 
         // 3. Send via Firebase
         if (process.env.DISABLE_EMAILS === 'true') {

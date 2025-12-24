@@ -417,7 +417,7 @@ export class DocumentService {
       while (hasMore) {
         const { data, error } = await supabase
           .from('employee_documents')
-          .select('*')
+          .select('id, employee_id, document_type, file_name, file_url, file_size, file_path, file_type, uploaded_at, is_active, notes, mime_type, document_number, expiry_date')
           .eq('employee_id', employeeId)
           .order('uploaded_at', { ascending: false })
           .range(offset, offset + LIMIT - 1);
@@ -503,7 +503,7 @@ export class DocumentService {
       while (hasMore) {
         const { data, error } = await supabase
           .from('employee_documents')
-          .select('*')
+          .select('id, employee_id, document_type, file_name, file_url, file_size, file_path, file_type, uploaded_at, is_active, notes, mime_type, document_number, expiry_date')
           .ilike('file_path', `${companyName}/%`)
           .order('uploaded_at', { ascending: false })
           .range(offset, offset + LIMIT - 1);
@@ -554,7 +554,7 @@ export class DocumentService {
 
       let query = supabase
         .from('employee_documents')
-        .select('*', { count: 'exact' })
+        .select('id, employee_id, document_type, file_name, file_url, file_size, file_path, file_type, uploaded_at, is_active, notes, mime_type, document_number, expiry_date', { count: 'exact' })
         .order('uploaded_at', { ascending: false });
 
       // Apply search filter
@@ -740,7 +740,7 @@ export class DocumentService {
       if (companyName === 'Company Documents') {
         const { data, error } = await supabase
           .from('employee_documents')
-          .select('*')
+          .select('id, employee_id, document_type, file_name, file_url, file_size, file_path, file_type, uploaded_at, is_active, notes, mime_type, document_number, expiry_date')
           .or('employee_id.eq.COMPANY_DOCS,file_path.ilike.EMP_COMPANY_DOCS/%')
           .order('uploaded_at', { ascending: false })
           .limit(500); // Add limit for performance
@@ -753,7 +753,7 @@ export class DocumentService {
       // FAST: Single optimized query with multiple conditions
       const { data: documents, error } = await supabase
         .from('employee_documents')
-        .select('*')
+        .select('id, employee_id, document_type, file_name, file_url, file_size, file_path, file_type, uploaded_at, is_active, notes, mime_type, document_number, expiry_date')
         .or(`employee_id.eq.${employeeId},file_path.ilike.%${employeeId}%,file_path.ilike.${companyName}/${employeeId}%`)
         .order('uploaded_at', { ascending: false })
         .limit(500); // Reasonable limit for employee documents

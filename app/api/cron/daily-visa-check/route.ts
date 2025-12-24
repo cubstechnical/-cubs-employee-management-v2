@@ -36,8 +36,12 @@ export async function GET(request: NextRequest) {
         thirtyDaysFromNow.setDate(now.getDate() + 30);
 
         // 3. Filter for Expired and Expiring Soon
-        const expired = employees.filter(emp => new Date(emp.visa_expiry_date) < now);
+        const expired = employees.filter(emp => {
+            if (!emp.visa_expiry_date) return false;
+            return new Date(emp.visa_expiry_date) < now;
+        });
         const expiringSoon = employees.filter(emp => {
+            if (!emp.visa_expiry_date) return false;
             const date = new Date(emp.visa_expiry_date);
             return date >= now && date <= thirtyDaysFromNow;
         });
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
             log.info(`⚠️ Found ${expiringSoon.length} visas expiring soon`);
 
             // Calculate earliest expiry days for the badge
-            const dates = expiringSoon.map(e => new Date(e.visa_expiry_date).getTime());
+            const dates = expiringSoon.map(e => e.visa_expiry_date ? new Date(e.visa_expiry_date).getTime() : Infinity);
             const minDate = new Date(Math.min(...dates));
             const daysLeft = Math.ceil((minDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
 

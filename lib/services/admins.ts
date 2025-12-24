@@ -68,7 +68,7 @@ export class AdminService {
       }
 
       // Create admin invite
-      const { data: invite, error } = await (supabase as any)
+      const { data: invite, error } = await supabase
         .from('admin_invites')
         .insert([{
           email: adminData.email,

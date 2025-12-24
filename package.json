@@ -26,6 +26,7 @@
     "start": "next start",
     "lint": "next lint",
     "type-check": "tsc --noEmit",
+    "types:generate": "npx supabase gen types typescript --project-id tndfjsjemqjgagtsqudr > types/database.types.ts",
     "cap": "cap",
     "cap:add:ios": "cap add ios",
     "cap:add:android": "cap add android",
@@ -141,6 +142,7 @@
     "playwright": "^1.55.0",
     "prettier": "^3.0.3",
     "sharp": "^0.33.5",
+    "supabase": "^2.70.4",
     "supertest": "^7.1.4",
     "ts-jest": "^29.4.4"
   }
