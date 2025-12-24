@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/visa-notifications",
+      "path": "/api/cron/daily-visa-check",
       "schedule": "0 9 * * *"
     }
   ]
