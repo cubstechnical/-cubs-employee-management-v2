@@ -386,23 +386,6 @@ Generated on: ${new Date().toLocaleString()}`;
       log.error('Failed to trigger automated push:', pushError);
     }
 
-    // ✈️ AUTOMATED TELEGRAM ALERT
-    try {
-      const { TelegramBotService } = require('@/lib/services/telegramBot');
-      const urgency = getUrgencyLevel(daysUntilExpiry);
-
-      // Only send for High/Urgent/Critical to reduce spam
-      if (['Critical', 'Urgent', 'High'].includes(urgency)) {
-        const emoji = urgency === 'Critical' ? '🚨' : urgency === 'Urgent' ? '⚠️' : '🔴';
-        // Markdown formatting for Telegram
-        const telegramMessage = `${emoji} *CUBS Alert*\n${employees.length} Visa${employees.length > 1 ? 's' : ''} Expiring in ${daysUntilExpiry} Days\n\nUrgency: ${urgency}\nPlease check [Admin Dashboard](https://cubstechnical.com).`;
-
-        await TelegramBotService.sendAlert(telegramMessage);
-      }
-    } catch (tgError) {
-      log.error('Failed to trigger Telegram alert:', tgError);
-    }
-
   } catch (error) {
     log.error('❌ Error sending consolidated visa expiry email:', error);
   }
