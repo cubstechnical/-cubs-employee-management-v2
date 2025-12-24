@@ -154,23 +154,9 @@ export function getApiBaseUrl(): string {
 
   // Web production: use environment variable or current origin
   if (isProduction()) {
-    const envUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-    // SAFETY CHECK: If env var is the placeholder or missing, use real domain
-    if (!envUrl || envUrl.includes('your-production-domain') || envUrl === 'undefined') {
-      log.warn('⚠️ Invalid/Placeholder NEXT_PUBLIC_APP_URL detected. Forcing correct domain.');
-      return 'https://www.cubsgroups.com';
-    }
-
-    if (envUrl) {
-      try {
-        return new URL(envUrl).origin;
-      } catch {
-        // Invalid URL, use current origin
-      }
-    }
-    // Use current origin as fallback
-    return window.location.origin;
+    // Force hardcoded domain as per user request to ensure correct production behavior
+    // This bypasses any environment variable issues or placeholders
+    return 'https://www.cubsgroups.com';
   }
 
   // Development: use relative paths (works with Next.js dev server)
