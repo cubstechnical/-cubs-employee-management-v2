@@ -921,7 +921,7 @@ export class EmployeeService {
       const { error } = await supabase
         .from('employee_table')
         .delete()
-        .eq('employee_id', employeeId);
+        .eq('id', employeeId);
 
       if (error) {
         log.error('Error deleting employee from database:', error);
