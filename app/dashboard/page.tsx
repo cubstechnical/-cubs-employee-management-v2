@@ -43,37 +43,37 @@ export default function Dashboard() {
       renewed: [12, 15, 18, 20, 22, 25],
     } as VisaTrendData,
     recentActivities: [] as RecentActivity[],
-    complianceScore: 87,
+    complianceScore: 0,
   });
 
   const fetchDashboardData = useCallback(async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    try {
+      setLoading(true);
+      setError(null);
 
-        log.info('🚀 Fetching dashboard data...');
+      log.info('🚀 Fetching dashboard data...');
 
-        // Load all data in a single optimized call
-        const result = await DashboardService.getAllDashboardData();
-        if (!result.error) {
-          setDashboardData({
-            metrics: result.metrics,
-            visaTrendData: result.visaTrendData,
-            recentActivities: result.recentActivities,
-            complianceScore: result.complianceScore
-          });
-          log.info('✅ All dashboard data loaded successfully');
-        } else {
-          setError('Failed to load dashboard data. Please try again.');
-        }
-
-      } catch (error) {
-        log.error('❌ Error fetching dashboard data:', error);
+      // Load all data in a single optimized call
+      const result = await DashboardService.getAllDashboardData();
+      if (!result.error) {
+        setDashboardData({
+          metrics: result.metrics,
+          visaTrendData: result.visaTrendData,
+          recentActivities: result.recentActivities,
+          complianceScore: result.complianceScore
+        });
+        log.info('✅ All dashboard data loaded successfully');
+      } else {
         setError('Failed to load dashboard data. Please try again.');
-      } finally {
-        setLoading(false);
       }
-    }, []);
+
+    } catch (error) {
+      log.error('❌ Error fetching dashboard data:', error);
+      setError('Failed to load dashboard data. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     fetchDashboardData();
@@ -83,10 +83,10 @@ export default function Dashboard() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Clear cache to force fresh data
       DashboardService.clearCache();
-      
+
       log.info('🔄 Refreshing dashboard data...');
 
       // Use optimized single call to get all dashboard data
@@ -119,82 +119,82 @@ export default function Dashboard() {
     <AuthenticatedLayout requireAuth={true}>
       <UnifiedErrorBoundary context="Dashboard" showNetworkStatus={true}>
         <div className="space-y-6" data-testid="dashboard">
-        {/* Error Banner */}
-        {error && (
-          <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                </svg>
+          {/* Error Banner */}
+          {error && (
+            <div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+              <div className="flex items-center">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+                </div>
+                <div className="ml-auto pl-3">
+                  <button
+                    onClick={() => router.refresh()}
+                    className="text-sm text-red-800 hover:text-red-600 dark:text-red-200 dark:hover:text-red-400 font-medium"
+                  >
+                    Refresh
+                  </button>
+                </div>
               </div>
-              <div className="ml-3">
-                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
-              </div>
-              <div className="ml-auto pl-3">
-              <button
-                  onClick={() => router.refresh()}
-                  className="text-sm text-red-800 hover:text-red-600 dark:text-red-200 dark:hover:text-red-400 font-medium"
-              >
-                Refresh
-              </button>
-              </div>
-            </div>
             </div>
           )}
 
-        {/* CUBS Dashboard Header */}
-        <CUBSDashboardHeader onRefresh={handleRefresh} lastUpdated={lastUpdated} />
-        
-        {/* Top Row: Metrics Cards */}
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-12">
-            <EmployeeMetrics 
-              data={dashboardData.metrics} 
-              loading={loading} 
-            />
+          {/* CUBS Dashboard Header */}
+          <CUBSDashboardHeader onRefresh={handleRefresh} lastUpdated={lastUpdated} />
+
+          {/* Top Row: Metrics Cards */}
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-12">
+              <EmployeeMetrics
+                data={dashboardData.metrics}
+                loading={loading}
+              />
             </div>
-        </div>
-
-        {/* Second Row: Company Chart and Compliance Score */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
-          {/* Company Chart */}
-          <div className="lg:col-span-7">
-            <EmployeeGrowthChart
-              loading={loading}
-            />
           </div>
 
-          {/* Visa Compliance Score */}
-          <div className="lg:col-span-5">
-            <VisaComplianceScore
-              score={dashboardData.complianceScore}
-              loading={loading}
-            />
-          </div>
-        </div>
+          {/* Second Row: Company Chart and Compliance Score */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 lg:gap-6">
+            {/* Company Chart */}
+            <div className="lg:col-span-7">
+              <EmployeeGrowthChart
+                loading={loading}
+              />
+            </div>
 
-        {/* Third Row: Visa Analytics */}
-        <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-6">
-          {/* Visa Expiry Trends */}
-          <div className="xl:col-span-7">
-            <VisaExpiryTrendChart
-              data={dashboardData.visaTrendData}
-              loading={loading}
-            />
+            {/* Visa Compliance Score */}
+            <div className="lg:col-span-5">
+              <VisaComplianceScore
+                score={dashboardData.complianceScore}
+                loading={loading}
+              />
+            </div>
           </div>
 
-          {/* Recent Activities */}
-          <div className="xl:col-span-5">
-            <RecentEmployeeActivities
-              data={dashboardData.recentActivities}
-              loading={loading}
-            />
-          </div>
-        </div>
+          {/* Third Row: Visa Analytics */}
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 xl:gap-6">
+            {/* Visa Expiry Trends */}
+            <div className="xl:col-span-7">
+              <VisaExpiryTrendChart
+                data={dashboardData.visaTrendData}
+                loading={loading}
+              />
+            </div>
 
-        {/* Performance Monitor - Temporarily disabled to fix infinite loops */}
-        {/* <PerformanceMonitor componentName="Dashboard" />
+            {/* Recent Activities */}
+            <div className="xl:col-span-5">
+              <RecentEmployeeActivities
+                data={dashboardData.recentActivities}
+                loading={loading}
+              />
+            </div>
+          </div>
+
+          {/* Performance Monitor - Temporarily disabled to fix infinite loops */}
+          {/* <PerformanceMonitor componentName="Dashboard" />
         <CoreWebVitals /> */}
         </div>
       </UnifiedErrorBoundary>
