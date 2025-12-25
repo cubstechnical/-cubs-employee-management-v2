@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/server';
+import { supabase, supabaseAdmin } from '@/lib/supabase/server';
 import { log } from '@/lib/utils/productionLogger';
 import { rpcSearchNotifications } from '@/lib/supabase/rpc-types';
 
@@ -14,8 +14,11 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50');
     const offset = parseInt(searchParams.get('offset') || '0');
 
+    // Use admin client if available to ensure we have permission to execute the RPC
+    const client = supabaseAdmin || supabase;
+
     // Use optimized RPC for search with pagination
-    const { data: notifications, error } = await rpcSearchNotifications(supabase, {
+    const { data: notifications, error } = await rpcSearchNotifications(client, {
       p_search_term: searchTerm,
       p_limit: limit,
       p_offset: offset
