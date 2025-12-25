@@ -1349,8 +1349,19 @@ export class DocumentService {
 
       log.info('📤 API URL:', { apiUrl, isProduction: process.env.NODE_ENV === 'production' });
 
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: HeadersInit = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else {
+        log.warn('⚠️ No active session found for document upload');
+      }
+
       const response = await fetch(apiUrl, {
         method: 'POST',
+        headers,
         body: formData
       });
 
