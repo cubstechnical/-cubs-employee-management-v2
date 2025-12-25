@@ -761,32 +761,10 @@ export default function NewEmployee() {
                   Basic Salary
                 </label>
                 <Input
-                  type="text"
-                  placeholder="Enter basic salary"
-                  {...register('basic_salary')}
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                  Salary (Numeric)
-                </label>
-                <Input
                   type="number"
-                  placeholder="Enter salary amount"
-                  {...register('salary', { valueAsNumber: true })}
+                  placeholder="Enter basic salary"
+                  {...register('basic_salary', { valueAsNumber: true })}
                 />
-              </div>
-
-              <div className="flex items-center">
-                <input
-                  type="checkbox"
-                  {...register('is_temporary')}
-                  className="h-4 w-4 text-[#d3194f] focus:ring-[#d3194f] border-gray-300 rounded"
-                />
-                <label className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
-                  Temporary Employee
-                </label>
               </div>
             </div>
           </div>
