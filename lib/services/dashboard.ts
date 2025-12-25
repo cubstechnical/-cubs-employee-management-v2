@@ -283,10 +283,10 @@ export class DashboardService {
       log.error('❌ Error fetching visa trend data:', error);
       return {
         data: {
-          months: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
-          expiring: [15, 18, 22, 19, 25, 23],
-          expired: [3, 2, 4, 1, 3, 5],
-          renewed: [12, 15, 18, 20, 22, 25],
+          months: [],
+          expiring: [],
+          expired: [],
+          renewed: [],
         },
         error: error instanceof Error ? error.message : 'Unknown error'
       };
@@ -434,17 +434,7 @@ export class DashboardService {
     } catch (error) {
       log.error('❌ Error fetching recent activities:', error);
       return {
-        activities: [
-          {
-            id: "1",
-            type: "employee_added",
-            title: "New Employee Added",
-            description: "Sarah Johnson joined the Engineering team",
-            timestamp: new Date().toISOString(),
-            user: { name: "Sarah Johnson" },
-            status: "success",
-          },
-        ],
+        activities: [],
         error: error instanceof Error ? error.message : 'Failed to fetch activities'
       };
     }
@@ -583,7 +573,7 @@ export class DashboardService {
       return { score, error: null };
     } catch (error) {
       log.error('❌ Error calculating visa compliance score:', error);
-      return { score: 87, error: error instanceof Error ? error.message : 'Failed to calculate compliance score' };
+      return { score: 0, error: error instanceof Error ? error.message : 'Failed to calculate compliance score' };
     }
   }
 
@@ -639,7 +629,7 @@ export class DashboardService {
 
       const complianceScore = complianceResult.status === 'fulfilled' && !complianceResult.value.error
         ? complianceResult.value.score
-        : 87; // Default fallback
+        : 0; // Default fallback
 
       log.info('✅ DashboardService: All data fetched successfully');
 
@@ -666,7 +656,7 @@ export class DashboardService {
         },
         visaTrendData: { months: [], expiring: [], expired: [], renewed: [] },
         recentActivities: [],
-        complianceScore: 87,
+        complianceScore: 0,
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
