@@ -1,0 +1,61 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - generic [ref=e4]: ⚠️
+    - heading "Connection Error" [level=2] [ref=e5]
+    - paragraph [ref=e6]: Please check your internet connection and try again.
+    - button "Retry" [ref=e7] [cursor=pointer]
+  - generic [ref=e10]:
+    - generic [ref=e11]:
+      - img "CUBS Logo" [ref=e14]
+      - paragraph [ref=e15]: Employee Management Portal
+    - generic [ref=e16]:
+      - generic [ref=e17]:
+        - heading "Sign In" [level=2] [ref=e18]
+        - paragraph [ref=e19]: Enter your credentials to access your account
+      - generic [ref=e20]:
+        - generic [ref=e22]:
+          - generic [ref=e23]: Email Address
+          - generic [ref=e24]:
+            - generic:
+              - img
+            - textbox "Enter your email" [ref=e25]
+        - generic [ref=e27]:
+          - generic [ref=e28]: Password
+          - generic [ref=e29]:
+            - generic:
+              - img
+            - textbox "Enter your password" [ref=e30]
+            - button [ref=e32] [cursor=pointer]:
+              - img [ref=e33] [cursor=pointer]
+        - button "Forgot password?" [ref=e37] [cursor=pointer]
+        - button "Sign In" [ref=e38] [cursor=pointer]
+      - paragraph [ref=e40]:
+        - text: Don't have an account?
+        - link "Create one here" [ref=e41] [cursor=pointer]:
+          - /url: /register
+    - generic [ref=e42]:
+      - generic [ref=e43]:
+        - link "Privacy Policy" [ref=e44] [cursor=pointer]:
+          - /url: /privacy/
+        - generic [ref=e45]: •
+        - link "Terms of Service" [ref=e46] [cursor=pointer]:
+          - /url: /terms/
+        - generic [ref=e47]: •
+        - link "Contact Support" [ref=e48] [cursor=pointer]:
+          - /url: /contact/
+      - paragraph [ref=e49]: © 2025 CUBS Technical. All rights reserved.
+      - paragraph [ref=e50]:
+        - text: Developed by
+        - link "ChocoSoft Dev" [ref=e51] [cursor=pointer]:
+          - /url: https://chocosoftdev.com/
+  - generic [ref=e52]:
+    - img [ref=e54]
+    - button "Open Tanstack query devtools" [ref=e102] [cursor=pointer]:
+      - img [ref=e103] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e156] [cursor=pointer]:
+    - img [ref=e157] [cursor=pointer]
+  - alert [ref=e160]
+```

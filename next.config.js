@@ -136,45 +136,7 @@ const baseConfig = {
             value: 'camera=(), microphone=(), geolocation=(), payment=()',
           },
         ],
-      },
-      // Fix CSS MIME type issues for static export
-      {
-        source: '/_next/static/css/:path*',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'text/css',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Fix JS MIME type issues for static export
-      {
-        source: '/_next/static/chunks/:path*',
-        headers: [
-          {
-            key: 'Content-Type',
-            value: 'application/javascript',
-          },
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
-      // Fix media files MIME types for static export
-      {
-        source: '/_next/static/media/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
-          },
-        ],
-      },
+      }
     ];
   },
   // Move turbo config to turbopack
@@ -189,6 +151,19 @@ const baseConfig = {
   // env block removed to let Next.js handle environment variables automatically
   // This prevents baking empty strings if vars are missing at build time
   webpack: (config, { isServer, dev }) => {
+    // ==== DEV MODE STABILITY FIX ====
+    // Ensure stable module IDs to prevent "Cannot read properties of undefined (reading 'call')" errors
+    if (dev && !isServer) {
+      // Use named module IDs for better stability during hot reload
+      config.optimization = {
+        ...config.optimization,
+        moduleIds: 'named',
+        chunkIds: 'named',
+        // Ensure chunks are loaded in proper order
+        runtimeChunk: 'single',
+      };
+    }
+
     // Optimize bundle splitting and chunk loading
     if (!isServer && !dev) {
       config.optimization = {
