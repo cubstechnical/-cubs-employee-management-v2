@@ -763,7 +763,7 @@ export default function NewEmployee() {
                 <Input
                   type="number"
                   placeholder="Enter basic salary"
-                  {...register('basic_salary', { valueAsNumber: true })}
+                  {...register('basic_salary')}
                 />
               </div>
             </div>
