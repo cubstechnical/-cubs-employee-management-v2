@@ -1350,14 +1350,22 @@ export class DocumentService {
       log.info('📤 API URL:', { apiUrl, isProduction: process.env.NODE_ENV === 'production' });
 
       // Get current session for authentication
-      const { data: { session } } = await supabase.auth.getSession();
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
 
-      const headers: HeadersInit = {};
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      } else {
-        log.warn('⚠️ No active session found for document upload');
+      // CRITICAL: Fail fast if no valid session
+      if (sessionError || !session?.access_token) {
+        log.error('❌ No valid session for document upload:', sessionError);
+        return {
+          document: null,
+          error: 'Authentication failed. Please log in again and try uploading.'
+        };
       }
+
+      const headers: HeadersInit = {
+        'Authorization': `Bearer ${session.access_token}`
+      };
+
+      log.info('✅ Valid session found, proceeding with authenticated upload');
 
       const response = await fetch(apiUrl, {
         method: 'POST',
