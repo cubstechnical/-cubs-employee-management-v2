@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/contexts/SimpleAuthContext';
 import Image from 'next/image';
@@ -10,23 +10,36 @@ import { isCapacitorApp } from '@/utils/mobileDetection';
 export default function HomePage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const [showError, setShowError] = useState(false);
 
-  log.info('🏠 HomePage: Auth state:', { 
-    isLoading, 
-    hasUser: !!user, 
-    userRole: user?.role 
+  log.info('🏠 HomePage: Auth state:', {
+    isLoading,
+    hasUser: !!user,
+    userRole: user?.role
   });
 
+  // Add timeout to prevent infinite loading
   useEffect(() => {
-    log.info('🏠 HomePage: useEffect triggered with:', { 
-      isLoading, 
+    const timeout = setTimeout(() => {
+      if (isLoading) {
+        log.error('🏠 HomePage: Loading timeout - app stuck in loading state');
+        setShowError(true);
+      }
+    }, 10000); // 10 second timeout
+
+    return () => clearTimeout(timeout);
+  }, [isLoading]);
+
+  useEffect(() => {
+    log.info('🏠 HomePage: useEffect triggered with:', {
+      isLoading,
       hasUser: !!user,
       isCapacitor: isCapacitorApp()
     });
-    
+
     if (!isLoading) {
       let redirectPath = '';
-      
+
       if (!user) {
         log.info('🏠 HomePage: No user, redirecting to login');
         redirectPath = '/login';
@@ -37,7 +50,7 @@ export default function HomePage() {
         log.info('🏠 HomePage: User approved, redirecting to dashboard');
         redirectPath = '/dashboard';
       }
-      
+
       // Use router.replace for all platforms to stay in-app
       if (redirectPath) {
         log.info('🏠 HomePage: Redirecting to:', redirectPath);
@@ -47,6 +60,40 @@ export default function HomePage() {
       }
     }
   }, [user, isLoading, router]);
+
+
+  // Show error if loading timeout
+  if (showError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-white to-red-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+        <div className="text-center space-y-6 max-w-md px-6">
+          <div className="w-20 h-20 bg-red-100 dark:bg-red-900/20 rounded-full flex items-center justify-center mx-auto">
+            <span className="text-4xl">⚠️</span>
+          </div>
+
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+              Loading Error
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400">
+              The app is taking longer than expected to load. This might be due to a network issue or configuration problem.
+            </p>
+          </div>
+
+          <button
+            onClick={() => window.location.reload()}
+            className="px-6 py-3 bg-[#d3194f] text-white rounded-lg font-medium hover:bg-[#b0173a] transition-colors"
+          >
+            Retry
+          </button>
+
+          <p className="text-xs text-gray-500 dark:text-gray-600">
+            If this problem persists, please contact support.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Show minimal loading screen (faster, smaller logo)
   return (
@@ -63,7 +110,7 @@ export default function HomePage() {
             priority
           />
         </div>
-        
+
         {/* Loading Spinner */}
         <div className="flex flex-col items-center gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#d3194f]"></div>

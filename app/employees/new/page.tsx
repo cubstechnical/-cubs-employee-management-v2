@@ -394,19 +394,27 @@ export default function NewEmployee() {
         // Try direct property access with multiple methods
         try {
           errorMessage = error.message || (error as any).msg || String(error);
-        } catch (e) { }
+        } catch (extractError) {
+          log.warn('Error extracting error details:', extractError);
+        }
 
         try {
           errorCode = error.code || (error as any).statusCode || (error as any).status;
-        } catch (e) { }
+        } catch (extractError) {
+          log.warn('Error extracting error details:', extractError);
+        }
 
         try {
           errorDetails = error.details || (error as any).detail || (error as any).error_description;
-        } catch (e) { }
+        } catch (extractError) {
+          log.warn('Error extracting error details:', extractError);
+        }
 
         try {
           errorHint = error.hint || (error as any).hint_text;
-        } catch (e) { }
+        } catch (extractError) {
+          log.warn('Error extracting error details:', extractError);
+        }
 
         // Try to access all enumerable and non-enumerable properties
         const allProps: any = {};
@@ -418,7 +426,9 @@ export default function NewEmployee() {
               allProps[key] = '[Unable to access]';
             }
           }
-        } catch (e) { }
+        } catch (extractError) {
+          log.warn('Error extracting error details:', extractError);
+        }
 
         // Try Object.getOwnPropertyNames for non-enumerable properties
         try {
@@ -431,7 +441,9 @@ export default function NewEmployee() {
               }
             }
           });
-        } catch (e) { }
+        } catch (extractError) {
+          log.warn('Error extracting error details:', extractError);
+        }
 
         // Try to stringify with replacer to handle non-serializable properties
         let errorString = '';
@@ -763,7 +775,7 @@ export default function NewEmployee() {
                 <Input
                   type="number"
                   placeholder="Enter basic salary"
-                  {...register('basic_salary', { valueAsNumber: true })}
+                  {...register('basic_salary')}
                 />
               </div>
             </div>

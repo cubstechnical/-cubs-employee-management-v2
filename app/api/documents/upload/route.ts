@@ -9,7 +9,7 @@ export const maxDuration = 60; // 60 seconds for large file uploads
 export async function POST(request: NextRequest) {
   try {
     log.info('📥 Received upload request');
-    
+
     const formData = await request.formData();
     const file = formData.get('file');
     const employee_id = formData.get('employee_id') as string;
@@ -21,6 +21,30 @@ export async function POST(request: NextRequest) {
     const file_type = formData.get('file_type') as string;
     const notes = formData.get('notes') as string | null;
 
+    // Authenticate the user
+    const authHeader = request.headers.get('Authorization');
+    if (!authHeader) {
+      log.warn('⚠️ Missing Authorization header for upload');
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(
+      authHeader.replace('Bearer ', '')
+    );
+
+    if (authError || !user) {
+      log.warn('⚠️ Invalid authentication tokens for upload:', authError);
+      return NextResponse.json(
+        { error: 'Invalid authentication credentials' },
+        { status: 401 }
+      );
+    }
+
+    log.info('📋 Authenticated upload request for user:', user.email);
+
     log.info('📋 Form data received:', {
       hasFile: !!file,
       fileType: file ? typeof file : 'null',
@@ -28,8 +52,8 @@ export async function POST(request: NextRequest) {
       fileName: file_name,
       employee_id,
       document_type,
-      file_name,
-      file_size,
+      file_name_dup: file_name, // Renamed key to avoid object literal property shorthand duplicate
+      file_size_dup: file_size, // Renamed key
       file_path,
       file_type
     });
@@ -57,7 +81,7 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     // TypeScript type guard
     const fileObj = file as unknown;
     if (!(fileObj instanceof File) && !(fileObj instanceof Blob)) {
@@ -114,7 +138,7 @@ export async function POST(request: NextRequest) {
     // Use file.size if file_size is 0 or invalid
     const actualFileSize = file_size > 0 ? file_size : ((fileForUpload as File).size || 0);
     const actualMimeType = (fileForUpload as File).type || file_type || 'application/octet-stream';
-    
+
     let uploadResult;
     const uploadStartTime = Date.now();
     try {
@@ -151,16 +175,16 @@ export async function POST(request: NextRequest) {
         port: (uploadError as any)?.port
       };
       log.error(`❌ Backblaze upload exception after ${uploadDuration}ms:`, errorDetails);
-      
+
       // Graceful degradation: Return user-friendly error with retry suggestion
-      const isConnectionError = 
+      const isConnectionError =
         errorDetails.code === 'ECONNRESET' ||
         errorDetails.code === 'ETIMEDOUT' ||
         errorDetails.message?.includes('ECONNRESET');
-      
+
       return NextResponse.json(
-        { 
-          error: isConnectionError 
+        {
+          error: isConnectionError
             ? 'Upload failed due to connection issue. Please try again in a moment.'
             : uploadError instanceof Error ? uploadError.message : 'Failed to upload file to Backblaze',
           details: process.env.NODE_ENV === 'development' ? errorDetails : undefined,
@@ -187,7 +211,7 @@ export async function POST(request: NextRequest) {
     // Normalize document_type to lowercase to match database check constraint
     // Database expects: 'passport', 'visa', 'emirates_id', 'labour_card', 'contract', 'other', etc.
     const normalizedDocumentType = document_type.toLowerCase().trim();
-    
+
     // Map common variations to valid database values
     const documentTypeMap: Record<string, string> = {
       'other': 'other',
@@ -205,9 +229,9 @@ export async function POST(request: NextRequest) {
       'experience_certificate': 'other',
       'general_document': 'other'
     };
-    
+
     const finalDocumentType = documentTypeMap[normalizedDocumentType] || 'other';
-    
+
     log.info('📝 Document type normalization:', {
       original: document_type,
       normalized: normalizedDocumentType,

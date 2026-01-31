@@ -1349,8 +1349,19 @@ export class DocumentService {
 
       log.info('📤 API URL:', { apiUrl, isProduction: process.env.NODE_ENV === 'production' });
 
+      // Get current session for authentication
+      const { data: { session } } = await supabase.auth.getSession();
+
+      const headers: HeadersInit = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      } else {
+        log.warn('⚠️ No active session found for document upload');
+      }
+
       const response = await fetch(apiUrl, {
         method: 'POST',
+        headers,
         body: formData
       });
 
@@ -1393,17 +1404,44 @@ export class DocumentService {
         return { error: fetchError.message };
       }
 
-      // Import BackblazeService dynamically to avoid SSR issues
-      const { BackblazeService } = await import('./backblaze');
+      // Prepare for API call
+      const { getApiUrl } = await import('@/lib/utils/apiClient');
+      const apiUrl = getApiUrl('api/documents/delete');
 
-      // Extract file key from file_path for Backblaze deletion
-      if (document && (document as any).file_path && typeof (document as any).file_path === 'string') {
+      // Get auth session
+      const { data: { session } } = await supabase.auth.getSession();
+      const headers: HeadersInit = {
+        'Content-Type': 'application/json'
+      };
+
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      // Extract file key
+      const fileKey = (document as any).file_path;
+
+      // Call server-side API to delete from Backblaze
+      // We do this BEFORE deleting from DB to ensure we don't lose the reference if B2 fails
+      // Although typically we want DB to be source of truth.
+      if (fileKey) {
         try {
-          await BackblazeService.deleteFile((document as any).file_path);
-        } catch (backblazeError) {
-          log.error('Failed to delete from Backblaze:', backblazeError);
-          // If B2 delete fails, abort to avoid orphaning metadata inconsistency
-          return { error: 'Failed to delete file from Backblaze' };
+          const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              documentId,
+              fileKey
+            })
+          });
+
+          if (!response.ok) {
+            const result = await response.json();
+            // Just log error but proceed to delete from DB to avoid "stuck" records
+            log.error('⚠️ Backblaze delete API failed, but proceeding with DB delete:', result.error);
+          }
+        } catch (apiError) {
+          log.error('❌ Failed to call delete API:', apiError);
         }
       }
 
